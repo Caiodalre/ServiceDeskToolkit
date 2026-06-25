@@ -1,0 +1,333 @@
+﻿[
+  {
+    "id": "teams-nao-abre",
+    "titulo": "Teams não abre ou fica carregando",
+    "categoria": "Teams / Office",
+    "palavrasChave": ["teams", "não abre", "nao abre", "carregando", "travando", "cache", "tela branca"],
+    "causaProvavel": "Cache corrompido do Teams, falha no WebView2 ou problema de autenticação do usuário.",
+    "resumo": "Fechar Teams/Office, limpar cache do Teams e validar credenciais do usuário.",
+    "passos": [
+      "Fechar Teams e aplicativos Office.",
+      "Limpar cache do Novo Teams ou Teams clássico conforme versão instalada.",
+      "Validar Credential Manager.",
+      "Validar Contas Windows.",
+      "Se persistir, executar Reparo Office."
+    ],
+    "acoesToolkit": [
+      "Fechar Teams/Office",
+      "Limpar Novo Teams",
+      "Limpar Teams clássico",
+      "Credential Manager",
+      "Contas Windows",
+      "Reparo Office"
+    ],
+    "risco": "Baixo"
+  },
+  {
+    "id": "teams-audio-camera",
+    "titulo": "Teams com problema de áudio, câmera ou microfone",
+    "categoria": "Teams / Office",
+    "palavrasChave": ["teams", "audio", "áudio", "camera", "câmera", "microfone", "sem som", "reunião"],
+    "causaProvavel": "Permissão de dispositivo, driver, seleção incorreta de áudio/câmera ou cache do Teams.",
+    "resumo": "Validar dispositivos no Windows e no Teams, depois limpar cache se necessário.",
+    "passos": [
+      "Validar se o microfone/câmera funciona no Windows.",
+      "Conferir permissões de privacidade para câmera e microfone.",
+      "Selecionar o dispositivo correto dentro do Teams.",
+      "Fechar Teams e abrir novamente.",
+      "Se persistir, limpar cache do Teams."
+    ],
+    "acoesToolkit": [
+      "Status Teams / Office",
+      "Fechar Teams/Office",
+      "Limpar Novo Teams",
+      "Gerenciador de Dispositivos"
+    ],
+    "risco": "Baixo"
+  },
+  {
+    "id": "outlook-pedindo-senha",
+    "titulo": "Outlook pedindo senha repetidamente",
+    "categoria": "Teams / Office",
+    "palavrasChave": ["outlook", "senha", "pedindo senha", "login", "autenticação", "autenticacao", "credencial", "office"],
+    "causaProvavel": "Credenciais salvas corrompidas, falha de autenticação moderna, problema no Office Identity ou TPM.",
+    "resumo": "Validar Office Identity, Credential Manager, Contas Windows e aplicar ajuste TPM/Office se necessário.",
+    "passos": [
+      "Consultar Office Identity.",
+      "Abrir Credential Manager e validar credenciais Microsoft/Office.",
+      "Validar Contas Windows.",
+      "Reiniciar Outlook.",
+      "Se persistir, aplicar ajuste TPM / Office com permissão administrativa."
+    ],
+    "acoesToolkit": [
+      "Office Identity",
+      "Credential Manager",
+      "Contas Windows",
+      "Status TPM / Office",
+      "Ajuste TPM / Office"
+    ],
+    "risco": "Médio"
+  },
+  {
+    "id": "outlook-nao-abre",
+    "titulo": "Outlook não abre ou trava ao iniciar",
+    "categoria": "Teams / Office",
+    "palavrasChave": ["outlook", "não abre", "nao abre", "travando", "fecha sozinho", "perfil", "pst", "ost"],
+    "causaProvavel": "Add-in problemático, perfil corrompido, cache local ou falha na instalação do Office.",
+    "resumo": "Testar Outlook em modo seguro, validar erros recentes e executar reparo Office se necessário.",
+    "passos": [
+      "Verificar erros recentes do Outlook.",
+      "Testar abertura em modo seguro: outlook.exe /safe.",
+      "Desabilitar add-ins suspeitos.",
+      "Validar perfil do Outlook.",
+      "Executar Reparo Office se persistir."
+    ],
+    "acoesToolkit": [
+      "Erros Outlook",
+      "Status Teams / Office",
+      "Office Identity",
+      "Reparo Office"
+    ],
+    "risco": "Baixo"
+  },
+  {
+    "id": "onedrive-nao-sincroniza",
+    "titulo": "OneDrive não sincroniza",
+    "categoria": "Apps Corporativos",
+    "palavrasChave": ["onedrive", "sincroniza", "sincronização", "nao sincroniza", "não sincroniza", "nuvem", "arquivo preso"],
+    "causaProvavel": "Cliente OneDrive parado, falha de login, caminho inválido, limite de sincronização ou erro local.",
+    "resumo": "Validar processo OneDrive, login corporativo, erros recentes e espaço em disco.",
+    "passos": [
+      "Consultar status de Apps Corporativos.",
+      "Verificar se o OneDrive está em execução.",
+      "Validar login corporativo no OneDrive.",
+      "Verificar espaço em disco.",
+      "Consultar erros recentes do OneDrive."
+    ],
+    "acoesToolkit": [
+      "Status Apps Corporativos",
+      "Erros OneDrive",
+      "Problema no OneDrive"
+    ],
+    "risco": "Baixo"
+  },
+  {
+    "id": "appgate-nao-conecta",
+    "titulo": "Appgate / VPN não conecta",
+    "categoria": "VPN / Appgate",
+    "palavrasChave": ["appgate", "vpn", "não conecta", "nao conecta", "conexão", "conexao", "timeout", "script"],
+    "causaProvavel": "Serviço Appgate travado, internet indisponível ou configuração RunScriptTimeout incorreta.",
+    "resumo": "Validar internet, status do Appgate e aplicar correção Appgate se necessário.",
+    "passos": [
+      "Testar internet antes da VPN.",
+      "Consultar status VPN / Appgate.",
+      "Reiniciar VPN / Appgate.",
+      "Se RunScriptTimeout estiver incorreto, aplicar correção VPN / Appgate.",
+      "Validar se o usuário possui permissão e autenticação correta."
+    ],
+    "acoesToolkit": [
+      "Status VPN / Appgate",
+      "Reiniciar VPN / Appgate",
+      "Corrigir VPN / Appgate",
+      "Problema no Appgate / VPN"
+    ],
+    "risco": "Médio"
+  },
+  {
+    "id": "erro-tpm-office",
+    "titulo": "Erro TPM / Office",
+    "categoria": "TPM / Office",
+    "palavrasChave": ["tpm", "office", "trusted platform", "módulo", "modulo", "autenticação", "autenticacao", "erro tpm"],
+    "causaProvavel": "Política de proteção TPM ou identidade do Office corrompida.",
+    "resumo": "Validar status TPM/Office e aplicar ajuste TPM/Office somente com permissão administrativa.",
+    "passos": [
+      "Consultar Status TPM / Office.",
+      "Validar Office Identity.",
+      "Aplicar Ajuste TPM / Office se o erro for compatível.",
+      "Reiniciar aplicativos Office.",
+      "Solicitar novo login do usuário."
+    ],
+    "acoesToolkit": [
+      "Status TPM / Office",
+      "Office Identity",
+      "Ajuste TPM / Office"
+    ],
+    "risco": "Médio"
+  },
+  {
+    "id": "impressora-offline",
+    "titulo": "Impressora offline",
+    "categoria": "Impressoras",
+    "palavrasChave": ["impressora", "offline", "não imprime", "nao imprime", "printer", "rede", "fila"],
+    "causaProvavel": "Impressora sem comunicação, porta incorreta, driver, spooler ou estado offline no Windows.",
+    "resumo": "Validar status da impressora, fila, padrão, rede e spooler.",
+    "passos": [
+      "Consultar Status Impressoras.",
+      "Verificar Impressoras offline.",
+      "Validar impressora padrão.",
+      "Verificar fila de impressão.",
+      "Reiniciar Spooler se necessário."
+    ],
+    "acoesToolkit": [
+      "Status Impressoras",
+      "Impressoras offline",
+      "Fila de impressão",
+      "Reiniciar Spooler",
+      "Abrir Impressoras"
+    ],
+    "risco": "Baixo"
+  },
+  {
+    "id": "fila-impressao-travada",
+    "titulo": "Fila de impressão travada",
+    "categoria": "Impressoras",
+    "palavrasChave": ["fila", "impressão", "impressao", "travada", "documento preso", "spooler"],
+    "causaProvavel": "Documento preso na fila ou serviço Spooler com falha.",
+    "resumo": "Verificar fila, reiniciar spooler e limpar fila se necessário.",
+    "passos": [
+      "Consultar Fila de impressão.",
+      "Reiniciar Spooler.",
+      "Se continuar travado, limpar fila de impressão.",
+      "Enviar novo teste de impressão."
+    ],
+    "acoesToolkit": [
+      "Fila de impressão",
+      "Reiniciar Spooler",
+      "Limpar fila"
+    ],
+    "risco": "Médio"
+  },
+  {
+    "id": "windows-update-erro",
+    "titulo": "Windows Update com erro",
+    "categoria": "Windows / Reparo",
+    "palavrasChave": ["windows update", "update", "atualização", "atualizacao", "erro update", "wu", "baixar atualização"],
+    "causaProvavel": "Serviços do Windows Update parados, cache corrompido ou corrupção de imagem do Windows.",
+    "resumo": "Validar serviços WU, reiniciar serviços, limpar cache WU e executar DISM/SFC se necessário.",
+    "passos": [
+      "Consultar Status Windows.",
+      "Reiniciar serviços Windows Update.",
+      "Limpar cache Windows Update se persistir.",
+      "Executar DISM RestoreHealth.",
+      "Executar SFC Scannow."
+    ],
+    "acoesToolkit": [
+      "Status Windows",
+      "Reiniciar serviços WU",
+      "Limpar cache WU",
+      "DISM RestoreHealth",
+      "SFC Scannow"
+    ],
+    "risco": "Médio"
+  },
+  {
+    "id": "store-nao-abre",
+    "titulo": "Microsoft Store não abre",
+    "categoria": "Microsoft Store / Apps",
+    "palavrasChave": ["store", "microsoft store", "loja", "não abre", "nao abre", "appx", "aplicativos"],
+    "causaProvavel": "Cache da Microsoft Store corrompido ou pacote Appx com falha.",
+    "resumo": "Resetar Store, reparar pacote da Store e, se necessário, reparar Apps Windows.",
+    "passos": [
+      "Consultar Status Store / Apps.",
+      "Reiniciar Microsoft Store.",
+      "Resetar Microsoft Store.",
+      "Reparar Microsoft Store.",
+      "Se persistir, reparar Apps Windows."
+    ],
+    "acoesToolkit": [
+      "Status Store / Apps",
+      "Reiniciar Store",
+      "Resetar Store",
+      "Reparar Store",
+      "Reparar Apps Windows"
+    ],
+    "risco": "Médio"
+  },
+  {
+    "id": "captura-tela-nao-funciona",
+    "titulo": "Captura de Tela não funciona",
+    "categoria": "Apps Corporativos",
+    "palavrasChave": ["captura", "print", "snipping", "ferramenta de captura", "screenshot", "não funciona", "nao funciona"],
+    "causaProvavel": "Falha no pacote Snipping Tool/ScreenSketch ou problema nos Apps Windows.",
+    "resumo": "Consultar erros da Captura de Tela e reparar apps se necessário.",
+    "passos": [
+      "Consultar Erros Captura de Tela.",
+      "Abrir Apps Instalados.",
+      "Reparar ou redefinir Captura de Tela, se disponível.",
+      "Se persistir, reparar Apps Windows."
+    ],
+    "acoesToolkit": [
+      "Erros Captura de Tela",
+      "Apps Instalados",
+      "Reparar Apps Windows"
+    ],
+    "risco": "Baixo"
+  },
+  {
+    "id": "whatsapp-nao-abre",
+    "titulo": "WhatsApp não abre",
+    "categoria": "Apps Corporativos",
+    "palavrasChave": ["whatsapp", "não abre", "nao abre", "travando", "store", "app"],
+    "causaProvavel": "Falha no pacote do WhatsApp Desktop, cache local ou problema de Apps Windows.",
+    "resumo": "Consultar erros do WhatsApp e reparar/reinstalar pelo fluxo de Apps Windows se necessário.",
+    "passos": [
+      "Consultar Erros WhatsApp.",
+      "Validar se o pacote WhatsApp está instalado.",
+      "Abrir Apps Instalados.",
+      "Reparar ou redefinir o WhatsApp.",
+      "Se persistir, reparar Apps Windows."
+    ],
+    "acoesToolkit": [
+      "Erros WhatsApp",
+      "Apps Instalados",
+      "Reparar Apps Windows"
+    ],
+    "risco": "Baixo"
+  },
+  {
+    "id": "rede-sem-internet",
+    "titulo": "Rede sem internet",
+    "categoria": "Rede Avançada",
+    "palavrasChave": ["internet", "sem internet", "rede", "gateway", "ip", "dns", "não navega", "nao navega"],
+    "causaProvavel": "Falha de IP, gateway, DNS, rota, cabo/Wi-Fi, proxy ou bloqueio de rede.",
+    "resumo": "Validar IP, gateway, DNS, rotas e teste de internet.",
+    "passos": [
+      "Consultar Status IP completo.",
+      "Verificar DNS.",
+      "Verificar rotas.",
+      "Testar Gateway.",
+      "Testar Internet.",
+      "Se necessário, executar Flush DNS ou renovar IP."
+    ],
+    "acoesToolkit": [
+      "Status IP completo",
+      "Ver DNS",
+      "Ver rotas",
+      "Teste Gateway",
+      "Teste Internet",
+      "Flush DNS",
+      "Release/Renew IP"
+    ],
+    "risco": "Baixo"
+  },
+  {
+    "id": "dns-nao-resolve",
+    "titulo": "DNS não resolve",
+    "categoria": "Rede Avançada",
+    "palavrasChave": ["dns", "não resolve", "nao resolve", "nome", "site não abre", "domínio", "dominio"],
+    "causaProvavel": "Cache DNS corrompido, DNS incorreto ou indisponível.",
+    "resumo": "Validar DNS configurado, testar internet e executar Flush DNS.",
+    "passos": [
+      "Verificar DNS configurado.",
+      "Testar Internet.",
+      "Executar Flush DNS.",
+      "Se persistir, validar DNS corporativo, VPN ou proxy."
+    ],
+    "acoesToolkit": [
+      "Ver DNS",
+      "Teste Internet",
+      "Flush DNS"
+    ],
+    "risco": "Baixo"
+  }
+]
