@@ -70,8 +70,10 @@ function Download-ToolkitFile {
 }
 
 Download-ToolkitFile -Url $MainScriptUrl -Destination $MainScriptPath -Name "Script principal"
+Convert-ToolkitFileToUtf8Bom -Path $MainScriptPath -Name "Script principal"
 Download-ToolkitFile -Url $CmdUrl -Destination $CmdPath -Name "Launcher CMD"
 Download-ToolkitFile -Url $KnowledgeUrl -Destination $KnowledgePath -Name "Base de Conhecimento"
+Convert-ToolkitFileToUtf8Bom -Path $KnowledgePath -Name "Base de Conhecimento"
 
 try {
     Download-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
@@ -192,8 +194,10 @@ function Download-ToolkitFile {
 }
 
 Download-ToolkitFile -Url $MainScriptUrl -Destination $MainScriptPath -Name "Script principal"
+Convert-ToolkitFileToUtf8Bom -Path $MainScriptPath -Name "Script principal"
 Download-ToolkitFile -Url $CmdUrl -Destination $CmdPath -Name "Launcher CMD"
 Download-ToolkitFile -Url $KnowledgeUrl -Destination $KnowledgePath -Name "Base de Conhecimento"
+Convert-ToolkitFileToUtf8Bom -Path $KnowledgePath -Name "Base de Conhecimento"
 
 try {
     Download-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
@@ -344,5 +348,6 @@ catch {
     Write-Host "Abra manualmente pelo atalho ou execute:" -ForegroundColor Yellow
     Write-Host $CmdPath -ForegroundColor Cyan
 }
+
 
 
