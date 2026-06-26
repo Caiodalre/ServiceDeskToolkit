@@ -155,8 +155,15 @@ Write-Host "Atalho Menu Iniciar:" -ForegroundColor Cyan
 Write-Host $ShortcutStartMenu
 Write-Host ""
 
-$abrir = Read-Host "Deseja abrir o Toolkit agora? S/N"
+Write-Host "Abrindo o Toolkit..." -ForegroundColor Cyan
 
-if ($abrir -match '^[sS]') {
+try {
     Start-Process -FilePath $CmdPath -WorkingDirectory $InstallPath
+    Write-Host "Toolkit iniciado com sucesso." -ForegroundColor Green
 }
+catch {
+    Write-Host "Instalação concluída, mas não foi possível abrir automaticamente o Toolkit." -ForegroundColor Yellow
+    Write-Host "Abra manualmente pelo atalho ou execute:" -ForegroundColor Yellow
+    Write-Host $CmdPath -ForegroundColor Cyan
+}
+
