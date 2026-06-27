@@ -13,7 +13,7 @@ catch {}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"
-$Branch = "main"
+$Branch = "v2.1-hardening"
 
 $BaseUrl = "https://raw.githubusercontent.com/$GitHubUser/$RepoName/$Branch"
 
@@ -24,11 +24,13 @@ $MainScriptUrl = "$BaseUrl/ServiceDeskToolkit-Corporate.ps1"
 $CmdUrl = "$BaseUrl/ServiceDeskToolkit.cmd"
 $KnowledgeUrl = "$BaseUrl/data/knowledge-base.json"
 $ReadmeUrl = "$BaseUrl/README.md"
+$VersionUrl = "$BaseUrl/version.json"
 
 $MainScriptPath = Join-Path $InstallPath "ServiceDeskToolkit-Corporate.ps1"
 $CmdPath = Join-Path $InstallPath "ServiceDeskToolkit.cmd"
 $KnowledgePath = Join-Path $DataPath "knowledge-base.json"
 $ReadmePath = Join-Path $InstallPath "README.md"
+$VersionPath = Join-Path $InstallPath "version.json"
 
 function Download-ToolkitFile {
     param(
@@ -106,6 +108,9 @@ Download-ToolkitFile -Url $CmdUrl -Destination $CmdPath -Name "Launcher CMD"
 
 Download-ToolkitFile -Url $KnowledgeUrl -Destination $KnowledgePath -Name "Base de Conhecimento"
 Convert-ToolkitFileToUtf8Bom -Path $KnowledgePath -Name "Base de Conhecimento"
+
+Download-ToolkitFile -Url $VersionUrl -Destination $VersionPath -Name "Controle de Versao"
+Convert-ToolkitFileToUtf8Bom -Path $VersionPath -Name "Controle de Versao"
 
 try {
     Download-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
@@ -198,6 +203,15 @@ Write-Host ""
 Write-Host "Base de Conhecimento:" -ForegroundColor Cyan
 Write-Host $KnowledgePath
 Write-Host ""
+Write-Host ""
+Write-Host "Versao instalada:" -ForegroundColor Cyan
+try {
+    $versionInfo = Get-Content $VersionPath -Raw | ConvertFrom-Json
+    Write-Host "$($versionInfo.name) $($versionInfo.version) [$($versionInfo.channel)]" -ForegroundColor Green
+}
+catch {
+    Write-Host "Nao foi possivel ler o version.json." -ForegroundColor Yellow
+}
 Write-Host "Launcher:" -ForegroundColor Cyan
 Write-Host $CmdPath
 Write-Host ""
@@ -213,3 +227,4 @@ catch {
     Write-Host "Abra manualmente pelo atalho ou execute:" -ForegroundColor Yellow
     Write-Host $CmdPath -ForegroundColor Cyan
 }
+
