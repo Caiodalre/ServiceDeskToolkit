@@ -1,0 +1,47 @@
+# ============================================================
+# ServiceDesk Toolkit - Git Ignore
+# Arquivos locais, backups, logs e testes
+# ============================================================
+
+# Backups gerados durante manutenção
+*.backup-*.ps1
+*.backup-*.cmd
+*.backup-*.zip
+*backup*.ps1
+*backup*.cmd
+*backup*.zip
+*.bak
+*.old
+
+# Logs e relatórios locais
+logs/
+reports/
+exports/
+FINAL/
+RELEASE/
+TESTE*/
+TESTE-*/
+*.log
+*.tmp
+
+# Arquivos temporários do PowerShell
+PowerShell_transcript*.txt
+*.ps1xml.bak
+
+# Pastas locais de trabalho
+_local-backups/
+_local-tests/
+_homologacao/
+HOMOLOGACAO/
+
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Arquivos compactados locais
+*.zip
+*.7z
+*.rar
