@@ -2650,41 +2650,54 @@ function Write-ToolkitErrorLog {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate" Height="820" Width="1380" MinHeight="740" MinWidth="1220" WindowStartupLocation="CenterScreen" Background="#E9EEF5">
 <Window.Resources>
 
-    <Style TargetType="Button">
-        <Setter Property="Height" Value="34"/>
+            <Style TargetType="Button">
+        <Setter Property="MinHeight" Value="34"/>
         <Setter Property="Margin" Value="0,0,0,6"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="Background" Value="#F8FAFC"/>
         <Setter Property="Foreground" Value="#0F172A"/>
         <Setter Property="BorderBrush" Value="#CBD5E1"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="Padding" Value="10,6"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
+                    <Border x:Name="ButtonBorder"
+                            Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="9"
                             Padding="{TemplateBinding Padding}">
-                        <ContentPresenter VerticalAlignment="Center"
-                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                        <TextBlock Text="{TemplateBinding Content}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   FontWeight="{TemplateBinding FontWeight}"
+                                   TextWrapping="Wrap"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.92"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.86"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="ButtonBorder" Property="Background" Value="#E5E7EB"/>
+                            <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#D1D5DB"/>
+                            <Setter Property="Foreground" Value="#94A3B8"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="#EFF6FF"/>
-                <Setter Property="BorderBrush" Value="#60A5FA"/>
-            </Trigger>
-            <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="#DBEAFE"/>
-            </Trigger>
-        </Style.Triggers>
     </Style>
 
     <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -2694,9 +2707,10 @@ function Write-ToolkitErrorLog {
     </Style>
 
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="#1D4ED8"/>
-        <Setter Property="BorderBrush" Value="#1D4ED8"/>
+        <Setter Property="Background" Value="#2563EB"/>
+        <Setter Property="BorderBrush" Value="#2563EB"/>
         <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontWeight" Value="Bold"/>
     </Style>
 
     <Style TargetType="TextBox">
@@ -2743,7 +2757,7 @@ function Write-ToolkitErrorLog {
     </Style>
 
 </Window.Resources>
-<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 <Border Grid.Column="0" Background="#07111F"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="14"><TextBlock Text="ServiceDesk" Foreground="White" FontSize="22" FontWeight="Bold"/><TextBlock Text="Toolkit" Foreground="#60A5FA" FontSize="22" FontWeight="Bold"/><TextBlock Text="Corporate Toolkit" Foreground="#D0D5DD" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,12"/><Border Background="#0F1B2D" CornerRadius="10" Padding="10" Margin="0,6,0,14"><StackPanel><TextBlock Text="Ambiente" Foreground="#98A2B3" FontSize="12"/><TextBlock Name="TxtAdminStatus" Foreground="#FACC15" TextWrapping="Wrap" FontSize="12"/></StackPanel></Border>
 <TextBlock Text="Ações principais" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,0,0,6"/><Button Name="BtnInventory" Content="Inventário completo"/><Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/><Button Name="BtnFlushDns" Content="Limpar DNS"/><Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/><Button Name="BtnTimeSync" Content="Sincronizar horário"/><Button Name="BtnSpooler" Content="Reiniciar spooler"/>
 <TextBlock Text="Windows" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/><Button Name="BtnPrograms" Content="Programas e Recursos"/><Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/><Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
@@ -3063,7 +3077,7 @@ function Write-ToolkitErrorLog {
                     </Border>
                 </TabItem>
                 <TabItem Header="Resultado"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Text="Saída da execução" FontSize="17" FontWeight="Bold" Margin="0,0,0,8"/><TextBox MinHeight="460" Name="TxtOutput" Grid.Row="1"/></Grid></Border></TabItem>
-<TabItem Header="Segurança"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><Button Name="BtnTpm" Content="Verificar TPM"/><Button Name="BtnBitLocker" Content="Verificar BitLocker"/><Button Name="BtnDefender" Content="Windows Defender"/><Button Name="BtnUac" Content="Verificar UAC"/><Button Name="BtnAdmins" Content="Administradores locais"/></StackPanel><TextBox MinHeight="460" Name="TxtSecurityOutput" Grid.Column="1"/></Grid></Border></TabItem>
+<TabItem Header="Segurança"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><Button Name="BtnTpm" Content="Verificar TPM"/><Button Name="BtnBitLocker" Content="Verificar BitLocker"/><Button Name="BtnDefender" Content="Windows Defender"/><Button Name="BtnUac" Content="Verificar UAC"/><Button Name="BtnAdmins" Content="Administradores locais"/></StackPanel><TextBox MinHeight="460" Name="TxtSecurityOutput" Grid.Column="1"/></Grid></Border></TabItem>
                 <TabItem Header="Rede Avançada">
                     <Border Background="White" CornerRadius="18" Padding="18">
                         <Grid>
@@ -3359,8 +3373,8 @@ function Write-ToolkitErrorLog {
                         </Grid>
                     </Border>
                 </TabItem>
-<TabItem Header="TPM / Office"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Ajustes TPM / Office" Foreground="#667085" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/><Button Name="BtnTpmOfficeFix" Content="Ajuste TPM 2"/><Button Name="BtnTpmBrokenPlugin" Content="Limpar BrokenPlugin"/><Button Name="BtnDismSfcRepair" Content="Reparo DISM + SFC" Style="{StaticResource DangerButton}"/><Button Name="BtnTpmOfficeStatus" Content="Status TPM / Office"/><TextBlock Text="Observação: alguns ajustes exigem reinício do computador." Foreground="#667085" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel><TextBox MinHeight="460" Name="TxtTpmOfficeOutput" Grid.Column="1"/></Grid></Border></TabItem>
-<TabItem Header="GPO / Sistema"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><Button Name="BtnGpUpdate" Content="Executar gpupdate /force"/><Button Name="BtnGpResult" Content="Gerar gpresult HTML"/><Button Name="BtnStoppedServices" Content="Serviços automáticos parados"/><Button Name="BtnCriticalEvents" Content="Eventos últimas 24h"/></StackPanel><TextBox MinHeight="460" Name="TxtSystemOutput" Grid.Column="1"/></Grid></Border></TabItem>
+<TabItem Header="TPM / Office"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Ajustes TPM / Office" Foreground="#667085" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/><Button Name="BtnTpmOfficeFix" Content="Ajuste TPM 2"/><Button Name="BtnTpmBrokenPlugin" Content="Limpar BrokenPlugin"/><Button Name="BtnDismSfcRepair" Content="Reparo DISM + SFC" Style="{StaticResource DangerButton}"/><Button Name="BtnTpmOfficeStatus" Content="Status TPM / Office"/><TextBlock Text="Observação: alguns ajustes exigem reinício do computador." Foreground="#667085" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel><TextBox MinHeight="460" Name="TxtTpmOfficeOutput" Grid.Column="1"/></Grid></Border></TabItem>
+<TabItem Header="GPO / Sistema"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><Button Name="BtnGpUpdate" Content="Executar gpupdate /force"/><Button Name="BtnGpResult" Content="Gerar gpresult HTML"/><Button Name="BtnStoppedServices" Content="Serviços automáticos parados"/><Button Name="BtnCriticalEvents" Content="Eventos últimas 24h"/></StackPanel><TextBox MinHeight="460" Name="TxtSystemOutput" Grid.Column="1"/></Grid></Border></TabItem>
 <TabItem Header="Teste TCP"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><StackPanel Orientation="Horizontal" Margin="0,0,0,10"><StackPanel Width="220" Margin="0,0,12,0"><TextBlock Text="Host ou IP" Foreground="#667085"/><TextBox Name="InputTcpHost" IsReadOnly="False" Height="30" Text="google.com"/></StackPanel><StackPanel Width="120" Margin="0,0,12,0"><TextBlock Text="Porta" Foreground="#667085"/><TextBox Name="InputTcpPort" IsReadOnly="False" Height="30" Text="443"/></StackPanel><Button Name="BtnTcpTest" Content="Testar porta" Width="120" Margin="0,18,0,0"/></StackPanel><TextBox MinHeight="460" Name="TxtTcpOutput" Grid.Row="1"/></Grid></Border></TabItem>
 </TabControl></Grid></Grid></Window>
 "@
