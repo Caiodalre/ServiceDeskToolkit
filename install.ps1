@@ -39,6 +39,7 @@ $RollbackUrl = "$BaseUrl/rollback.ps1"
 $DiagnosticToolUrl = "$BaseUrl/tools/Get-ToolkitDiagnostic.ps1"
 $QualityGateToolUrl = "$BaseUrl/tools/Test-ToolkitQuality.ps1"
 $ReleaseValidatorToolUrl = "$BaseUrl/tools/Test-ToolkitRelease.ps1"
+$InstalledValidatorToolUrl = "$BaseUrl/tools/Test-ToolkitInstalled.ps1"
 
 $MainScriptPath = Join-Path $InstallPath "ServiceDeskToolkit-Corporate.ps1"
 $CmdPath = Join-Path $InstallPath "ServiceDeskToolkit.cmd"
@@ -50,6 +51,7 @@ $RollbackPath = Join-Path $InstallPath "rollback.ps1"
 $DiagnosticToolPath = Join-Path $ToolsPath "Get-ToolkitDiagnostic.ps1"
 $QualityGateToolPath = Join-Path $ToolsPath "Test-ToolkitQuality.ps1"
 $ReleaseValidatorToolPath = Join-Path $ToolsPath "Test-ToolkitRelease.ps1"
+$InstalledValidatorToolPath = Join-Path $ToolsPath "Test-ToolkitInstalled.ps1"
 try {
     if (!(Test-Path $ConfigPath)) {
         New-Item -Path $ConfigPath -ItemType Directory -Force | Out-Null
@@ -178,6 +180,9 @@ Convert-ToolkitFileToUtf8Bom -Path $QualityGateToolPath -Name "Quality Gate"
 Download-ToolkitFile -Url $ReleaseValidatorToolUrl -Destination $ReleaseValidatorToolPath -Name "Validador de Release"
 Convert-ToolkitFileToUtf8Bom -Path $ReleaseValidatorToolPath -Name "Validador de Release"
 
+Download-ToolkitFile -Url $InstalledValidatorToolUrl -Destination $InstalledValidatorToolPath -Name "Validador de Instalacao"
+Convert-ToolkitFileToUtf8Bom -Path $InstalledValidatorToolPath -Name "Validador de Instalacao"
+
 Download-ToolkitFile -Url $UpdateUrl -Destination $UpdatePath -Name "Atualizador"
 Convert-ToolkitFileToUtf8Bom -Path $UpdatePath -Name "Atualizador"
 
@@ -202,6 +207,7 @@ $requiredFiles = @(
     $DiagnosticToolPath,
     $QualityGateToolPath,
     $ReleaseValidatorToolPath,
+    $InstalledValidatorToolPath,
     $UpdatePath,
     $RollbackPath
 )
