@@ -1,0 +1,16 @@
+{
+  "name": "ServiceDesk Toolkit Corporate",
+  "version": "2.1.0-hardening",
+  "channel": "development",
+  "branch": "v2.1-hardening",
+  "stableVersion": "v2.0.2-compat",
+  "minimumPowerShell": "5.1",
+  "compatiblePowerShell": [
+    "Windows PowerShell 5.1",
+    "PowerShell 7+"
+  ],
+  "installCommandDev": "irm https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.1-hardening/install.ps1 | iex",
+  "installCommandStable": "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.0.2-compat/install-stable.ps1' | iex\"",
+  "repository": "https://github.com/Caiodalre/ServiceDeskToolkit",
+  "buildDate": "2026-06-26 23:13:12"
+}
