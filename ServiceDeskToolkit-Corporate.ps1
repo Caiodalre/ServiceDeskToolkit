@@ -2748,7 +2748,8 @@ function Write-ToolkitErrorLog {
 <TextBlock Text="Ações principais" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,0,0,6"/><Button Name="BtnInventory" Content="Inventário completo"/><Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/><Button Name="BtnFlushDns" Content="Limpar DNS"/><Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/><Button Name="BtnTimeSync" Content="Sincronizar horário"/><Button Name="BtnSpooler" Content="Reiniciar spooler"/>
 <TextBlock Text="Windows" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/><Button Name="BtnPrograms" Content="Programas e Recursos"/><Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/><Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
 <TextBlock Text="VPN / Appgate" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/><Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/><Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
-<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><Button Name="BtnValidateToolkitInstalled" Content="VALIDAR INSTALACAO DO TOOLKIT" Style="{StaticResource PrimaryButton}"/><TextBlock Text="Administracao do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/><Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/><Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/><Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
+<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><Button Name="BtnValidateToolkitInstalled" Content="VALIDAR INSTALACAO DO TOOLKIT" Style="{StaticResource PrimaryButton}"/><TextBlock Text="Administracao do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/><Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/><Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/>
+<Button Name="BtnShowToolkitLogSummary" Content="RESUMO DOS LOGS DO TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
 </StackPanel></ScrollViewer></Border>
 <Grid Grid.Column="1" Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
 <Border Background="White" CornerRadius="16" Padding="18" Margin="0,0,0,10"><StackPanel><TextBlock Text="Central de Suporte Técnico" FontSize="22" FontWeight="Bold" Foreground="#101828"/><TextBlock Text="Selecione uma área, execute a ação desejada e acompanhe o resultado técnico no painel ao lado." FontSize="13" Foreground="#667085"/></StackPanel></Border>
@@ -3444,7 +3445,7 @@ $TxtPrintersOutput = $window.FindName("TxtPrintersOutput")
 
 
 # Find names
-$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
+$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
 foreach($n in $names){ Set-Variable -Name $n -Value ($window.FindName($n)) -Scope Script }
 
 if(Test-Admin){$TxtAdminStatus.Text='Executando como administrador.'}else{$TxtAdminStatus.Text='Atenção: não está como administrador. Algumas funções podem falhar.'}
@@ -3702,6 +3703,126 @@ if ($null -ne $BtnRunRollbackDryRun) {
     })
 }
 
+if ($null -ne $BtnShowToolkitLogSummary) {
+    $BtnShowToolkitLogSummary.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "ShowToolkitLogSummary" `
+                -Status "Started" `
+                -Message "Resumo dos logs solicitado pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = "C:\ServiceDeskToolkit"
+            $logsPath = Join-Path $toolkitRoot "logs"
+
+            if (!(Test-Path $logsPath)) {
+                OutText "Pasta de logs nao encontrada:`r`n$logsPath"
+                return
+            }
+
+            $patterns = @(
+                @{
+                    Title = "Runtime estruturado"
+                    Filter = "runtime-*.jsonl"
+                    Tail = 5
+                },
+                @{
+                    Title = "Acoes estruturadas"
+                    Filter = "actions-*.jsonl"
+                    Tail = 5
+                },
+                @{
+                    Title = "Erros estruturados"
+                    Filter = "errors-*.jsonl"
+                    Tail = 8
+                },
+                @{
+                    Title = "Install"
+                    Filter = "install-*.log"
+                    Tail = 8
+                },
+                @{
+                    Title = "Update"
+                    Filter = "update-*.log"
+                    Tail = 8
+                },
+                @{
+                    Title = "Rollback"
+                    Filter = "rollback-*.log"
+                    Tail = 8
+                }
+            )
+
+            $sb = New-Object System.Text.StringBuilder
+
+            [void]$sb.AppendLine("RESUMO DOS LOGS DO TOOLKIT")
+            [void]$sb.AppendLine("==========================")
+            [void]$sb.AppendLine("Pasta: $logsPath")
+            [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
+            [void]$sb.AppendLine("")
+
+            foreach ($pattern in $patterns) {
+                $files = @(Get-ChildItem $logsPath -Filter $pattern.Filter -File -ErrorAction SilentlyContinue |
+                    Sort-Object LastWriteTime -Descending)
+
+                [void]$sb.AppendLine("[$($pattern.Title)]")
+                [void]$sb.AppendLine("Filtro: $($pattern.Filter)")
+                [void]$sb.AppendLine("Arquivos encontrados: $($files.Count)")
+
+                if ($files.Count -gt 0) {
+                    $latest = $files | Select-Object -First 1
+
+                    [void]$sb.AppendLine("Ultimo arquivo: $($latest.FullName)")
+                    [void]$sb.AppendLine("Ultima alteracao: $($latest.LastWriteTime)")
+                    [void]$sb.AppendLine("Tamanho: $([math]::Round(($latest.Length / 1KB), 2)) KB")
+                    [void]$sb.AppendLine("")
+                    [void]$sb.AppendLine("Ultimas linhas:")
+
+                    try {
+                        $tailLines = Get-Content $latest.FullName -Tail $pattern.Tail -ErrorAction Stop
+
+                        if ($null -ne $tailLines) {
+                            foreach ($line in $tailLines) {
+                                [void]$sb.AppendLine("  $line")
+                            }
+                        }
+                        else {
+                            [void]$sb.AppendLine("  Nenhum conteudo encontrado.")
+                        }
+                    }
+                    catch {
+                        [void]$sb.AppendLine("  Nao foi possivel ler o arquivo: $($_.Exception.Message)")
+                    }
+                }
+                else {
+                    [void]$sb.AppendLine("Nenhum arquivo encontrado para este tipo de log.")
+                }
+
+                [void]$sb.AppendLine("")
+                [void]$sb.AppendLine("----------------------------------------")
+                [void]$sb.AppendLine("")
+            }
+
+            OutText $sb.ToString()
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Administration" `
+                    -Action "ShowToolkitLogSummary" `
+                    -Status "Failed" `
+                    -Message "Falha ao gerar resumo dos logs pela interface." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao gerar resumo dos logs:`r`n$($_.Exception.Message)"
+        }
+    })
+}
 if ($null -ne $BtnOpenUpdateRollbackLogs) {
     $BtnOpenUpdateRollbackLogs.Add_Click({
         try {
