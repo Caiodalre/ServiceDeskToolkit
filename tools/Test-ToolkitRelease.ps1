@@ -168,6 +168,7 @@ $requiredFiles = @(
     "update.ps1",
     "rollback.ps1",
     "version.json",
+    "bootstrap.ps1",
     "CHANGELOG.md",
     "data\knowledge-base.json",
     "tools\Get-ToolkitDiagnostic.ps1",
@@ -216,6 +217,27 @@ Test-ContainsText "update.ps1" 'RelativePath = "rollback.ps1"' "update.ps1 inclu
 Test-ContainsText "update.ps1" 'RelativePath = "tools\Test-ToolkitQuality.ps1"' "update.ps1 inclui Quality Gate"
 Test-ContainsText "update.ps1" 'RelativePath = "tools\Get-ToolkitDiagnostic.ps1"' "update.ps1 inclui diagnostico"
 
+
+try {
+    $bootstrapPath = Join-Path $Root "bootstrap.ps1"
+
+    if (Test-Path $bootstrapPath) {
+        $bytes = [System.IO.File]::ReadAllBytes($bootstrapPath)
+
+        if ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191) {
+            Add-Result "FAIL" "Bootstrap sem BOM"
+        }
+        else {
+            Add-Result "OK" "Bootstrap sem BOM"
+        }
+    }
+    else {
+        Add-Result "FAIL" "Bootstrap ausente"
+    }
+}
+catch {
+    Add-Result "FAIL" ("Falha ao validar bootstrap: " + $_.Exception.Message)
+}
 try {
     $qualityGate = Join-Path $Root "tools\Test-ToolkitQuality.ps1"
 

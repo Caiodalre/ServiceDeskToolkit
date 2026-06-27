@@ -22,7 +22,7 @@ C:\ServiceDeskToolkit
 
 ## Instalacao development
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.1-hardening/install.ps1' | iex"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.1-hardening/bootstrap.ps1' | iex"
 
 ## Abrir Toolkit
 
@@ -81,3 +81,11 @@ Remove-Item Env:\SDTK_ROLLBACK_CONFIRM
 
 Nao executar update ou rollback via Invoke-Expression.
 Usar sempre powershell.exe -File.
+
+## Bootstrap seguro
+
+Comando oficial para instalacao remota:
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.1-hardening/bootstrap.ps1' | iex"
+
+O bootstrap nao possui BOM e baixa o install.ps1 para arquivo temporario antes de executar com powershell.exe -File.

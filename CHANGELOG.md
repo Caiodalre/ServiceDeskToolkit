@@ -1,5 +1,12 @@
 ﻿# Changelog - ServiceDesk Toolkit Corporate
 
+## v2.1.0-hardening RC5
+
+### Adicionado
+
+- Bootstrap seguro sem BOM para instalacao remota via irm | iex.
+- Bootstrap baixa install.ps1 para arquivo temporario e executa com powershell.exe -File.
+
 ## v2.1.0-hardening RC3
 
 ### Adicionado
