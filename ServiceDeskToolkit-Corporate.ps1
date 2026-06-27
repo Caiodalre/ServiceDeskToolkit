@@ -4102,6 +4102,190 @@ catch {
     catch {}
 }
 
+
+# ============================================================
+# Action Logs e Error Handlers - Lote 3
+# Instrumentacao isolada: botoes restantes e erros globais
+# ============================================================
+
+function Register-ToolkitActionLogHandlersLote3 {
+    function Add-ToolkitButtonActionLogLote3 {
+        param(
+            [string]$ButtonName,
+            [string]$Module,
+            [string]$Action,
+            [string]$Message
+        )
+
+        try {
+            $buttonVariable = Get-Variable -Name $ButtonName -Scope Script -ErrorAction SilentlyContinue
+
+            if ($null -eq $buttonVariable) {
+                return
+            }
+
+            $button = $buttonVariable.Value
+
+            if ($null -eq $button) {
+                return
+            }
+
+            $button.Add_Click({
+                try {
+                    Write-ToolkitActionLog `
+                        -Module $Module `
+                        -Action $Action `
+                        -Status "Clicked" `
+                        -Message $Message
+                }
+                catch {}
+            }.GetNewClosure())
+        }
+        catch {}
+    }
+
+    Add-ToolkitButtonActionLogLote3 -ButtonName "BtnCopyOutput" -Module "Output" -Action "CopyOutput" -Message "Copia da saida para area de transferencia solicitada."
+    Add-ToolkitButtonActionLogLote3 -ButtonName "BtnHomeKnowledge" -Module "KnowledgeBase" -Action "HomeKnowledgeShortcut" -Message "Atalho da Base de Conhecimento na tela inicial solicitado."
+}
+
+function Register-ToolkitGlobalErrorHandlersLote3 {
+    try {
+        if ($null -ne $window -and $null -ne $window.Dispatcher) {
+            $window.Dispatcher.Add_UnhandledException({
+                param($sender, $eventArgs)
+
+                try {
+                    $exceptionMessage = ""
+                    $exceptionType = ""
+                    $exceptionStack = ""
+
+                    if ($null -ne $eventArgs -and $null -ne $eventArgs.Exception) {
+                        $exceptionMessage = [string]$eventArgs.Exception.Message
+                        $exceptionType = [string]$eventArgs.Exception.GetType().FullName
+                        $exceptionStack = [string]$eventArgs.Exception.StackTrace
+                    }
+
+                    Write-ToolkitStructuredLog `
+                        -LogType "errors" `
+                        -Level "ERROR" `
+                        -Module "WPF" `
+                        -Action "DispatcherUnhandledException" `
+                        -Status "Unhandled" `
+                        -Message "Erro nao tratado capturado no dispatcher WPF." `
+                        -Data @{
+                            exceptionMessage = $exceptionMessage
+                            exceptionType = $exceptionType
+                            stackTrace = $exceptionStack
+                        }
+                }
+                catch {}
+            }.GetNewClosure())
+        }
+    }
+    catch {
+        try {
+            Write-ToolkitErrorLog `
+                -Module "Instrumentation" `
+                -Action "RegisterWpfErrorHandler" `
+                -Status "Failed" `
+                -Message "Falha ao registrar handler de erro WPF." `
+                -ErrorRecord $_
+        }
+        catch {}
+    }
+
+    try {
+        [System.AppDomain]::CurrentDomain.Add_UnhandledException({
+            param($sender, $eventArgs)
+
+            try {
+                $exceptionMessage = ""
+                $exceptionType = ""
+                $exceptionStack = ""
+
+                if ($null -ne $eventArgs -and $null -ne $eventArgs.ExceptionObject) {
+                    $exceptionObject = $eventArgs.ExceptionObject
+
+                    if ($exceptionObject -is [System.Exception]) {
+                        $exceptionMessage = [string]$exceptionObject.Message
+                        $exceptionType = [string]$exceptionObject.GetType().FullName
+                        $exceptionStack = [string]$exceptionObject.StackTrace
+                    }
+                    else {
+                        $exceptionMessage = [string]$exceptionObject
+                        $exceptionType = [string]$exceptionObject.GetType().FullName
+                    }
+                }
+
+                Write-ToolkitStructuredLog `
+                    -LogType "errors" `
+                    -Level "CRITICAL" `
+                    -Module "Application" `
+                    -Action "UnhandledException" `
+                    -Status "Unhandled" `
+                    -Message "Erro critico nao tratado capturado no AppDomain." `
+                    -Data @{
+                        exceptionMessage = $exceptionMessage
+                        exceptionType = $exceptionType
+                        stackTrace = $exceptionStack
+                        isTerminating = [string]$eventArgs.IsTerminating
+                    }
+            }
+            catch {}
+        }.GetNewClosure())
+    }
+    catch {
+        try {
+            Write-ToolkitErrorLog `
+                -Module "Instrumentation" `
+                -Action "RegisterAppDomainErrorHandler" `
+                -Status "Failed" `
+                -Message "Falha ao registrar handler de erro do AppDomain." `
+                -ErrorRecord $_
+        }
+        catch {}
+    }
+
+    try {
+        Write-ToolkitRuntimeLog `
+            -Module "Instrumentation" `
+            -Action "RegisterGlobalErrorHandlers" `
+            -Status "Registered" `
+            -Message "Handlers globais de erro registrados."
+    }
+    catch {}
+}
+
+try {
+    Register-ToolkitActionLogHandlersLote3
+}
+catch {
+    try {
+        Write-ToolkitErrorLog `
+            -Module "Instrumentation" `
+            -Action "RegisterActionLogHandlersLote3" `
+            -Status "Failed" `
+            -Message "Falha ao registrar action logs do lote 3." `
+            -ErrorRecord $_
+    }
+    catch {}
+}
+
+try {
+    Register-ToolkitGlobalErrorHandlersLote3
+}
+catch {
+    try {
+        Write-ToolkitErrorLog `
+            -Module "Instrumentation" `
+            -Action "RegisterGlobalErrorHandlersLote3" `
+            -Status "Failed" `
+            -Message "Falha ao registrar handlers globais de erro do lote 3." `
+            -ErrorRecord $_
+    }
+    catch {}
+}
+
 # Runtime log - abertura do Toolkit
 try {
     Write-ToolkitRuntimeLog `
