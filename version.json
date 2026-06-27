@@ -1,16 +1,18 @@
-{
+﻿{
   "name": "ServiceDesk Toolkit Corporate",
-  "version": "2.1.0-hardening",
+  "version": "2.2.0-functional",
   "channel": "development",
-  "branch": "v2.1-hardening",
-  "stableVersion": "v2.0.2-compat",
+  "branch": "v2.2-functional",
+  "stableVersion": "v2.1.0-hardening",
   "minimumPowerShell": "5.1",
   "compatiblePowerShell": [
     "Windows PowerShell 5.1",
     "PowerShell 7+"
   ],
-  "installCommandDev": "irm https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.1-hardening/install.ps1 | iex",
-  "installCommandStable": "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.0.2-compat/install-stable.ps1' | iex\"",
+  "installCommandDev": "$env:SDTK_REF = \"v2.2-functional\"; powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.2-functional/bootstrap.ps1' | iex\"; Remove-Item Env:\\SDTK_REF -ErrorAction SilentlyContinue",
+  "installCommandStable": "$env:SDTK_REF = \"v2.1.0-hardening\"; powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.1.0-hardening/bootstrap.ps1' | iex\"; Remove-Item Env:\\SDTK_REF -ErrorAction SilentlyContinue",
   "repository": "https://github.com/Caiodalre/ServiceDeskToolkit",
-  "buildDate": "2026-06-26 23:13:12"
+  "buildDate": "2026-06-27 14:06:35",
+  "updateModel": "source-ref",
+  "sourceRefFile": "C:\\ServiceDeskToolkit\\config\\source-ref.json"
 }
