@@ -2748,7 +2748,26 @@ function Write-ToolkitErrorLog {
 <TextBlock Text="Ações principais" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,0,0,6"/><Button Name="BtnInventory" Content="Inventário completo"/><Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/><Button Name="BtnFlushDns" Content="Limpar DNS"/><Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/><Button Name="BtnTimeSync" Content="Sincronizar horário"/><Button Name="BtnSpooler" Content="Reiniciar spooler"/>
 <TextBlock Text="Windows" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/><Button Name="BtnPrograms" Content="Programas e Recursos"/><Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/><Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
 <TextBlock Text="VPN / Appgate" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/><Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/><Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
-<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><TextBlock Text="Administracao do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/><Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/><Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/><Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
+<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/>
+<Border Background="#0F1B2D" CornerRadius="10" Padding="8" Margin="0,0,0,10">
+    <StackPanel>
+        <Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/>
+        <Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/>
+        <Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/>
+        <Button Name="BtnToolkitDiagnostic" Content="Gerar diagnóstico do Toolkit" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/>
+    </StackPanel>
+</Border>
+<TextBlock Text="Administração do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/>
+<Border Background="#0B1628" BorderBrush="#1D4ED8" BorderThickness="1" CornerRadius="10" Padding="8" Margin="0,0,0,10">
+    <StackPanel>
+        <TextBlock Text="Manutenção segura, logs e recuperação" Foreground="#98A2B3" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <Button Name="BtnRunToolkitUpdate" Content="Atualizar Toolkit" Style="{StaticResource PrimaryButton}"/>
+        <Button Name="BtnRunRollbackDryRun" Content="Testar rollback dry-run"/>
+        <Button Name="BtnOpenUpdateRollbackLogs" Content="Abrir logs update/rollback"/>
+        <Button Name="BtnOpenBackups" Content="Abrir backups"/>
+    </StackPanel>
+</Border>
+<Button Name="BtnCopyOutput" Content="Copiar resultado" Margin="0,2,0,0"/>
 </StackPanel></ScrollViewer></Border>
 <Grid Grid.Column="1" Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
 <Border Background="White" CornerRadius="16" Padding="18" Margin="0,0,0,10"><StackPanel><TextBlock Text="Central de Suporte Técnico" FontSize="22" FontWeight="Bold" Foreground="#101828"/><TextBlock Text="Selecione uma área, execute a ação desejada e acompanhe o resultado técnico no painel ao lado." FontSize="13" Foreground="#667085"/></StackPanel></Border>
@@ -3347,7 +3366,9 @@ function Write-ToolkitErrorLog {
 "@
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
-$window=[Windows.Markup.XamlReader]::Load($reader)
+$window=[Windows.Markup.XamlReader]::Load($reader)
+
+
 
 # Visão Geral - Base de Conhecimento
 $script:MainTabs = $window.FindName("MainTabs")
@@ -4536,7 +4557,6 @@ catch {
 }
 
 $window.ShowDialog()|Out-Null
-
 
 
 
