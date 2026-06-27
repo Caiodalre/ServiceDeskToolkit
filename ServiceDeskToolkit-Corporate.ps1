@@ -2748,7 +2748,7 @@ function Write-ToolkitErrorLog {
 <TextBlock Text="Ações principais" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,0,0,6"/><Button Name="BtnInventory" Content="Inventário completo"/><Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/><Button Name="BtnFlushDns" Content="Limpar DNS"/><Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/><Button Name="BtnTimeSync" Content="Sincronizar horário"/><Button Name="BtnSpooler" Content="Reiniciar spooler"/>
 <TextBlock Text="Windows" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/><Button Name="BtnPrograms" Content="Programas e Recursos"/><Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/><Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
 <TextBlock Text="VPN / Appgate" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/><Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/><Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
-<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
+<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
 </StackPanel></ScrollViewer></Border>
 <Grid Grid.Column="1" Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
 <Border Background="White" CornerRadius="16" Padding="18" Margin="0,0,0,10"><StackPanel><TextBlock Text="Central de Suporte Técnico" FontSize="22" FontWeight="Bold" Foreground="#101828"/><TextBlock Text="Selecione uma área, execute a ação desejada e acompanhe o resultado técnico no painel ao lado." FontSize="13" Foreground="#667085"/></StackPanel></Border>
@@ -3035,7 +3035,7 @@ function Write-ToolkitErrorLog {
                                             <TextBlock Text="Gere evidências técnicas em HTML ou TXT para anexar em chamados."
                                                        Foreground="#475569" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                             <Button Name="BtnHomeReports" Content="Gerar Relatório HTML" Style="{StaticResource PrimaryButton}"/>
-                                        </StackPanel>
+</StackPanel>
                                     </Border>
 
                                 </UniformGrid>
@@ -3444,7 +3444,7 @@ $TxtPrintersOutput = $window.FindName("TxtPrintersOutput")
 
 
 # Find names
-$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
+$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
 foreach($n in $names){ Set-Variable -Name $n -Value ($window.FindName($n)) -Scope Script }
 
 if(Test-Admin){$TxtAdminStatus.Text='Executando como administrador.'}else{$TxtAdminStatus.Text='Atenção: não está como administrador. Algumas funções podem falhar.'}
@@ -3483,6 +3483,66 @@ $BtnReportTxt.Add_Click({
     try { Write-ToolkitActionLog -Module "Reports" -Action "ExportReportTxt" -Status "Started" -Message "Exportacao de relatorio TXT solicitada." } catch {}OutText (Export-ReportTxt)})
 $BtnOpenReports.Add_Click({
     try { Write-ToolkitActionLog -Module "Reports" -Action "OpenReportsFolder" -Status "Started" -Message "Abertura da pasta de relatorios solicitada." } catch {}Start-Process $Reports;OutText "Pasta aberta: $Reports"})
+if ($null -ne $BtnToolkitDiagnostic) {
+    $BtnToolkitDiagnostic.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Reports" `
+                -Action "GenerateToolkitDiagnostic" `
+                -Status "Started" `
+                -Message "Diagnostico automatico do Toolkit solicitado."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = Get-ToolkitRootPath
+            $diagnosticReports = Join-Path $toolkitRoot "reports"
+            $diagnosticScript = Join-Path $toolkitRoot "tools\Get-ToolkitDiagnostic.ps1"
+
+            if (!(Test-Path $diagnosticScript)) {
+                OutText "Ferramenta de diagnostico nao encontrada.`r`n`r`nArquivo esperado:`r`n$diagnosticScript"
+                return
+            }
+
+            $psExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+
+            if (!(Test-Path $psExe)) {
+                $psExe = "powershell.exe"
+            }
+
+            $diagnosticOutput = & $psExe `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -File $diagnosticScript `
+                -ToolkitRoot $toolkitRoot `
+                -OpenReport 2>&1 | Out-String
+
+            $latestDiagnostic = Get-ChildItem $diagnosticReports -Filter "diagnostic-*.txt" -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+
+            if ($null -ne $latestDiagnostic) {
+                OutText "Diagnostico gerado com sucesso.`r`n`r`nArquivo:`r`n$($latestDiagnostic.FullName)`r`n`r`nSaida:`r`n$diagnosticOutput"
+            }
+            else {
+                OutText "Comando de diagnostico executado, mas nenhum TXT foi encontrado em:`r`n$diagnosticReports`r`n`r`nSaida:`r`n$diagnosticOutput"
+            }
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Reports" `
+                    -Action "GenerateToolkitDiagnostic" `
+                    -Status "Failed" `
+                    -Message "Falha ao gerar diagnostico automatico do Toolkit." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao gerar diagnostico do Toolkit:`r`n$($_.Exception.Message)"
+        }
+    })
+}
 $BtnCopyOutput.Add_Click({try{[System.Windows.Clipboard]::SetText($TxtOutput.Text);[System.Windows.MessageBox]::Show('Copiado.','ServiceDesk Toolkit','OK','Information')|Out-Null}catch{}})
 
 # security
