@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # ServiceDesk Toolkit Corporate - Instalador via GitHub
 # Repositorio: github.com/Caiodalre/ServiceDeskToolkit
 # Compatibilidade: Windows PowerShell 5.1 e PowerShell 7+
@@ -19,18 +19,23 @@ $BaseUrl = "https://raw.githubusercontent.com/$GitHubUser/$RepoName/$Branch"
 
 $InstallPath = "C:\ServiceDeskToolkit"
 $DataPath = Join-Path $InstallPath "data"
+$ToolsPath = Join-Path $InstallPath "tools"
 
 $MainScriptUrl = "$BaseUrl/ServiceDeskToolkit-Corporate.ps1"
 $CmdUrl = "$BaseUrl/ServiceDeskToolkit.cmd"
 $KnowledgeUrl = "$BaseUrl/data/knowledge-base.json"
 $ReadmeUrl = "$BaseUrl/README.md"
 $VersionUrl = "$BaseUrl/version.json"
+$DiagnosticToolUrl = "$BaseUrl/tools/Get-ToolkitDiagnostic.ps1"
+$QualityGateToolUrl = "$BaseUrl/tools/Test-ToolkitQuality.ps1"
 
 $MainScriptPath = Join-Path $InstallPath "ServiceDeskToolkit-Corporate.ps1"
 $CmdPath = Join-Path $InstallPath "ServiceDeskToolkit.cmd"
 $KnowledgePath = Join-Path $DataPath "knowledge-base.json"
 $ReadmePath = Join-Path $InstallPath "README.md"
 $VersionPath = Join-Path $InstallPath "version.json"
+$DiagnosticToolPath = Join-Path $ToolsPath "Get-ToolkitDiagnostic.ps1"
+$QualityGateToolPath = Join-Path $ToolsPath "Test-ToolkitQuality.ps1"
 
 function Download-ToolkitFile {
     param(
@@ -87,6 +92,7 @@ Write-Host "Criando estrutura local..." -ForegroundColor Cyan
 $folders = @(
     $InstallPath,
     $DataPath,
+    $ToolsPath,
     (Join-Path $InstallPath "logs"),
     (Join-Path $InstallPath "reports"),
     (Join-Path $InstallPath "exports"),
@@ -124,6 +130,12 @@ Convert-ToolkitFileToUtf8Bom -Path $KnowledgePath -Name "Base de Conhecimento"
 Download-ToolkitFile -Url $VersionUrl -Destination $VersionPath -Name "Controle de Versao"
 Convert-ToolkitFileToUtf8Bom -Path $VersionPath -Name "Controle de Versao"
 
+Download-ToolkitFile -Url $DiagnosticToolUrl -Destination $DiagnosticToolPath -Name "Diagnostico do Toolkit"
+Convert-ToolkitFileToUtf8Bom -Path $DiagnosticToolPath -Name "Diagnostico do Toolkit"
+
+Download-ToolkitFile -Url $QualityGateToolUrl -Destination $QualityGateToolPath -Name "Quality Gate"
+Convert-ToolkitFileToUtf8Bom -Path $QualityGateToolPath -Name "Quality Gate"
+
 try {
     Download-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
 }
@@ -137,7 +149,10 @@ Write-Host "Validando arquivos baixados..." -ForegroundColor Cyan
 $requiredFiles = @(
     $MainScriptPath,
     $CmdPath,
-    $KnowledgePath
+    $KnowledgePath,
+    $VersionPath,
+    $DiagnosticToolPath,
+    $QualityGateToolPath
 )
 
 foreach ($file in $requiredFiles) {
