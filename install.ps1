@@ -101,6 +101,18 @@ foreach ($folder in $folders) {
     }
 }
 
+# Log de instalação
+$InstallLogPath = Join-Path (Join-Path $InstallPath "logs") ("install-" + (Get-Date -Format "yyyy-MM-dd_HH-mm-ss") + ".log")
+
+try {
+    Start-Transcript -Path $InstallLogPath -Append | Out-Null
+    Write-Host "Log de instalação:" -ForegroundColor Cyan
+    Write-Host $InstallLogPath -ForegroundColor Cyan
+}
+catch {
+    Write-Host "Aviso: não foi possível iniciar log de instalação." -ForegroundColor Yellow
+    Write-Host $_.Exception.Message -ForegroundColor Yellow
+}
 Download-ToolkitFile -Url $MainScriptUrl -Destination $MainScriptPath -Name "Script principal"
 Convert-ToolkitFileToUtf8Bom -Path $MainScriptPath -Name "Script principal"
 
@@ -227,4 +239,5 @@ catch {
     Write-Host "Abra manualmente pelo atalho ou execute:" -ForegroundColor Yellow
     Write-Host $CmdPath -ForegroundColor Cyan
 }
+
 
