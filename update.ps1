@@ -13,16 +13,36 @@ catch {}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"
-$Branch = "v2.1-hardening"
-
-$BaseUrl = "https://raw.githubusercontent.com/$GitHubUser/$RepoName/$Branch"
-
 $InstallPath = "C:\ServiceDeskToolkit"
 $DataPath = Join-Path $InstallPath "data"
 $ToolsPath = Join-Path $InstallPath "tools"
 $LogsPath = Join-Path $InstallPath "logs"
 $ReportsPath = Join-Path $InstallPath "reports"
 $BackupsPath = Join-Path $InstallPath "backups"
+$ConfigPath = Join-Path $InstallPath "config"
+$SourceRefPath = Join-Path $ConfigPath "source-ref.json"
+
+$DefaultRef = "v2.1-hardening"
+$Ref = $env:SDTK_REF
+
+if ([string]::IsNullOrWhiteSpace($Ref) -and (Test-Path $SourceRefPath)) {
+    try {
+        $sourceRefInfo = Get-Content $SourceRefPath -Raw | ConvertFrom-Json
+
+        if ($null -ne $sourceRefInfo.ref -and ![string]::IsNullOrWhiteSpace([string]$sourceRefInfo.ref)) {
+            $Ref = [string]$sourceRefInfo.ref
+        }
+    }
+    catch {}
+}
+
+if ([string]::IsNullOrWhiteSpace($Ref)) {
+    $Ref = $DefaultRef
+}
+
+$Branch = $Ref
+
+$BaseUrl = "https://raw.githubusercontent.com/$GitHubUser/$RepoName/$Branch"
 
 $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $UpdateRoot = Join-Path $BackupsPath "update-$Timestamp"
@@ -325,7 +345,30 @@ try {
         }
     }
 
-    Write-UpdateLog "Update concluido com sucesso." "OK"
+    
+try {
+    if (!(Test-Path $ConfigPath)) {
+        New-Item -Path $ConfigPath -ItemType Directory -Force | Out-Null
+    }
+
+    $sourceRefInfo = [ordered]@{
+        repository = "https://github.com/$GitHubUser/$RepoName"
+        ref = $Ref
+        defaultRef = $DefaultRef
+        updatedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        installPath = $InstallPath
+    }
+
+    $sourceRefJson = $sourceRefInfo | ConvertTo-Json -Depth 4
+    $sourceRefEncoding = New-Object System.Text.UTF8Encoding($true)
+    [System.IO.File]::WriteAllText($SourceRefPath, $sourceRefJson, $sourceRefEncoding)
+
+    Write-UpdateLog "source-ref.json atualizado pelo update: $SourceRefPath" "OK"
+}
+catch {
+    Write-UpdateLog "Nao foi possivel atualizar source-ref.json: $($_.Exception.Message)" "WARN"
+}
+Write-UpdateLog "Update concluido com sucesso." "OK"
 
     Write-Host ""
     Write-Host "Update concluido com sucesso." -ForegroundColor Green

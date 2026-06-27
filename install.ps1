@@ -13,13 +13,21 @@ catch {}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"
-$Branch = "v2.1-hardening"
+$DefaultRef = "v2.1-hardening"
+$Ref = $env:SDTK_REF
+
+if ([string]::IsNullOrWhiteSpace($Ref)) {
+    $Ref = $DefaultRef
+}
+
+$Branch = $Ref
 
 $BaseUrl = "https://raw.githubusercontent.com/$GitHubUser/$RepoName/$Branch"
-
 $InstallPath = "C:\ServiceDeskToolkit"
 $DataPath = Join-Path $InstallPath "data"
 $ToolsPath = Join-Path $InstallPath "tools"
+$ConfigPath = Join-Path $InstallPath "config"
+$SourceRefPath = Join-Path $ConfigPath "source-ref.json"
 
 $MainScriptUrl = "$BaseUrl/ServiceDeskToolkit-Corporate.ps1"
 $CmdUrl = "$BaseUrl/ServiceDeskToolkit.cmd"
@@ -42,6 +50,31 @@ $RollbackPath = Join-Path $InstallPath "rollback.ps1"
 $DiagnosticToolPath = Join-Path $ToolsPath "Get-ToolkitDiagnostic.ps1"
 $QualityGateToolPath = Join-Path $ToolsPath "Test-ToolkitQuality.ps1"
 $ReleaseValidatorToolPath = Join-Path $ToolsPath "Test-ToolkitRelease.ps1"
+try {
+    if (!(Test-Path $ConfigPath)) {
+        New-Item -Path $ConfigPath -ItemType Directory -Force | Out-Null
+    }
+
+    $sourceRefInfo = [ordered]@{
+        repository = "https://github.com/$GitHubUser/$RepoName"
+        ref = $Ref
+        defaultRef = $DefaultRef
+        installedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        installPath = $InstallPath
+    }
+
+    $sourceRefJson = $sourceRefInfo | ConvertTo-Json -Depth 4
+    $sourceRefEncoding = New-Object System.Text.UTF8Encoding($true)
+    [System.IO.File]::WriteAllText($SourceRefPath, $sourceRefJson, $sourceRefEncoding)
+
+    Write-Host "Origem da instalacao registrada:" -ForegroundColor Cyan
+    Write-Host $SourceRefPath -ForegroundColor DarkGray
+    Write-Host "source-ref.json salvo." -ForegroundColor Green
+}
+catch {
+    Write-Host "AVISO - Nao foi possivel registrar source-ref.json: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 
 function Download-ToolkitFile {
     param(
