@@ -1,4 +1,4 @@
-Add-Type -AssemblyName PresentationFramework
+﻿Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
@@ -2354,7 +2354,7 @@ Sugestões:
         $o = New-Object System.Text.StringBuilder
 
         [void]$o.AppendLine("BASE DE CONHECIMENTO - RESULTADOS")
-        [void]$o.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        [void]$o.AppendLine("============================================================")
         [void]$o.AppendLine("Busca: $Query")
         [void]$o.AppendLine("Resultados encontrados: $($top.Count)")
         [void]$o.AppendLine("")
@@ -2381,7 +2381,7 @@ function Get-ToolkitKnowledgeBaseSummary {
         $o = New-Object System.Text.StringBuilder
 
         [void]$o.AppendLine("BASE DE CONHECIMENTO")
-        [void]$o.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        [void]$o.AppendLine("============================================================")
         [void]$o.AppendLine("Arquivo: $(Get-ToolkitKnowledgeBasePath)")
         [void]$o.AppendLine("Artigos cadastrados: $($kb.Count)")
         [void]$o.AppendLine("")
@@ -2453,6 +2453,197 @@ function Select-ToolkitTabByHeader {
     catch {
         return $false
     }
+}
+
+
+# ============================================================
+# Structured Logs - ServiceDesk Toolkit
+# Compatibilidade: Windows PowerShell 5.1 e PowerShell 7+
+# ============================================================
+
+function Get-ToolkitRootPath {
+    try {
+        if ($PSScriptRoot -and (Test-Path $PSScriptRoot)) {
+            return $PSScriptRoot
+        }
+
+        return "C:\ServiceDeskToolkit"
+    }
+    catch {
+        return "C:\ServiceDeskToolkit"
+    }
+}
+
+function Get-ToolkitIsAdmin {
+    try {
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+        return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-ToolkitLogDirectory {
+    try {
+        $root = Get-ToolkitRootPath
+        $logDir = Join-Path $root "logs"
+
+        if (!(Test-Path $logDir)) {
+            New-Item -Path $logDir -ItemType Directory -Force | Out-Null
+        }
+
+        return $logDir
+    }
+    catch {
+        return "C:\ServiceDeskToolkit\logs"
+    }
+}
+
+function Get-ToolkitStructuredLogPath {
+    param(
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("runtime","actions","errors","install","diagnostic")]
+        [string]$LogType = "runtime"
+    )
+
+    $logDir = Get-ToolkitLogDirectory
+    $month = Get-Date -Format "yyyy-MM"
+    $fileName = "$LogType-$month.jsonl"
+
+    return (Join-Path $logDir $fileName)
+}
+
+function Write-ToolkitStructuredLog {
+    param(
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("runtime","actions","errors","install","diagnostic")]
+        [string]$LogType = "runtime",
+
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("DEBUG","INFO","WARN","ERROR","CRITICAL")]
+        [string]$Level = "INFO",
+
+        [Parameter(Mandatory=$false)]
+        [string]$Module = "General",
+
+        [Parameter(Mandatory=$false)]
+        [string]$Action = "None",
+
+        [Parameter(Mandatory=$false)]
+        [string]$Status = "None",
+
+        [Parameter(Mandatory=$false)]
+        [string]$Message = "",
+
+        [Parameter(Mandatory=$false)]
+        $Data = $null,
+
+        [Parameter(Mandatory=$false)]
+        $ErrorRecord = $null
+    )
+
+    try {
+        $logPath = Get-ToolkitStructuredLogPath -LogType $LogType
+
+        $errorInfo = $null
+
+        if ($null -ne $ErrorRecord) {
+            $errorInfo = [ordered]@{
+                message = $ErrorRecord.Exception.Message
+                type = $ErrorRecord.Exception.GetType().FullName
+                category = [string]$ErrorRecord.CategoryInfo.Category
+                fullyQualifiedErrorId = [string]$ErrorRecord.FullyQualifiedErrorId
+                scriptStackTrace = [string]$ErrorRecord.ScriptStackTrace
+            }
+        }
+
+        $event = [ordered]@{
+            timestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+            machine = $env:COMPUTERNAME
+            user = $env:USERNAME
+            userDomain = $env:USERDOMAIN
+            isAdmin = Get-ToolkitIsAdmin
+            processId = $PID
+            powershellVersion = $PSVersionTable.PSVersion.ToString()
+            logType = $LogType
+            level = $Level
+            module = $Module
+            action = $Action
+            status = $Status
+            message = $Message
+            data = $Data
+            error = $errorInfo
+        }
+
+        $json = $event | ConvertTo-Json -Depth 12 -Compress
+        Add-Content -Path $logPath -Value $json -Encoding UTF8
+
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Write-ToolkitRuntimeLog {
+    param(
+        [string]$Module = "Runtime",
+        [string]$Action = "None",
+        [string]$Status = "Info",
+        [string]$Message = "",
+        $Data = $null
+    )
+
+    Write-ToolkitStructuredLog `
+        -LogType "runtime" `
+        -Level "INFO" `
+        -Module $Module `
+        -Action $Action `
+        -Status $Status `
+        -Message $Message `
+        -Data $Data | Out-Null
+}
+
+function Write-ToolkitActionLog {
+    param(
+        [string]$Module = "Action",
+        [string]$Action = "None",
+        [string]$Status = "Executed",
+        [string]$Message = "",
+        $Data = $null
+    )
+
+    Write-ToolkitStructuredLog `
+        -LogType "actions" `
+        -Level "INFO" `
+        -Module $Module `
+        -Action $Action `
+        -Status $Status `
+        -Message $Message `
+        -Data $Data | Out-Null
+}
+
+function Write-ToolkitErrorLog {
+    param(
+        [string]$Module = "Error",
+        [string]$Action = "None",
+        [string]$Status = "Error",
+        [string]$Message = "",
+        $ErrorRecord = $null,
+        $Data = $null
+    )
+
+    Write-ToolkitStructuredLog `
+        -LogType "errors" `
+        -Level "ERROR" `
+        -Module $Module `
+        -Action $Action `
+        -Status $Status `
+        -Message $Message `
+        -ErrorRecord $ErrorRecord `
+        -Data $Data | Out-Null
 }
 
 [xml]$xaml=@"
@@ -3721,7 +3912,44 @@ $BtnHomeKnowledge.Add_Click({
     Select-ToolkitTabByHeader "Base de Conhecimento" | Out-Null
 })
 
+
+# Runtime log - abertura do Toolkit
+try {
+    Write-ToolkitRuntimeLog `
+        -Module "Application" `
+        -Action "Start" `
+        -Status "Started" `
+        -Message "Toolkit iniciado com logs estruturados." `
+        -Data @{
+            rootPath = Get-ToolkitRootPath
+            scriptPath = $PSCommandPath
+        }
+
+    if ($null -ne $window) {
+        $window.Add_Closed({
+            try {
+                Write-ToolkitRuntimeLog `
+                    -Module "Application" `
+                    -Action "Close" `
+                    -Status "Closed" `
+                    -Message "Toolkit encerrado pelo usuario."
+            }
+            catch {}
+        })
+    }
+}
+catch {
+    Write-ToolkitErrorLog `
+        -Module "Application" `
+        -Action "Start" `
+        -Status "LogFailed" `
+        -Message "Falha ao registrar inicializacao do Toolkit." `
+        -ErrorRecord $_
+}
+
 $window.ShowDialog()|Out-Null
+
+
 
 
 
