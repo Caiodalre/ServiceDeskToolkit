@@ -157,7 +157,8 @@ $files = @(
     "tools\Get-ToolkitDiagnostic.ps1",
     "tools\Test-ToolkitQuality.ps1",
     "tools\Test-ToolkitRelease.ps1",
-    "tools\Test-ToolkitInstalled.ps1"
+    "tools\Test-ToolkitInstalled.ps1",
+    "tools\Export-ToolkitSupportPackage.ps1"
 )
 
 foreach ($file in $files) {
@@ -172,7 +173,8 @@ $psScripts = @(
     "tools\Get-ToolkitDiagnostic.ps1",
     "tools\Test-ToolkitQuality.ps1",
     "tools\Test-ToolkitRelease.ps1",
-    "tools\Test-ToolkitInstalled.ps1"
+    "tools\Test-ToolkitInstalled.ps1",
+    "tools\Export-ToolkitSupportPackage.ps1"
 )
 
 foreach ($script in $psScripts) {
