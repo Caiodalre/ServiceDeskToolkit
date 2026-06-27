@@ -26,6 +26,8 @@ $CmdUrl = "$BaseUrl/ServiceDeskToolkit.cmd"
 $KnowledgeUrl = "$BaseUrl/data/knowledge-base.json"
 $ReadmeUrl = "$BaseUrl/README.md"
 $VersionUrl = "$BaseUrl/version.json"
+$UpdateUrl = "$BaseUrl/update.ps1"
+$RollbackUrl = "$BaseUrl/rollback.ps1"
 $DiagnosticToolUrl = "$BaseUrl/tools/Get-ToolkitDiagnostic.ps1"
 $QualityGateToolUrl = "$BaseUrl/tools/Test-ToolkitQuality.ps1"
 
@@ -34,6 +36,8 @@ $CmdPath = Join-Path $InstallPath "ServiceDeskToolkit.cmd"
 $KnowledgePath = Join-Path $DataPath "knowledge-base.json"
 $ReadmePath = Join-Path $InstallPath "README.md"
 $VersionPath = Join-Path $InstallPath "version.json"
+$UpdatePath = Join-Path $InstallPath "update.ps1"
+$RollbackPath = Join-Path $InstallPath "rollback.ps1"
 $DiagnosticToolPath = Join-Path $ToolsPath "Get-ToolkitDiagnostic.ps1"
 $QualityGateToolPath = Join-Path $ToolsPath "Test-ToolkitQuality.ps1"
 
@@ -136,6 +140,12 @@ Convert-ToolkitFileToUtf8Bom -Path $DiagnosticToolPath -Name "Diagnostico do Too
 Download-ToolkitFile -Url $QualityGateToolUrl -Destination $QualityGateToolPath -Name "Quality Gate"
 Convert-ToolkitFileToUtf8Bom -Path $QualityGateToolPath -Name "Quality Gate"
 
+Download-ToolkitFile -Url $UpdateUrl -Destination $UpdatePath -Name "Atualizador"
+Convert-ToolkitFileToUtf8Bom -Path $UpdatePath -Name "Atualizador"
+
+Download-ToolkitFile -Url $RollbackUrl -Destination $RollbackPath -Name "Rollback"
+Convert-ToolkitFileToUtf8Bom -Path $RollbackPath -Name "Rollback"
+
 try {
     Download-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
 }
@@ -152,7 +162,9 @@ $requiredFiles = @(
     $KnowledgePath,
     $VersionPath,
     $DiagnosticToolPath,
-    $QualityGateToolPath
+    $QualityGateToolPath,
+    $UpdatePath,
+    $RollbackPath
 )
 
 foreach ($file in $requiredFiles) {
@@ -254,5 +266,4 @@ catch {
     Write-Host "Abra manualmente pelo atalho ou execute:" -ForegroundColor Yellow
     Write-Host $CmdPath -ForegroundColor Cyan
 }
-
 

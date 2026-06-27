@@ -237,6 +237,15 @@ $Files = @(
         ValidateSyntax = $true
     },
     @{
+        Name = "Rollback"
+        RelativePath = "rollback.ps1"
+        Url = "$BaseUrl/rollback.ps1"
+        Required = $true
+        NormalizeBom = $true
+        ValidateSyntax = $true
+    },
+
+    @{
         Name = "README"
         RelativePath = "README.md"
         Url = "$BaseUrl/README.md"
