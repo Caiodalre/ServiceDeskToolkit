@@ -325,8 +325,7 @@ try {
     Write-Host "Backup:" -ForegroundColor Cyan
     Write-Host $CurrentBackupPath -ForegroundColor Cyan
     Write-Host ""
-
-    exit 0
+$global:ServiceDeskToolkitUpdateExitCode = 0
 }
 catch {
     try {
@@ -343,6 +342,5 @@ catch {
     Write-Host "Backup/staging:" -ForegroundColor Cyan
     Write-Host $UpdateRoot -ForegroundColor Cyan
     Write-Host ""
-
-    exit 1
+$global:ServiceDeskToolkitUpdateExitCode = 1
 }
