@@ -1,4 +1,4 @@
-Add-Type -AssemblyName PresentationFramework
+﻿Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
@@ -3977,6 +3977,130 @@ $BtnHomeKnowledge.Add_Click({
     Select-ToolkitTabByHeader "Base de Conhecimento" | Out-Null
 })
 
+
+
+# ============================================================
+# Action Logs - Lote 2
+# Instrumentacao isolada: nao altera handlers originais
+# ============================================================
+
+function Register-ToolkitActionLogHandlersLote2 {
+    function Add-ToolkitButtonActionLog {
+        param(
+            [string]$ButtonName,
+            [string]$Module,
+            [string]$Action,
+            [string]$Message
+        )
+
+        try {
+            $buttonVariable = Get-Variable -Name $ButtonName -Scope Script -ErrorAction SilentlyContinue
+
+            if ($null -eq $buttonVariable) {
+                return
+            }
+
+            $button = $buttonVariable.Value
+
+            if ($null -eq $button) {
+                return
+            }
+
+            $button.Add_Click({
+                try {
+                    Write-ToolkitActionLog `
+                        -Module $Module `
+                        -Action $Action `
+                        -Status "Clicked" `
+                        -Message $Message
+                }
+                catch {}
+            }.GetNewClosure())
+        }
+        catch {}
+    }
+
+    # Impressoras
+    Add-ToolkitButtonActionLog -ButtonName "BtnPrinterStatus" -Module "Printers" -Action "PrinterStatus" -Message "Consulta de status de impressoras solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnPrinterList" -Module "Printers" -Action "PrinterList" -Message "Listagem de impressoras solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnPrintJobs" -Module "Printers" -Action "PrintJobs" -Message "Consulta de fila de impressao solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnRestartSpoolerAdvanced" -Module "Printers" -Action "RestartSpoolerAdvanced" -Message "Reinicio avancado do spooler solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnClearPrintQueue" -Module "Printers" -Action "ClearPrintQueue" -Message "Limpeza da fila de impressao solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnDefaultPrinter" -Module "Printers" -Action "DefaultPrinter" -Message "Consulta de impressora padrao solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOfflinePrinters" -Module "Printers" -Action "OfflinePrinters" -Message "Consulta de impressoras offline solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenPrintersSettings" -Module "Printers" -Action "OpenPrintersSettings" -Message "Abertura das configuracoes de impressoras solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenPrintManagement" -Module "Printers" -Action "OpenPrintManagement" -Message "Abertura do gerenciamento de impressao solicitada."
+
+    # Teams e Office
+    Add-ToolkitButtonActionLog -ButtonName "BtnTeamsOfficeStatus" -Module "TeamsOffice" -Action "TeamsOfficeStatus" -Message "Consulta de status Teams e Office solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnCloseTeamsOffice" -Module "TeamsOffice" -Action "CloseTeamsOffice" -Message "Fechamento de processos Teams e Office solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnClearClassicTeamsCache" -Module "TeamsOffice" -Action "ClearClassicTeamsCache" -Message "Limpeza de cache do Teams classico solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnClearNewTeamsCache" -Module "TeamsOffice" -Action "ClearNewTeamsCache" -Message "Limpeza de cache do novo Teams solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenTeamsFolder" -Module "TeamsOffice" -Action "OpenTeamsFolder" -Message "Abertura da pasta do Teams solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenCredentialManager" -Module "TeamsOffice" -Action "OpenCredentialManager" -Message "Abertura do Gerenciador de Credenciais solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenAccountsSettings" -Module "TeamsOffice" -Action "OpenAccountsSettings" -Message "Abertura das configuracoes de contas solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenOfficeRepair" -Module "TeamsOffice" -Action "OpenOfficeRepair" -Message "Abertura do reparo do Office solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOfficeIdentityKeys" -Module "TeamsOffice" -Action "OfficeIdentityKeys" -Message "Consulta de chaves de identidade do Office solicitada."
+
+    # Microsoft Store e Apps
+    Add-ToolkitButtonActionLog -ButtonName "BtnStoreAppsStatus" -Module "StoreApps" -Action "StoreAppsStatus" -Message "Consulta de status Microsoft Store e Apps solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnRestartMicrosoftStore" -Module "StoreApps" -Action "RestartMicrosoftStore" -Message "Reinicio da Microsoft Store solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnResetMicrosoftStore" -Module "StoreApps" -Action "ResetMicrosoftStore" -Message "Reset da Microsoft Store solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnRepairMicrosoftStore" -Module "StoreApps" -Action "RepairMicrosoftStore" -Message "Reparo da Microsoft Store solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnRepairWindowsApps" -Module "StoreApps" -Action "RepairWindowsApps" -Message "Reparo de apps Windows solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenInstalledApps" -Module "StoreApps" -Action "OpenInstalledApps" -Message "Abertura de apps instalados solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenMicrosoftStore" -Module "StoreApps" -Action "OpenMicrosoftStore" -Message "Abertura da Microsoft Store solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenOfficeTeamsRepair" -Module "StoreApps" -Action "OpenOfficeTeamsRepair" -Message "Abertura do reparo Office Teams solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenStoreTroubleshoot" -Module "StoreApps" -Action "OpenStoreTroubleshoot" -Message "Abertura do solucionador da Store solicitada."
+
+    # Rede Avancada
+    Add-ToolkitButtonActionLog -ButtonName "BtnAdvancedNetworkStatus" -Module "AdvancedNetwork" -Action "AdvancedNetworkStatus" -Message "Consulta avancada de rede solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnDnsConfiguration" -Module "AdvancedNetwork" -Action "DnsConfiguration" -Message "Consulta de configuracao DNS solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnNetworkRoutes" -Module "AdvancedNetwork" -Action "NetworkRoutes" -Message "Consulta de rotas de rede solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnTestGateway" -Module "AdvancedNetwork" -Action "TestGateway" -Message "Teste de gateway solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnTestInternetAdvanced" -Module "AdvancedNetwork" -Action "TestInternetAdvanced" -Message "Teste avancado de internet solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnFlushDnsAdvanced" -Module "AdvancedNetwork" -Action "FlushDnsAdvanced" -Message "Flush DNS avancado solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnReleaseRenewAdvanced" -Module "AdvancedNetwork" -Action "ReleaseRenewAdvanced" -Message "Release Renew avancado solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnResetWinsock" -Module "AdvancedNetwork" -Action "ResetWinsock" -Message "Reset Winsock solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnResetTcpIp" -Module "AdvancedNetwork" -Action "ResetTcpIp" -Message "Reset TCP IP solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenNetworkConnectionsAdvanced" -Module "AdvancedNetwork" -Action "OpenNetworkConnectionsAdvanced" -Message "Abertura avancada de conexoes de rede solicitada."
+
+    # Apps Corporativos
+    Add-ToolkitButtonActionLog -ButtonName "BtnCorporateAppsStatus" -Module "CorporateApps" -Action "CorporateAppsStatus" -Message "Consulta de status de apps corporativos solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnAllCorporateAppErrors" -Module "CorporateApps" -Action "AllCorporateAppErrors" -Message "Consulta de erros de apps corporativos solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOutlookErrors" -Module "CorporateApps" -Action "OutlookErrors" -Message "Consulta de erros do Outlook solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnTeamsErrors" -Module "CorporateApps" -Action "TeamsErrors" -Message "Consulta de erros do Teams solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOneDriveErrors" -Module "CorporateApps" -Action "OneDriveErrors" -Message "Consulta de erros do OneDrive solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnScreenshotErrors" -Module "CorporateApps" -Action "ScreenshotErrors" -Message "Consulta de erros de captura de tela solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnWhatsAppErrors" -Module "CorporateApps" -Action "WhatsAppErrors" -Message "Consulta de erros do WhatsApp solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenReliabilityMonitor" -Module "CorporateApps" -Action "OpenReliabilityMonitor" -Message "Abertura do Monitor de Confiabilidade solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenEventViewerApplication" -Module "CorporateApps" -Action "OpenEventViewerApplication" -Message "Abertura do Event Viewer Application solicitada."
+
+    # Atendimento Rapido
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickInternet" -Module "QuickSupport" -Action "QuickInternet" -Message "Atendimento rapido de internet solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickTeams" -Module "QuickSupport" -Action "QuickTeams" -Message "Atendimento rapido de Teams solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickOutlook" -Module "QuickSupport" -Action "QuickOutlook" -Message "Atendimento rapido de Outlook solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickOneDrive" -Module "QuickSupport" -Action "QuickOneDrive" -Message "Atendimento rapido de OneDrive solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickPrinter" -Module "QuickSupport" -Action "QuickPrinter" -Message "Atendimento rapido de impressora solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickWindowsUpdate" -Module "QuickSupport" -Action "QuickWindowsUpdate" -Message "Atendimento rapido de Windows Update solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickAppgate" -Module "QuickSupport" -Action "QuickAppgate" -Message "Atendimento rapido de Appgate solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickFullReport" -Module "QuickSupport" -Action "QuickFullReport" -Message "Atendimento rapido de relatorio completo solicitado."
+}
+
+try {
+    Register-ToolkitActionLogHandlersLote2
+}
+catch {
+    try {
+        Write-ToolkitErrorLog `
+            -Module "Instrumentation" `
+            -Action "RegisterActionLogHandlersLote2" `
+            -Status "Failed" `
+            -Message "Falha ao registrar action logs do lote 2." `
+            -ErrorRecord $_
+    }
+    catch {}
+}
 
 # Runtime log - abertura do Toolkit
 try {
