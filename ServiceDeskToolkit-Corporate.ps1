@@ -11,6 +11,35 @@ foreach($p in @($Root,$Reports,$Logs,$Backups)){ if(!(Test-Path $p)){ New-Item -
 function Test-Admin { try { $p=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent()); return $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) } catch { return $false } }
 function New-ReportName($Prefix,$Ext){ Join-Path $Reports ("$Prefix-$env:COMPUTERNAME-$(Get-Date -Format yyyy-MM-dd_HH-mm-ss).$Ext") }
 function OutText($t){ if($script:TxtOutput){ $script:TxtOutput.Text=$t } }
+function Set-ToolkitUiStatus {
+    param(
+        [string]$Message,
+        [string]$Kind = "Info",
+        [string]$Details = ""
+    )
+
+    try {
+        $stamp = Get-Date -Format "HH:mm:ss"
+
+        switch ($Kind) {
+            "Success" { $label = "OK" }
+            "Warning" { $label = "AVISO" }
+            "Error"   { $label = "ERRO" }
+            default   { $label = "INFO" }
+        }
+
+        $text = "[$stamp] [$label] $Message"
+
+        if (![string]::IsNullOrWhiteSpace($Details)) {
+            $text = $text + "`r`n`r`n" + $Details
+        }
+
+        OutText $text
+    }
+    catch {
+        OutText $Message
+    }
+}
 
 function Get-InventoryObj {
   try{
@@ -3520,6 +3549,7 @@ $BtnOpenReports.Add_Click({
     try { Write-ToolkitActionLog -Module "Reports" -Action "OpenReportsFolder" -Status "Started" -Message "Abertura da pasta de relatorios solicitada." } catch {}Start-Process $Reports;OutText "Pasta aberta: $Reports"})
 if ($null -ne $BtnToolkitDiagnostic) {
     $BtnToolkitDiagnostic.Add_Click({
+        Set-ToolkitUiStatus -Message "Gerando diagnostico do Toolkit..." -Kind "Info"
         try {
             Write-ToolkitActionLog `
                 -Module "Reports" `
@@ -3580,6 +3610,7 @@ if ($null -ne $BtnToolkitDiagnostic) {
 }
 if ($null -ne $BtnRunToolkitUpdate) {
     $BtnRunToolkitUpdate.Add_Click({
+        Set-ToolkitUiStatus -Message "Iniciando atualizacao segura do Toolkit..." -Kind "Info"
         try {
             Write-ToolkitActionLog `
                 -Module "Administration" `
@@ -3629,6 +3660,7 @@ if ($null -ne $BtnRunToolkitUpdate) {
 
 if ($null -ne $BtnRunRollbackDryRun) {
     $BtnRunRollbackDryRun.Add_Click({
+        Set-ToolkitUiStatus -Message "Iniciando rollback dry-run..." -Kind "Warning"
         try {
             Write-ToolkitActionLog `
                 -Module "Administration" `
@@ -3680,6 +3712,7 @@ if ($null -ne $BtnRunRollbackDryRun) {
 
 if ($null -ne $BtnOpenUpdateRollbackLogs) {
     $BtnOpenUpdateRollbackLogs.Add_Click({
+        Set-ToolkitUiStatus -Message "Abrindo pasta de logs update/rollback..." -Kind "Info"
         try {
             Write-ToolkitActionLog `
                 -Module "Administration" `
@@ -3708,6 +3741,7 @@ if ($null -ne $BtnOpenUpdateRollbackLogs) {
 
 if ($null -ne $BtnOpenBackups) {
     $BtnOpenBackups.Add_Click({
+        Set-ToolkitUiStatus -Message "Abrindo pasta de backups..." -Kind "Info"
         try {
             Write-ToolkitActionLog `
                 -Module "Administration" `
