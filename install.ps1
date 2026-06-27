@@ -30,6 +30,7 @@ $UpdateUrl = "$BaseUrl/update.ps1"
 $RollbackUrl = "$BaseUrl/rollback.ps1"
 $DiagnosticToolUrl = "$BaseUrl/tools/Get-ToolkitDiagnostic.ps1"
 $QualityGateToolUrl = "$BaseUrl/tools/Test-ToolkitQuality.ps1"
+$ReleaseValidatorToolUrl = "$BaseUrl/tools/Test-ToolkitRelease.ps1"
 
 $MainScriptPath = Join-Path $InstallPath "ServiceDeskToolkit-Corporate.ps1"
 $CmdPath = Join-Path $InstallPath "ServiceDeskToolkit.cmd"
@@ -40,6 +41,7 @@ $UpdatePath = Join-Path $InstallPath "update.ps1"
 $RollbackPath = Join-Path $InstallPath "rollback.ps1"
 $DiagnosticToolPath = Join-Path $ToolsPath "Get-ToolkitDiagnostic.ps1"
 $QualityGateToolPath = Join-Path $ToolsPath "Test-ToolkitQuality.ps1"
+$ReleaseValidatorToolPath = Join-Path $ToolsPath "Test-ToolkitRelease.ps1"
 
 function Download-ToolkitFile {
     param(
@@ -140,6 +142,9 @@ Convert-ToolkitFileToUtf8Bom -Path $DiagnosticToolPath -Name "Diagnostico do Too
 Download-ToolkitFile -Url $QualityGateToolUrl -Destination $QualityGateToolPath -Name "Quality Gate"
 Convert-ToolkitFileToUtf8Bom -Path $QualityGateToolPath -Name "Quality Gate"
 
+Download-ToolkitFile -Url $ReleaseValidatorToolUrl -Destination $ReleaseValidatorToolPath -Name "Validador de Release"
+Convert-ToolkitFileToUtf8Bom -Path $ReleaseValidatorToolPath -Name "Validador de Release"
+
 Download-ToolkitFile -Url $UpdateUrl -Destination $UpdatePath -Name "Atualizador"
 Convert-ToolkitFileToUtf8Bom -Path $UpdatePath -Name "Atualizador"
 
@@ -163,6 +168,7 @@ $requiredFiles = @(
     $VersionPath,
     $DiagnosticToolPath,
     $QualityGateToolPath,
+    $ReleaseValidatorToolPath,
     $UpdatePath,
     $RollbackPath
 )
