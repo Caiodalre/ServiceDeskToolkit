@@ -3451,55 +3451,93 @@ if(Test-Admin){$TxtAdminStatus.Text='Executando como administrador.'}else{$TxtAd
 try{$i=Get-InventoryObj;if($i -isnot [string]){$CardHostname.Text=$i.Hostname;$CardUser.Text=$i.Usuario;$CardWindows.Text=$i.Windows;$CardIp.Text=$i.IP}}catch{}
 
 # main events
-$BtnInventory.Add_Click({OutText (Get-InventoryText)})
-$BtnNetwork.Add_Click({OutText (Test-NetworkBasic)})
-$BtnFlushDns.Add_Click({OutText (Invoke-FlushDns)})
-$BtnRenewIp.Add_Click({if([System.Windows.MessageBox]::Show('Renovar IP pode derrubar a conexão temporariamente. Continuar?','Renovar IP','YesNo','Warning') -eq 'Yes'){OutText (Invoke-RenewIp)}})
-$BtnTimeSync.Add_Click({OutText (Invoke-TimeSync)})
-$BtnSpooler.Add_Click({OutText (Invoke-SpoolerRestart)})
-$BtnWindowsUpdate.Add_Click({Start-Process 'ms-settings:windowsupdate';OutText 'Windows Update aberto.'})
-$BtnPrograms.Add_Click({Start-Process 'appwiz.cpl';OutText 'Programas e Recursos aberto.'})
-$BtnDeviceManager.Add_Click({Start-Process 'devmgmt.msc';OutText 'Gerenciador de Dispositivos aberto.'})
-$BtnNetworkConnections.Add_Click({Start-Process 'ncpa.cpl';OutText 'Conexões de Rede aberto.'})
-$BtnAppgateFix.Add_Click({if([System.Windows.MessageBox]::Show('Alterar config do Appgate e UAC para 5?','Corrigir Appgate','YesNo','Warning') -eq 'Yes'){OutText (Invoke-ToolkitProtectedAppgateFix)}})
-$BtnAppgateRestart.Add_Click({if([System.Windows.MessageBox]::Show('Reiniciar processos/serviços Appgate? A VPN pode cair.','Reiniciar Appgate','YesNo','Warning') -eq 'Yes'){OutText (Restart-Appgate)}})
-$BtnAppgateStatus.Add_Click({OutText (Get-AppgateStatus)})
-$BtnReportHtml.Add_Click({OutText (Export-ReportHtml)})
-$BtnReportTxt.Add_Click({OutText (Export-ReportTxt)})
-$BtnOpenReports.Add_Click({Start-Process $Reports;OutText "Pasta aberta: $Reports"})
+$BtnInventory.Add_Click({
+    try { Write-ToolkitActionLog -Module "Overview" -Action "Inventory" -Status "Started" -Message "Inventario da maquina solicitado." } catch {}OutText (Get-InventoryText)})
+$BtnNetwork.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "BasicNetworkTest" -Status "Started" -Message "Teste basico de rede iniciado." } catch {}OutText (Test-NetworkBasic)})
+$BtnFlushDns.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "FlushDns" -Status "Started" -Message "Flush DNS iniciado." } catch {}OutText (Invoke-FlushDns)})
+$BtnRenewIp.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "RenewIp" -Status "Started" -Message "Renovacao de IP solicitada." } catch {}if([System.Windows.MessageBox]::Show('Renovar IP pode derrubar a conexão temporariamente. Continuar?','Renovar IP','YesNo','Warning') -eq 'Yes'){OutText (Invoke-RenewIp)}})
+$BtnTimeSync.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "TimeSync" -Status "Started" -Message "Sincronizacao de horario iniciada." } catch {}OutText (Invoke-TimeSync)})
+$BtnSpooler.Add_Click({
+    try { Write-ToolkitActionLog -Module "Printers" -Action "RestartSpooler" -Status "Started" -Message "Reinicio do spooler solicitado." } catch {}OutText (Invoke-SpoolerRestart)})
+$BtnWindowsUpdate.Add_Click({
+    try { Write-ToolkitActionLog -Module "Windows" -Action "OpenWindowsUpdate" -Status "Started" -Message "Abertura do Windows Update solicitada." } catch {}Start-Process 'ms-settings:windowsupdate';OutText 'Windows Update aberto.'})
+$BtnPrograms.Add_Click({
+    try { Write-ToolkitActionLog -Module "Windows" -Action "OpenProgramsAndFeatures" -Status "Started" -Message "Abertura de Programas e Recursos solicitada." } catch {}Start-Process 'appwiz.cpl';OutText 'Programas e Recursos aberto.'})
+$BtnDeviceManager.Add_Click({
+    try { Write-ToolkitActionLog -Module "Windows" -Action "OpenDeviceManager" -Status "Started" -Message "Abertura do Gerenciador de Dispositivos solicitada." } catch {}Start-Process 'devmgmt.msc';OutText 'Gerenciador de Dispositivos aberto.'})
+$BtnNetworkConnections.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "OpenNetworkConnections" -Status "Started" -Message "Abertura de Conexoes de Rede solicitada." } catch {}Start-Process 'ncpa.cpl';OutText 'Conexões de Rede aberto.'})
+$BtnAppgateFix.Add_Click({
+    try { Write-ToolkitActionLog -Module "Appgate" -Action "AppgateFix" -Status "Started" -Message "Correcao Appgate/UAC solicitada." } catch {}if([System.Windows.MessageBox]::Show('Alterar config do Appgate e UAC para 5?','Corrigir Appgate','YesNo','Warning') -eq 'Yes'){OutText (Invoke-ToolkitProtectedAppgateFix)}})
+$BtnAppgateRestart.Add_Click({
+    try { Write-ToolkitActionLog -Module "Appgate" -Action "AppgateRestart" -Status "Started" -Message "Reinicio de processos e servicos Appgate solicitado." } catch {}if([System.Windows.MessageBox]::Show('Reiniciar processos/serviços Appgate? A VPN pode cair.','Reiniciar Appgate','YesNo','Warning') -eq 'Yes'){OutText (Restart-Appgate)}})
+$BtnAppgateStatus.Add_Click({
+    try { Write-ToolkitActionLog -Module "Appgate" -Action "AppgateStatus" -Status "Started" -Message "Consulta de status Appgate solicitada." } catch {}OutText (Get-AppgateStatus)})
+$BtnReportHtml.Add_Click({
+    try { Write-ToolkitActionLog -Module "Reports" -Action "ExportReportHtml" -Status "Started" -Message "Exportacao de relatorio HTML solicitada." } catch {}OutText (Export-ReportHtml)})
+$BtnReportTxt.Add_Click({
+    try { Write-ToolkitActionLog -Module "Reports" -Action "ExportReportTxt" -Status "Started" -Message "Exportacao de relatorio TXT solicitada." } catch {}OutText (Export-ReportTxt)})
+$BtnOpenReports.Add_Click({
+    try { Write-ToolkitActionLog -Module "Reports" -Action "OpenReportsFolder" -Status "Started" -Message "Abertura da pasta de relatorios solicitada." } catch {}Start-Process $Reports;OutText "Pasta aberta: $Reports"})
 $BtnCopyOutput.Add_Click({try{[System.Windows.Clipboard]::SetText($TxtOutput.Text);[System.Windows.MessageBox]::Show('Copiado.','ServiceDesk Toolkit','OK','Information')|Out-Null}catch{}})
 
 # security
-$BtnTpm.Add_Click({$TxtSecurityOutput.Text=Get-TpmBasic})
-$BtnBitLocker.Add_Click({$TxtSecurityOutput.Text=Get-BitlockerBasic})
-$BtnDefender.Add_Click({$TxtSecurityOutput.Text=Get-DefenderBasic})
-$BtnUac.Add_Click({$TxtSecurityOutput.Text=Get-UacBasic})
-$BtnAdmins.Add_Click({$TxtSecurityOutput.Text=Get-AdminsBasic})
+$BtnTpm.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "TpmStatus" -Status "Started" -Message "Consulta TPM solicitada." } catch {}$TxtSecurityOutput.Text=Get-TpmBasic})
+$BtnBitLocker.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "BitLockerStatus" -Status "Started" -Message "Consulta BitLocker solicitada." } catch {}$TxtSecurityOutput.Text=Get-BitlockerBasic})
+$BtnDefender.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "DefenderStatus" -Status "Started" -Message "Consulta Defender solicitada." } catch {}$TxtSecurityOutput.Text=Get-DefenderBasic})
+$BtnUac.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "UacStatus" -Status "Started" -Message "Consulta UAC solicitada." } catch {}$TxtSecurityOutput.Text=Get-UacBasic})
+$BtnAdmins.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "LocalAdmins" -Status "Started" -Message "Consulta de administradores locais solicitada." } catch {}$TxtSecurityOutput.Text=Get-AdminsBasic})
 
 # Windows repair
-$BtnWinRepairStatus.Add_Click({$TxtWindowsRepairOutput.Text=Get-WindowsRepairStatus})
-$BtnOpenWindowsUpdateRepair.Add_Click({$TxtWindowsRepairOutput.Text=Invoke-ToolkitOpenWindowsUpdate})
-$BtnRestartWU.Add_Click({if([System.Windows.MessageBox]::Show('Reiniciar serviços do Windows Update?','Windows Update','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text=Restart-WUServices}})
-$BtnClearWUCache.Add_Click({if([System.Windows.MessageBox]::Show('Limpar cache do Windows Update renomeando SoftwareDistribution e catroot2?','Limpar cache WU','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedClearWUCache}})
-$BtnDismOnly.Add_Click({if([System.Windows.MessageBox]::Show('Executar DISM RestoreHealth? Pode demorar.','DISM','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedDismOnly}})
-$BtnSfcOnly.Add_Click({if([System.Windows.MessageBox]::Show('Executar SFC Scannow? Pode demorar.','SFC','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedSfcOnly}})
-$BtnClearUserTemp.Add_Click({if([System.Windows.MessageBox]::Show('Limpar temporários do usuário atual?','Temporários','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text=Clear-UserTemp}})
-$BtnTimeSyncRepair.Add_Click({$TxtWindowsRepairOutput.Text=Invoke-TimeSync})
+$BtnWinRepairStatus.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "RepairStatus" -Status "Started" -Message "Consulta de status de reparo Windows solicitada." } catch {}$TxtWindowsRepairOutput.Text=Get-WindowsRepairStatus})
+$BtnOpenWindowsUpdateRepair.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "OpenWindowsUpdateRepair" -Status "Started" -Message "Abertura do Windows Update pela aba de reparo solicitada." } catch {}$TxtWindowsRepairOutput.Text=Invoke-ToolkitOpenWindowsUpdate})
+$BtnRestartWU.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "RestartWindowsUpdateServices" -Status "Started" -Message "Reinicio dos servicos Windows Update solicitado." } catch {}if([System.Windows.MessageBox]::Show('Reiniciar serviços do Windows Update?','Windows Update','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text=Restart-WUServices}})
+$BtnClearWUCache.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "ClearWindowsUpdateCache" -Status "Started" -Message "Limpeza do cache Windows Update solicitada." } catch {}if([System.Windows.MessageBox]::Show('Limpar cache do Windows Update renomeando SoftwareDistribution e catroot2?','Limpar cache WU','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedClearWUCache}})
+$BtnDismOnly.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "DismRestoreHealth" -Status "Started" -Message "Execucao DISM RestoreHealth solicitada." } catch {}if([System.Windows.MessageBox]::Show('Executar DISM RestoreHealth? Pode demorar.','DISM','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedDismOnly}})
+$BtnSfcOnly.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "SfcScannow" -Status "Started" -Message "Execucao SFC Scannow solicitada." } catch {}if([System.Windows.MessageBox]::Show('Executar SFC Scannow? Pode demorar.','SFC','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedSfcOnly}})
+$BtnClearUserTemp.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "ClearUserTemp" -Status "Started" -Message "Limpeza de temporarios do usuario solicitada." } catch {}if([System.Windows.MessageBox]::Show('Limpar temporários do usuário atual?','Temporários','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text=Clear-UserTemp}})
+$BtnTimeSyncRepair.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "TimeSyncRepair" -Status "Started" -Message "Sincronizacao de horario pela aba de reparo solicitada." } catch {}$TxtWindowsRepairOutput.Text=Invoke-TimeSync})
 
 # TPM/Office
-$BtnTpmOfficeFix.Add_Click({if([System.Windows.MessageBox]::Show('Aplicar ajuste TPM 2? Reinício recomendado.','TPM 2','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedTpmOfficeFix}})
-$BtnTpmBrokenPlugin.Add_Click({if([System.Windows.MessageBox]::Show('Remover BrokenPlugin? Reinício recomendado.','BrokenPlugin','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedBrokenPluginFix}})
-$BtnDismSfcRepair.Add_Click({if([System.Windows.MessageBox]::Show('Executar DISM + SFC? Pode demorar.','DISM + SFC','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedDismSfc}})
-$BtnTpmOfficeStatus.Add_Click({$TxtTpmOfficeOutput.Text=Get-TpmOfficeStatus})
+$BtnTpmOfficeFix.Add_Click({
+    try { Write-ToolkitActionLog -Module "TpmOffice" -Action "TpmOfficeFix" -Status "Started" -Message "Ajuste TPM Office solicitado." } catch {}if([System.Windows.MessageBox]::Show('Aplicar ajuste TPM 2? Reinício recomendado.','TPM 2','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedTpmOfficeFix}})
+$BtnTpmBrokenPlugin.Add_Click({
+    try { Write-ToolkitActionLog -Module "TpmOffice" -Action "RemoveBrokenPlugin" -Status "Started" -Message "Remocao de BrokenPlugin solicitada." } catch {}if([System.Windows.MessageBox]::Show('Remover BrokenPlugin? Reinício recomendado.','BrokenPlugin','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedBrokenPluginFix}})
+$BtnDismSfcRepair.Add_Click({
+    try { Write-ToolkitActionLog -Module "TpmOffice" -Action "DismSfcRepair" -Status "Started" -Message "Execucao DISM mais SFC solicitada." } catch {}if([System.Windows.MessageBox]::Show('Executar DISM + SFC? Pode demorar.','DISM + SFC','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedDismSfc}})
+$BtnTpmOfficeStatus.Add_Click({
+    try { Write-ToolkitActionLog -Module "TpmOffice" -Action "TpmOfficeStatus" -Status "Started" -Message "Consulta de status TPM Office solicitada." } catch {}$TxtTpmOfficeOutput.Text=Get-TpmOfficeStatus})
 
 # system
-$BtnGpUpdate.Add_Click({$TxtSystemOutput.Text=Invoke-GpUpdate})
-$BtnGpResult.Add_Click({$TxtSystemOutput.Text=Invoke-GpResult})
-$BtnStoppedServices.Add_Click({$TxtSystemOutput.Text=Get-StoppedAutoServices})
-$BtnCriticalEvents.Add_Click({$TxtSystemOutput.Text=Get-CriticalEvents})
+$BtnGpUpdate.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "GpUpdate" -Status "Started" -Message "Execucao GPUpdate solicitada." } catch {}$TxtSystemOutput.Text=Invoke-GpUpdate})
+$BtnGpResult.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "GpResult" -Status "Started" -Message "Execucao GPResult solicitada." } catch {}$TxtSystemOutput.Text=Invoke-GpResult})
+$BtnStoppedServices.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "StoppedAutoServices" -Status "Started" -Message "Consulta de servicos automaticos parados solicitada." } catch {}$TxtSystemOutput.Text=Get-StoppedAutoServices})
+$BtnCriticalEvents.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "CriticalEvents" -Status "Started" -Message "Consulta de eventos criticos solicitada." } catch {}$TxtSystemOutput.Text=Get-CriticalEvents})
 
 # tcp
-$BtnTcpTest.Add_Click({[int]$p=0;if(![int]::TryParse($InputTcpPort.Text,[ref]$p)){$TxtTcpOutput.Text='Porta inválida.';return};$TxtTcpOutput.Text=Test-TcpPort $InputTcpHost.Text $p})
+$BtnTcpTest.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "TcpTest" -Status "Started" -Message "Teste TCP solicitado." } catch {}[int]$p=0;if(![int]::TryParse($InputTcpPort.Text,[ref]$p)){$TxtTcpOutput.Text='Porta inválida.';return};$TxtTcpOutput.Text=Test-TcpPort $InputTcpHost.Text $p})
 
 
 # Eventos - Impressoras
@@ -3975,6 +4013,7 @@ catch {
 }
 
 $window.ShowDialog()|Out-Null
+
 
 
 
