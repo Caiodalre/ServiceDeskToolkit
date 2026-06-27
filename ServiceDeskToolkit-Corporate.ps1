@@ -1,4 +1,4 @@
-﻿Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
@@ -3849,6 +3849,17 @@ $BtnQuickFullReport.Add_Click({
 # Eventos - Base de Conhecimento
 $BtnKnowledgeSearch.Add_Click({
     try {
+        Write-ToolkitActionLog `
+            -Module "KnowledgeBase" `
+            -Action "KnowledgeSearch" `
+            -Status "Started" `
+            -Message "Busca realizada na Base de Conhecimento." `
+            -Data @{
+                query = $TxtKnowledgeQuery.Text
+            }
+    }
+    catch {}
+    try {
         $query = $TxtKnowledgeQuery.Text
 
         $TxtKnowledgeOutput.Text = "Buscando resolução na Base de Conhecimento...`r`n`r`nAguarde..."
@@ -3876,6 +3887,14 @@ $BtnKnowledgeSearch.Add_Click({
 
 $BtnKnowledgeSummary.Add_Click({
     try {
+        Write-ToolkitActionLog `
+            -Module "KnowledgeBase" `
+            -Action "KnowledgeSummary" `
+            -Status "Started" `
+            -Message "Listagem de artigos cadastrados solicitada."
+    }
+    catch {}
+    try {
         $resultado = Get-ToolkitKnowledgeBaseSummary
 
         if (Get-Command Set-ToolkitResultText -ErrorAction SilentlyContinue) {
@@ -3898,6 +3917,14 @@ $BtnKnowledgeSummary.Add_Click({
 })
 
 $BtnOpenKnowledgeBaseFile.Add_Click({
+    try {
+        Write-ToolkitActionLog `
+            -Module "KnowledgeBase" `
+            -Action "OpenKnowledgeBaseJson" `
+            -Status "Started" `
+            -Message "Abertura do arquivo JSON da Base de Conhecimento solicitada."
+    }
+    catch {}
     try {
         $TxtKnowledgeOutput.Text = Invoke-ToolkitOpenKnowledgeBaseFile
     }
@@ -3948,6 +3975,7 @@ catch {
 }
 
 $window.ShowDialog()|Out-Null
+
 
 
 
