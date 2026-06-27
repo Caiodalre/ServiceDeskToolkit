@@ -2748,7 +2748,7 @@ function Write-ToolkitErrorLog {
 <TextBlock Text="Ações principais" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,0,0,6"/><Button Name="BtnInventory" Content="Inventário completo"/><Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/><Button Name="BtnFlushDns" Content="Limpar DNS"/><Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/><Button Name="BtnTimeSync" Content="Sincronizar horário"/><Button Name="BtnSpooler" Content="Reiniciar spooler"/>
 <TextBlock Text="Windows" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/><Button Name="BtnPrograms" Content="Programas e Recursos"/><Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/><Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
 <TextBlock Text="VPN / Appgate" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/><Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/><Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
-<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><TextBlock Text="Administracao do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/><Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/><Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/><Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
+<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><Button Name="BtnValidateToolkitInstalled" Content="VALIDAR INSTALACAO DO TOOLKIT" Style="{StaticResource PrimaryButton}"/><TextBlock Text="Administracao do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/><Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/><Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/><Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
 </StackPanel></ScrollViewer></Border>
 <Grid Grid.Column="1" Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
 <Border Background="White" CornerRadius="16" Padding="18" Margin="0,0,0,10"><StackPanel><TextBlock Text="Central de Suporte Técnico" FontSize="22" FontWeight="Bold" Foreground="#101828"/><TextBlock Text="Selecione uma área, execute a ação desejada e acompanhe o resultado técnico no painel ao lado." FontSize="13" Foreground="#667085"/></StackPanel></Border>
@@ -3444,7 +3444,7 @@ $TxtPrintersOutput = $window.FindName("TxtPrintersOutput")
 
 
 # Find names
-$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
+$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
 foreach($n in $names){ Set-Variable -Name $n -Value ($window.FindName($n)) -Scope Script }
 
 if(Test-Admin){$TxtAdminStatus.Text='Executando como administrador.'}else{$TxtAdminStatus.Text='Atenção: não está como administrador. Algumas funções podem falhar.'}
@@ -3540,6 +3540,65 @@ if ($null -ne $BtnToolkitDiagnostic) {
             catch {}
 
             OutText "Erro ao gerar diagnostico do Toolkit:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+if ($null -ne $BtnValidateToolkitInstalled) {
+    $BtnValidateToolkitInstalled.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "ValidateToolkitInstalled" `
+                -Status "Started" `
+                -Message "Validacao da integridade instalada solicitada pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = "C:\ServiceDeskToolkit"
+            $validatorScript = Join-Path $toolkitRoot "tools\Test-ToolkitInstalled.ps1"
+
+            if (!(Test-Path $validatorScript)) {
+                OutText "Validador de instalacao nao encontrado.`r`n`r`nArquivo esperado:`r`n$validatorScript"
+                return
+            }
+
+            $psExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+
+            if (!(Test-Path $psExe)) {
+                $psExe = "powershell.exe"
+            }
+
+            $validationOutput = & $psExe `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -File $validatorScript 2>&1 | Out-String
+
+            $reportsPath = Join-Path $toolkitRoot "reports"
+
+            $latestValidation = Get-ChildItem $reportsPath -Filter "installed-validation-*.txt" -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+
+            if ($null -ne $latestValidation) {
+                OutText "Validacao da instalacao executada.`r`n`r`nRelatorio:`r`n$($latestValidation.FullName)`r`n`r`nSaida:`r`n$validationOutput"
+            }
+            else {
+                OutText "Validacao executada, mas nenhum relatorio TXT foi encontrado em:`r`n$reportsPath`r`n`r`nSaida:`r`n$validationOutput"
+            }
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Administration" `
+                    -Action "ValidateToolkitInstalled" `
+                    -Status "Failed" `
+                    -Message "Falha ao validar integridade instalada pela interface." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao validar instalacao do Toolkit:`r`n$($_.Exception.Message)"
         }
     })
 }
