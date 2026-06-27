@@ -1,8 +1,13 @@
-﻿param(
-    [string]$InstallPath = "C:\ServiceDeskToolkit",
-    [string]$Branch = "v2.1-hardening",
-    [switch]$NoLaunch
-)
+﻿# ============================================================
+# ServiceDesk Toolkit Corporate - Update
+# Execucao suportada: irm <url> | iex
+# Nao usar param() neste arquivo: Invoke-Expression nao interpreta param block como script file.
+# ============================================================
+
+$InstallPath = "C:\ServiceDeskToolkit"
+$Branch = "v2.1-hardening"
+$NoLaunch = $false
+
 
 $ErrorActionPreference = "Stop"
 
