@@ -165,6 +165,8 @@ Copy-LatestFiles -SourceFolder $ReportsPath -Filter "diagnostic-*.txt" -Destinat
 Copy-LatestFiles -SourceFolder $ReportsPath -Filter "diagnostic-*.json" -DestinationFolder $reportsOutPath -Limit 3
 Copy-LatestFiles -SourceFolder $ReportsPath -Filter "installed-validation-*.txt" -DestinationFolder $reportsOutPath -Limit 3
 Copy-LatestFiles -SourceFolder $ReportsPath -Filter "installed-validation-*.json" -DestinationFolder $reportsOutPath -Limit 3
+Copy-LatestFiles -SourceFolder $ReportsPath -Filter "update-summary-*.txt" -DestinationFolder $reportsOutPath -Limit 3
+Copy-LatestFiles -SourceFolder $ReportsPath -Filter "update-summary-*.json" -DestinationFolder $reportsOutPath -Limit 3
 
 $summary = [ordered]@{
     generatedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")

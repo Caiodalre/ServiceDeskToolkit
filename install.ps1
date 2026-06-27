@@ -182,6 +182,11 @@ Convert-ToolkitFileToUtf8Bom -Path $ReleaseValidatorToolPath -Name "Validador de
 
 Download-ToolkitFile -Url $InstalledValidatorToolUrl -Destination $InstalledValidatorToolPath -Name "Validador de Instalacao"
 Convert-ToolkitFileToUtf8Bom -Path $InstalledValidatorToolPath -Name "Validador de Instalacao"
+$SupportPackageToolPath = Join-Path $ToolsPath "Export-ToolkitSupportPackage.ps1"
+
+Download-ToolkitFile -Url "$BaseUrl/tools/Export-ToolkitSupportPackage.ps1" -Destination $SupportPackageToolPath -Name "Exportador de Pacote de Suporte"
+Convert-ToolkitFileToUtf8Bom -Path $SupportPackageToolPath -Name "Exportador de Pacote de Suporte"
+
 
 Download-ToolkitFile -Url $UpdateUrl -Destination $UpdatePath -Name "Atualizador"
 Convert-ToolkitFileToUtf8Bom -Path $UpdatePath -Name "Atualizador"
@@ -208,6 +213,7 @@ $requiredFiles = @(
     $QualityGateToolPath,
     $ReleaseValidatorToolPath,
     $InstalledValidatorToolPath,
+    $SupportPackageToolPath,
     $UpdatePath,
     $RollbackPath
 )

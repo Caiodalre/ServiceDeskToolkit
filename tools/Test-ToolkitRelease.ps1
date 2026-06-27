@@ -174,6 +174,7 @@ $requiredFiles = @(
     "tools\Get-ToolkitDiagnostic.ps1",
     "tools\Test-ToolkitQuality.ps1",
     "tools\Test-ToolkitRelease.ps1",
+    "tools\Export-ToolkitSupportPackage.ps1",
     "docs\RUNBOOK-OPERACIONAL.md",
     "docs\RELEASE-CHECKLIST.md"
 )

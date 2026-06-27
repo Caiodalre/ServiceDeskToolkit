@@ -371,6 +371,14 @@ $Files = @(
     },
 
     @{
+        Name = "Exportador de Pacote de Suporte"
+        RelativePath = "tools\Export-ToolkitSupportPackage.ps1"
+        Url = "$BaseUrl/tools/Export-ToolkitSupportPackage.ps1"
+        Required = $true
+        Utf8Bom = $true
+    },
+
+    @{
         Name = "README"
         RelativePath = "README.md"
         Url = "$BaseUrl/README.md"
