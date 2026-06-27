@@ -1,10 +1,4 @@
-﻿# ============================================================
-# ServiceDesk Toolkit Corporate - Update
-# Repositorio: github.com/Caiodalre/ServiceDeskToolkit
-# Compatibilidade: Windows PowerShell 5.1 e PowerShell 7+
-# ============================================================
-
-param(
+﻿param(
     [string]$InstallPath = "C:\ServiceDeskToolkit",
     [string]$Branch = "v2.1-hardening",
     [switch]$NoLaunch
