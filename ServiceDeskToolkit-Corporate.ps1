@@ -3679,7 +3679,7 @@ $($latestBackupText)
 
 Último pacote de suporte
 ------------------------
-$latestSupportPackageText
+$($latestSupportPackageText)
 "@
 
         OutText $output
