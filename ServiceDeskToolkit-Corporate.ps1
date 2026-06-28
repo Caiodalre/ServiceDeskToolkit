@@ -3503,7 +3503,7 @@ if ($null -ne $BtnToolkitDiagnostic) {
             $diagnosticScript = Join-Path $toolkitRoot "tools\Get-ToolkitDiagnostic.ps1"
 
             if (!(Test-Path $diagnosticScript)) {
-                OutText "Ferramenta de diagnostico nao encontrada.`r`n`r`nArquivo esperado:`r`n$diagnosticScript"
+                OutText "Ferramenta de diagnostico não encontrada.`r`n`r`nArquivo esperado:`r`n$diagnosticScript"
                 return
             }
 
@@ -3562,7 +3562,7 @@ if ($null -ne $BtnValidateToolkitInstalled) {
             $validatorScript = Join-Path $toolkitRoot "tools\Test-ToolkitInstalled.ps1"
 
             if (!(Test-Path $validatorScript)) {
-                OutText "Validador de instalacao nao encontrado.`r`n`r`nArquivo esperado:`r`n$validatorScript"
+                OutText "Validador de instalacao não encontrado.`r`n`r`nArquivo esperado:`r`n$validatorScript"
                 return
             }
 
@@ -3621,7 +3621,7 @@ if ($null -ne $BtnRunToolkitUpdate) {
             $updateScript = Join-Path $toolkitRoot "update.ps1"
 
             if (!(Test-Path $updateScript)) {
-                OutText "Atualizador nao encontrado.`r`n`r`nArquivo esperado:`r`n$updateScript"
+                OutText "Atualizador não encontrado.`r`n`r`nArquivo esperado:`r`n$updateScript"
                 return
             }
 
@@ -3670,7 +3670,7 @@ if ($null -ne $BtnRunRollbackDryRun) {
             $rollbackScript = Join-Path $toolkitRoot "rollback.ps1"
 
             if (!(Test-Path $rollbackScript)) {
-                OutText "Rollback nao encontrado.`r`n`r`nArquivo esperado:`r`n$rollbackScript"
+                OutText "Rollback não encontrado.`r`n`r`nArquivo esperado:`r`n$rollbackScript"
                 return
             }
 
@@ -3721,7 +3721,7 @@ if ($null -ne $BtnExportToolkitSupportPackage) {
             $exportScript = Join-Path $toolkitRoot "tools\Export-ToolkitSupportPackage.ps1"
 
             if (!(Test-Path $exportScript)) {
-                OutText "Exportador de pacote de suporte nao encontrado.`r`n`r`nArquivo esperado:`r`n$exportScript"
+                OutText "Exportador de pacote de suporte não encontrado.`r`n`r`nArquivo esperado:`r`n$exportScript"
                 return
             }
 
@@ -3780,7 +3780,7 @@ if ($null -ne $BtnOpenLatestUpdateSummary) {
             $reportsPath = Join-Path $toolkitRoot "reports"
 
             if (!(Test-Path $reportsPath)) {
-                OutText "Pasta de reports nao encontrada:`r`n$reportsPath"
+                OutText "Pasta de reports não encontrada:`r`n$reportsPath"
                 return
             }
 
@@ -3802,7 +3802,7 @@ if ($null -ne $BtnOpenLatestUpdateSummary) {
                 $jsonInfo = "`r`nJSON correspondente:`r`n$jsonPath`r`n"
             }
             else {
-                $jsonInfo = "`r`nJSON correspondente: nao encontrado.`r`n"
+                $jsonInfo = "`r`nJSON correspondente: não encontrado.`r`n"
             }
 
             $output = @"
@@ -3855,7 +3855,7 @@ if ($null -ne $BtnShowToolkitLogSummary) {
             $logsPath = Join-Path $toolkitRoot "logs"
 
             if (!(Test-Path $logsPath)) {
-                OutText "Pasta de logs nao encontrada:`r`n$logsPath"
+                OutText "Pasta de logs não encontrada:`r`n$logsPath"
                 return
             }
 
