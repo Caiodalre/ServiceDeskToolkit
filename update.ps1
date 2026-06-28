@@ -87,9 +87,9 @@ function Write-ToolkitUpdateSummary {
             $logLines = @(Get-Content $latestUpdateLog.FullName -ErrorAction SilentlyContinue)
         }
 
-        $okCount = @($logLines | Where-Object { $_ -match '\[OK\]| OK |concluido|baixado|atualizado' }).Count
-        $warnCount = @($logLines | Where-Object { $_ -match '\[WARN\]| WARN |AVISO|Nao foi possivel' }).Count
-        $failCount = @($logLines | Where-Object { $_ -match '\[FAIL\]|\[ERROR\]| ERRO |Falha|REPROVADO' }).Count
+        $okCount = @($logLines | Where-Object { $_ -match '\[OK\]' }).Count
+        $warnCount = @($logLines | Where-Object { $_ -match '\[WARN\]' }).Count
+        $failCount = @($logLines | Where-Object { $_ -match '\[(FAIL|ERROR)\]' }).Count
 
         $sourceRefContent = $null
 
@@ -187,9 +187,9 @@ function Write-ToolkitUpdateSummaryV2 {
             $logLines = @(Get-Content $UpdateLogPath -ErrorAction SilentlyContinue)
         }
 
-        $okCount = @($logLines | Where-Object { $_ -match '\[OK\]| OK |baixado|Atualizado|concluido|salvo' }).Count
-        $warnCount = @($logLines | Where-Object { $_ -match '\[WARN\]| WARN |AVISO|ignorado|Nao foi possivel' }).Count
-        $failCount = @($logLines | Where-Object { $_ -match '\[FAIL\]|\[ERROR\]| ERRO |Falha|REPROVADO|throw' }).Count
+        $okCount = @($logLines | Where-Object { $_ -match '\[OK\]' }).Count
+        $warnCount = @($logLines | Where-Object { $_ -match '\[WARN\]' }).Count
+        $failCount = @($logLines | Where-Object { $_ -match '\[(FAIL|ERROR)\]' }).Count
 
         $sourceRefContent = $null
 
@@ -585,12 +585,6 @@ catch {
     Write-UpdateLog "Nao foi possivel atualizar source-ref.json: $($_.Exception.Message)" "WARN"
 }
 
-Write-ToolkitUpdateSummary `
-    -InstallPath $InstallPath `
-    -LogsPath $LogsPath `
-    -ReportsPath $ReportsPath `
-    -Branch $Branch `
-    -SourceRefPath $SourceRefPath
 
 Write-ToolkitUpdateSummaryV2 `
     -InstallPath $InstallPath `
