@@ -2853,8 +2853,60 @@ function Write-ToolkitErrorLog {
     </ScrollViewer>
 </Border>
 <Grid Grid.Column="1" Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-<Border Background="White" CornerRadius="16" Padding="18" Margin="0,0,0,10"><StackPanel><TextBlock Text="Central de Suporte Técnico" FontSize="22" FontWeight="Bold" Foreground="#101828"/><TextBlock Text="Selecione uma área, execute a ação desejada e acompanhe o resultado técnico no painel ao lado." FontSize="13" Foreground="#667085"/></StackPanel></Border>
-<Grid Grid.Row="1" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Border Grid.Column="0" Background="White" CornerRadius="16" Padding="18" Margin="0,0,10,0"><StackPanel><TextBlock Text="Hostname" Foreground="#667085" FontSize="12"/><TextBlock Name="CardHostname" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border><Border Grid.Column="1" Background="White" CornerRadius="16" Padding="18" Margin="0,0,10,0"><StackPanel><TextBlock Text="Usuário" Foreground="#667085" FontSize="12"/><TextBlock Name="CardUser" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border><Border Grid.Column="2" Background="White" CornerRadius="16" Padding="18" Margin="0,0,10,0"><StackPanel><TextBlock Text="Windows" Foreground="#667085" FontSize="12"/><TextBlock Name="CardWindows" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border><Border Grid.Column="3" Background="White" CornerRadius="16" Padding="18"><StackPanel><TextBlock Text="IP" Foreground="#667085" FontSize="12"/><TextBlock Name="CardIp" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border></Grid>
+<Border Grid.Row="0" Background="White" CornerRadius="18" Padding="20" Margin="0,0,0,12" BorderBrush="#E2E8F0" BorderThickness="1">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0">
+            <TextBlock Text="Central de Suporte Técnico" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
+            <TextBlock Text="Execute diagnósticos, colete evidências e acompanhe os resultados técnicos em um único painel." FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Column="1" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="999" Padding="12,6" VerticalAlignment="Center">
+            <TextBlock Text="ServiceDesk Toolkit" Foreground="#1D4ED8" FontSize="12" FontWeight="Bold"/>
+        </Border>
+    </Grid>
+</Border>
+
+<Grid Grid.Row="1" Margin="0,0,0,12">
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition/>
+        <ColumnDefinition/>
+        <ColumnDefinition/>
+        <ColumnDefinition/>
+    </Grid.ColumnDefinitions>
+
+    <Border Grid.Column="0" Background="White" CornerRadius="16" Padding="16" Margin="0,0,10,0" BorderBrush="#E2E8F0" BorderThickness="1">
+        <StackPanel>
+            <TextBlock Text="HOSTNAME" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+            <TextBlock Name="CardHostname" Text="-" FontWeight="Bold" FontSize="14" Foreground="#0F172A" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+    </Border>
+
+    <Border Grid.Column="1" Background="White" CornerRadius="16" Padding="16" Margin="0,0,10,0" BorderBrush="#E2E8F0" BorderThickness="1">
+        <StackPanel>
+            <TextBlock Text="USUÁRIO" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+            <TextBlock Name="CardUser" Text="-" FontWeight="Bold" FontSize="14" Foreground="#0F172A" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+    </Border>
+
+    <Border Grid.Column="2" Background="White" CornerRadius="16" Padding="16" Margin="0,0,10,0" BorderBrush="#E2E8F0" BorderThickness="1">
+        <StackPanel>
+            <TextBlock Text="WINDOWS" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+            <TextBlock Name="CardWindows" Text="-" FontWeight="Bold" FontSize="14" Foreground="#0F172A" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+    </Border>
+
+    <Border Grid.Column="3" Background="White" CornerRadius="16" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
+        <StackPanel>
+            <TextBlock Text="IP" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+            <TextBlock Name="CardIp" Text="-" FontWeight="Bold" FontSize="14" Foreground="#0F172A" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+    </Border>
+</Grid>
 <TabControl Name="MainTabs" Grid.Row="2" Background="Transparent" BorderBrush="Transparent">
 
                 
