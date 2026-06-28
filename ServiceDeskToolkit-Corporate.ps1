@@ -3197,7 +3197,52 @@ function Write-ToolkitErrorLog {
                         </ScrollViewer>
                     </Border>
                 </TabItem>
-                <TabItem Header="Resultado"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Text="Saída da execução" FontSize="17" FontWeight="Bold" Margin="0,0,0,8"/><TextBox MinHeight="460" Name="TxtOutput" Grid.Row="1"/></Grid></Border></TabItem>
+                <TabItem Header="Resultado">
+    <Border Background="White" CornerRadius="18" Padding="18" BorderBrush="#E2E8F0" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Saída da execução" FontSize="19" FontWeight="Bold" Foreground="#0F172A"/>
+                    <TextBlock Text="Acompanhe aqui os comandos executados, diagnósticos, evidências e mensagens técnicas." FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <Border Grid.Column="1" Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="999" Padding="10,5" VerticalAlignment="Center">
+                    <TextBlock Text="Console técnico" Foreground="#334155" FontSize="11" FontWeight="Bold"/>
+                </Border>
+            </Grid>
+
+            <Border Grid.Row="1" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,10,0,10">
+                <TextBlock Text="Dica: use o botão 'Copiar resultado' na barra lateral para enviar a saída em chamados ou evidências." Foreground="#475569" FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+
+            <TextBox Name="TxtOutput"
+                     Grid.Row="2"
+                     MinHeight="460"
+                     Background="#F8FAFC"
+                     BorderBrush="#CBD5E1"
+                     BorderThickness="1"
+                     Foreground="#0F172A"
+                     FontFamily="Consolas"
+                     FontSize="12"
+                     Padding="14"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto"
+                     IsReadOnly="True"/>
+        </Grid>
+    </Border>
+</TabItem>
 <TabItem Header="Segurança"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><Button Name="BtnTpm" Content="Verificar TPM"/><Button Name="BtnBitLocker" Content="Verificar BitLocker"/><Button Name="BtnDefender" Content="Windows Defender"/><Button Name="BtnUac" Content="Verificar UAC"/><Button Name="BtnAdmins" Content="Administradores locais"/></StackPanel><TextBox MinHeight="460" Name="TxtSecurityOutput" Grid.Column="1"/></Grid></Border></TabItem>
                 <TabItem Header="Rede Avançada">
                     <Border Background="White" CornerRadius="18" Padding="18">
