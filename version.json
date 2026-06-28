@@ -1,7 +1,7 @@
 ﻿{
   "name": "ServiceDesk Toolkit Corporate",
-  "version": "2.2.0-functional",
-  "channel": "development",
+  "version": "2.2.0-functional-rc1",
+  "channel": "release-candidate",
   "branch": "v2.2-functional",
   "stableVersion": "v2.1.0-hardening",
   "minimumPowerShell": "5.1",
@@ -12,7 +12,8 @@
   "installCommandDev": "$env:SDTK_REF = \"v2.2-functional\"; powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.2-functional/bootstrap.ps1' | iex\"; Remove-Item Env:\\SDTK_REF -ErrorAction SilentlyContinue",
   "installCommandStable": "$env:SDTK_REF = \"v2.1.0-hardening\"; powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.1.0-hardening/bootstrap.ps1' | iex\"; Remove-Item Env:\\SDTK_REF -ErrorAction SilentlyContinue",
   "repository": "https://github.com/Caiodalre/ServiceDeskToolkit",
-  "buildDate": "2026-06-27 14:06:35",
+  "buildDate": "2026-06-28 01:26:11",
   "updateModel": "source-ref",
-  "sourceRefFile": "C:\\ServiceDeskToolkit\\config\\source-ref.json"
+  "sourceRefFile": "C:\\ServiceDeskToolkit\\config\\source-ref.json",
+  "releaseCandidateTag": "v2.2.0-functional-rc1"
 }
