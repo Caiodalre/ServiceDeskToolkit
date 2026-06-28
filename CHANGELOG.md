@@ -1,4 +1,38 @@
-﻿# Changelog - ServiceDesk Toolkit Corporate
+﻿## v2.2.0 - Release Final
+
+### Status
+- Release final aprovada.
+- Instalação validada pela tag `v2.2.0`.
+- Update validado pela tag `v2.2.0`.
+- Quality Gate aprovado.
+- Pacote de suporte gerado com sucesso.
+- Resumo final do update gerado com `FAIL: 0`.
+
+### Principais entregas
+- Instalação e update agora respeitam `source-ref.json`.
+- `source-ref.json` registra a origem instalada.
+- Novo validador de integridade instalada:
+  - `tools\Test-ToolkitInstalled.ps1`
+- Novo exportador de pacote de suporte:
+  - `tools\Export-ToolkitSupportPackage.ps1`
+- Update com resumo final em TXT e JSON:
+  - `reports\update-summary-*.txt`
+  - `reports\update-summary-*.json`
+- Interface com ações administrativas ampliadas:
+  - Validar instalação do Toolkit
+  - Gerar pacote de suporte
+  - Abrir último resumo do update
+  - Resumo dos logs do Toolkit
+
+### Evidências finais
+- Instalação: APROVADO
+- Quality Gate: APROVADO
+- Pacote de suporte: APROVADO
+- Update final: APROVADO
+- WARN: 0
+- FAIL: 0
+
+# Changelog - ServiceDesk Toolkit Corporate
 
 ## v2.1.0-hardening RC5
 
