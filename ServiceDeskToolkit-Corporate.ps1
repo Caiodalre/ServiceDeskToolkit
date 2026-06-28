@@ -2651,16 +2651,16 @@ function Write-ToolkitErrorLog {
 <Window.Resources>
 
     <Style TargetType="Button">
-        <Setter Property="Height" Value="34"/>
-        <Setter Property="Margin" Value="0,0,0,6"/>
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Margin" Value="0,0,0,7"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="Background" Value="#F8FAFC"/>
         <Setter Property="Foreground" Value="#0F172A"/>
         <Setter Property="BorderBrush" Value="#CBD5E1"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="12,0"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -2668,7 +2668,7 @@ function Write-ToolkitErrorLog {
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="10"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter VerticalAlignment="Center"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
