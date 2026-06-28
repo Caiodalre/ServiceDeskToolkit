@@ -3567,6 +3567,9 @@ if ($null -ne $BtnToolkitStatus) {
         $sourceRef = "Não encontrado"
         $sourceInstalledAt = "Não encontrado"
 
+        $latestUpdateLogText = "Não encontrado"
+        $latestUpdateSummaryText = "Não encontrado"
+
         if (Test-Path $versionPath) {
             $versionInfo = Get-Content $versionPath -Raw -ErrorAction Stop | ConvertFrom-Json
 
@@ -3590,19 +3593,6 @@ if ($null -ne $BtnToolkitStatus) {
             if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
                 $sourceInstalledAt = $sourceInfo.updatedAt
             }
-
-            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
-                $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
-            }
-
-            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
-                $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
-            }
-
-            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
-                $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
-            }
-
             if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
                 $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
             }
@@ -3611,6 +3601,24 @@ if ($null -ne $BtnToolkitStatus) {
             $status = "VERIFICAR"
         }
 
+        $logsPath = Join-Path $toolkitRoot "logs"
+        $reportsPath = Join-Path $toolkitRoot "reports"
+
+        $latestUpdateLog = Get-ChildItem $logsPath -Filter "update-*.log" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestUpdateLog) {
+            $latestUpdateLogText = $latestUpdateLog.FullName
+        }
+
+        $latestUpdateSummary = Get-ChildItem $reportsPath -Filter "update-summary-*.txt" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestUpdateSummary) {
+            $latestUpdateSummaryText = $latestUpdateSummary.FullName
+        }
         $output = @"
 PAINEL DE STATUS DO TOOLKIT
 ===========================
@@ -3633,6 +3641,14 @@ Referência instalada: $sourceRef
 Instalado em: $sourceInstalledAt
 Arquivo:
 $sourceRefPath
+
+Último update
+-------------
+$latestUpdateLogText
+
+Último resumo do update
+-----------------------
+$latestUpdateSummaryText
 "@
 
         OutText $output
@@ -3897,7 +3913,25 @@ if ($null -ne $BtnOpenLatestUpdateSummary) {
                 $jsonInfo = "`r`nJSON correspondente: não encontrado.`r`n"
             }
 
-            $output = @"
+            $logsPath = Join-Path $toolkitRoot "logs"
+        $reportsPath = Join-Path $toolkitRoot "reports"
+
+        $latestUpdateLog = Get-ChildItem $logsPath -Filter "update-*.log" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestUpdateLog) {
+            $latestUpdateLogText = $latestUpdateLog.FullName
+        }
+
+        $latestUpdateSummary = Get-ChildItem $reportsPath -Filter "update-summary-*.txt" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestUpdateSummary) {
+            $latestUpdateSummaryText = $latestUpdateSummary.FullName
+        }
+        $output = @"
 ULTIMO RESUMO DO UPDATE
 =======================
 
