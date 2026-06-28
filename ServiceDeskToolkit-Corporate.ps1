@@ -3588,6 +3588,14 @@ if ($null -ne $BtnToolkitStatus) {
             $sourceInstalledAt = $sourceInfo.installedAt
 
             if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
+                $sourceInstalledAt = $sourceInfo.updatedAt
+            }
+
+            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
+                $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+
+            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
                 $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
             }
 
