@@ -593,7 +593,11 @@ Write-ToolkitUpdateSummaryV2 `
     -Branch $Branch `
     -SourceRefPath $SourceRefPath `
     -UpdateLogPath $UpdateLogPath
-Write-UpdateLog "Update concluido com sucesso." "OK"
+try {
+    $successLine = "{0} [OK] Update concluido com sucesso." -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+    Add-Content -Path $UpdateLogPath -Value $successLine -Encoding UTF8
+}
+catch {}
 
     Write-Host ""
     Write-Host "Update concluido com sucesso." -ForegroundColor Green
