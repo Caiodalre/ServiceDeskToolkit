@@ -2741,12 +2741,27 @@ function Write-ToolkitErrorLog {
 
     <Style TargetType="TabItem">
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Padding" Value="14,7"/>
-        <Setter Property="Margin" Value="0,0,4,0"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
         <Setter Property="Foreground" Value="#334155"/>
+        <Setter Property="Background" Value="#F8FAFC"/>
+        <Setter Property="BorderBrush" Value="#E2E8F0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#EFF6FF"/>
+                <Setter Property="Foreground" Value="#1D4ED8"/>
+                <Setter Property="BorderBrush" Value="#BFDBFE"/>
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="#1D4ED8"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="BorderBrush" Value="#1D4ED8"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
-
     <Style TargetType="Expander">
         <Setter Property="Margin" Value="0,0,0,10"/>
         <Setter Property="FontWeight" Value="Bold"/>
