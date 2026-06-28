@@ -3551,7 +3551,71 @@ if ($null -ne $BtnToolkitDiagnostic) {
 
 if ($null -ne $BtnToolkitStatus) {
     $BtnToolkitStatus.Add_Click({
-        OutText "PAINEL DE STATUS DO TOOLKIT`r`n===========================`r`n`r`nStatus geral:`r`nEM TESTE`r`n`r`nO botão foi carregado e o clique está funcionando."
+        $toolkitRoot = "C:\ServiceDeskToolkit"
+        $versionPath = Join-Path $toolkitRoot "version.json"
+        $sourceRefPath = Join-Path $toolkitRoot "config\source-ref.json"
+
+        $status = "APROVADO"
+
+        $versionName = "Não encontrado"
+        $versionNumber = "Não encontrado"
+        $versionChannel = "Não encontrado"
+        $versionBranch = "Não encontrado"
+        $versionStable = "Não encontrado"
+
+        $sourceRepository = "Não encontrado"
+        $sourceRef = "Não encontrado"
+        $sourceInstalledAt = "Não encontrado"
+
+        if (Test-Path $versionPath) {
+            $versionInfo = Get-Content $versionPath -Raw -ErrorAction Stop | ConvertFrom-Json
+
+            $versionName = $versionInfo.name
+            $versionNumber = $versionInfo.version
+            $versionChannel = $versionInfo.channel
+            $versionBranch = $versionInfo.branch
+            $versionStable = $versionInfo.stableVersion
+        }
+        else {
+            $status = "VERIFICAR"
+        }
+
+        if (Test-Path $sourceRefPath) {
+            $sourceInfo = Get-Content $sourceRefPath -Raw -ErrorAction Stop | ConvertFrom-Json
+
+            $sourceRepository = $sourceInfo.repository
+            $sourceRef = $sourceInfo.ref
+            $sourceInstalledAt = $sourceInfo.installedAt
+        }
+        else {
+            $status = "VERIFICAR"
+        }
+
+        $output = @"
+PAINEL DE STATUS DO TOOLKIT
+===========================
+
+Status geral:
+$status
+
+Versão instalada
+----------------
+Nome: $versionName
+Versão: $versionNumber
+Canal: $versionChannel
+Branch declarada: $versionBranch
+Versão estável base: $versionStable
+
+Origem instalada
+----------------
+Repositório: $sourceRepository
+Referência instalada: $sourceRef
+Instalado em: $sourceInstalledAt
+Arquivo:
+$sourceRefPath
+"@
+
+        OutText $output
     })
 }
 if ($null -ne $BtnValidateToolkitInstalled) {
