@@ -2647,7 +2647,7 @@ function Write-ToolkitErrorLog {
 }
 
 [xml]$xaml=@"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate" Height="820" Width="1380" MinHeight="740" MinWidth="1220" WindowStartupLocation="CenterScreen" Background="#E9EEF5">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate" Height="820" Width="1380" MinHeight="740" MinWidth="1220" WindowStartupLocation="CenterScreen" Background="#E9EEF5" FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True">
 <Window.Resources>
 
     <Style TargetType="Button">
@@ -2793,7 +2793,7 @@ function Write-ToolkitErrorLog {
         <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
 </Window.Resources>
-<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+<Grid Background="#E9EEF5"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 <Border Grid.Column="0" Background="#07111F">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="14">
