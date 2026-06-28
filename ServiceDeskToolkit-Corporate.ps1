@@ -2830,8 +2830,8 @@ function Write-ToolkitErrorLog {
                     <Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/>
                     <Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/>
                     <Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/>
-                    <Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/>
-                    <Button Name="BtnValidateToolkitInstalled" Content="VALIDAR INSTALACAO DO TOOLKIT" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnToolkitDiagnostic" Content="Gerar diagnóstico do Toolkit" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/>
+                    <Button Name="BtnValidateToolkitInstalled" Content="Validar instalação do Toolkit" Style="{StaticResource PrimaryButton}"/>
                 </StackPanel>
             </Border>
 
@@ -2839,13 +2839,13 @@ function Write-ToolkitErrorLog {
                 <StackPanel>
                     <TextBlock Text="Administracao do Toolkit" Style="{StaticResource SidebarSectionTitle}"/>
                     <Button Name="BtnToolkitStatus" Content="Status do Toolkit" Style="{StaticResource PrimaryButton}"/>
-                    <Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/>
-                    <Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/>
-                    <Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/>
-                    <Button Name="BtnShowToolkitLogSummary" Content="RESUMO DOS LOGS DO TOOLKIT" Style="{StaticResource PrimaryButton}"/>
-                    <Button Name="BtnOpenLatestUpdateSummary" Content="ABRIR ULTIMO RESUMO DO UPDATE" Style="{StaticResource PrimaryButton}"/>
-                    <Button Name="BtnExportToolkitSupportPackage" Content="GERAR PACOTE DE SUPORTE" Style="{StaticResource PrimaryButton}"/>
-                    <Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/>
+                    <Button Name="BtnRunToolkitUpdate" Content="Atualizar Toolkit" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnRunRollbackDryRun" Content="Testar rollback dry-run"/>
+                    <Button Name="BtnOpenUpdateRollbackLogs" Content="Abrir logs de update/rollback"/>
+                    <Button Name="BtnShowToolkitLogSummary" Content="Resumo dos logs do Toolkit" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnOpenLatestUpdateSummary" Content="Abrir último resumo do update" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnExportToolkitSupportPackage" Content="Gerar pacote de suporte" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnOpenBackups" Content="Abrir backups"/>
                     <Button Name="BtnCopyOutput" Content="Copiar resultado"/>
                 </StackPanel>
             </Border>
