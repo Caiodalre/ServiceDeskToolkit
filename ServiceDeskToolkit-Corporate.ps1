@@ -2748,7 +2748,7 @@ function Write-ToolkitErrorLog {
 <TextBlock Text="Ações principais" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,0,0,6"/><Button Name="BtnInventory" Content="Inventário completo"/><Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/><Button Name="BtnFlushDns" Content="Limpar DNS"/><Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/><Button Name="BtnTimeSync" Content="Sincronizar horário"/><Button Name="BtnSpooler" Content="Reiniciar spooler"/>
 <TextBlock Text="Windows" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/><Button Name="BtnPrograms" Content="Programas e Recursos"/><Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/><Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
 <TextBlock Text="VPN / Appgate" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/><Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/><Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
-<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><Button Name="BtnValidateToolkitInstalled" Content="VALIDAR INSTALACAO DO TOOLKIT" Style="{StaticResource PrimaryButton}"/><TextBlock Text="Administracao do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/><Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/><Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/>
+<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><Button Name="BtnValidateToolkitInstalled" Content="VALIDAR INSTALACAO DO TOOLKIT" Style="{StaticResource PrimaryButton}"/><TextBlock Text="Administracao do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/><Button Name="BtnToolkitStatus" Content="Status do Toolkit" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/><Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/>
 <Button Name="BtnShowToolkitLogSummary" Content="RESUMO DOS LOGS DO TOOLKIT" Style="{StaticResource PrimaryButton}"/>
 <Button Name="BtnOpenLatestUpdateSummary" Content="ABRIR ULTIMO RESUMO DO UPDATE" Style="{StaticResource PrimaryButton}"/>
 <Button Name="BtnExportToolkitSupportPackage" Content="GERAR PACOTE DE SUPORTE" Style="{StaticResource PrimaryButton}"/><Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
@@ -3350,7 +3350,9 @@ function Write-ToolkitErrorLog {
 "@
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
-$window=[Windows.Markup.XamlReader]::Load($reader)
+$window=[Windows.Markup.XamlReader]::Load($reader)
+
+
 
 # Visão Geral - Base de Conhecimento
 $script:MainTabs = $window.FindName("MainTabs")
@@ -3447,7 +3449,7 @@ $TxtPrintersOutput = $window.FindName("TxtPrintersOutput")
 
 
 # Find names
-$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnOpenLatestUpdateSummary','BtnExportToolkitSupportPackage','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
+$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnToolkitStatus','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnOpenLatestUpdateSummary','BtnExportToolkitSupportPackage','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
 foreach($n in $names){ Set-Variable -Name $n -Value ($window.FindName($n)) -Scope Script }
 
 if(Test-Admin){$TxtAdminStatus.Text='Executando como administrador.'}else{$TxtAdminStatus.Text='Atenção: não está como administrador. Algumas funções podem falhar.'}
@@ -3544,6 +3546,12 @@ if ($null -ne $BtnToolkitDiagnostic) {
 
             OutText "Erro ao gerar diagnostico do Toolkit:`r`n$($_.Exception.Message)"
         }
+    })
+}
+
+if ($null -ne $BtnToolkitStatus) {
+    $BtnToolkitStatus.Add_Click({
+        OutText "PAINEL DE STATUS DO TOOLKIT`r`n===========================`r`n`r`nStatus geral:`r`nEM TESTE`r`n`r`nO botão foi carregado e o clique está funcionando."
     })
 }
 if ($null -ne $BtnValidateToolkitInstalled) {
