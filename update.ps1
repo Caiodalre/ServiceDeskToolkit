@@ -22,7 +22,7 @@ $BackupsPath = Join-Path $InstallPath "backups"
 $ConfigPath = Join-Path $InstallPath "config"
 $SourceRefPath = Join-Path $ConfigPath "source-ref.json"
 
-$DefaultRef = "v2.1-hardening"
+$DefaultRef = "v2.2.0"
 $Ref = $env:SDTK_REF
 
 if ([string]::IsNullOrWhiteSpace($Ref) -and (Test-Path $SourceRefPath)) {

@@ -13,7 +13,7 @@ catch {}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"
-$DefaultRef = "v2.1-hardening"
+$DefaultRef = "v2.2.0"
 $Ref = $env:SDTK_REF
 
 if ([string]::IsNullOrWhiteSpace($Ref)) {
