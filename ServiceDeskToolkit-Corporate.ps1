@@ -2762,17 +2762,96 @@ function Write-ToolkitErrorLog {
         <Setter Property="Margin" Value="0,6,0,0"/>
     </Style>
 
+    <Style x:Key="SidebarGroup" TargetType="Border">
+        <Setter Property="Background" Value="#0F1B2D"/>
+        <Setter Property="BorderBrush" Value="#1E293B"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="10"/>
+        <Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+
+    <Style x:Key="SidebarSectionTitle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="#93C5FD"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
 </Window.Resources>
 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-<Border Grid.Column="0" Background="#07111F"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="14"><TextBlock Text="ServiceDesk" Foreground="White" FontSize="22" FontWeight="Bold"/><TextBlock Text="Toolkit" Foreground="#60A5FA" FontSize="22" FontWeight="Bold"/><TextBlock Text="Corporate Toolkit" Foreground="#D0D5DD" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,12"/><Border Background="#0F1B2D" CornerRadius="10" Padding="10" Margin="0,6,0,14"><StackPanel><TextBlock Text="Ambiente" Foreground="#98A2B3" FontSize="12"/><TextBlock Name="TxtAdminStatus" Foreground="#FACC15" TextWrapping="Wrap" FontSize="12"/></StackPanel></Border>
-<TextBlock Text="Ações principais" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,0,0,6"/><Button Name="BtnInventory" Content="Inventário completo"/><Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/><Button Name="BtnFlushDns" Content="Limpar DNS"/><Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/><Button Name="BtnTimeSync" Content="Sincronizar horário"/><Button Name="BtnSpooler" Content="Reiniciar spooler"/>
-<TextBlock Text="Windows" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/><Button Name="BtnPrograms" Content="Programas e Recursos"/><Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/><Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
-<TextBlock Text="VPN / Appgate" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/><Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/><Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
-<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><Button Name="BtnValidateToolkitInstalled" Content="VALIDAR INSTALACAO DO TOOLKIT" Style="{StaticResource PrimaryButton}"/><TextBlock Text="Administracao do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/><Button Name="BtnToolkitStatus" Content="Status do Toolkit" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/><Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/>
-<Button Name="BtnShowToolkitLogSummary" Content="RESUMO DOS LOGS DO TOOLKIT" Style="{StaticResource PrimaryButton}"/>
-<Button Name="BtnOpenLatestUpdateSummary" Content="ABRIR ULTIMO RESUMO DO UPDATE" Style="{StaticResource PrimaryButton}"/>
-<Button Name="BtnExportToolkitSupportPackage" Content="GERAR PACOTE DE SUPORTE" Style="{StaticResource PrimaryButton}"/><Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
-</StackPanel></ScrollViewer></Border>
+<Border Grid.Column="0" Background="#07111F">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="14">
+            <TextBlock Text="ServiceDesk" Foreground="White" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="Toolkit" Foreground="#60A5FA" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="Corporate Toolkit" Foreground="#D0D5DD" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,12"/>
+
+            <Border Background="#0F1B2D" CornerRadius="10" Padding="10" Margin="0,6,0,14">
+                <StackPanel>
+                    <TextBlock Text="Ambiente" Foreground="#98A2B3" FontSize="12"/>
+                    <TextBlock Name="TxtAdminStatus" Foreground="#FACC15" TextWrapping="Wrap" FontSize="12"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Ações principais" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnInventory" Content="Inventário completo"/>
+                    <Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/>
+                    <Button Name="BtnFlushDns" Content="Limpar DNS"/>
+                    <Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/>
+                    <Button Name="BtnTimeSync" Content="Sincronizar horário"/>
+                    <Button Name="BtnSpooler" Content="Reiniciar spooler"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Windows" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/>
+                    <Button Name="BtnPrograms" Content="Programas e Recursos"/>
+                    <Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/>
+                    <Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="VPN / Appgate" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/>
+                    <Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/>
+                    <Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Evidências / Relatórios" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/>
+                    <Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/>
+                    <Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/>
+                    <Button Name="BtnValidateToolkitInstalled" Content="VALIDAR INSTALACAO DO TOOLKIT" Style="{StaticResource PrimaryButton}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Administracao do Toolkit" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnToolkitStatus" Content="Status do Toolkit" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/>
+                    <Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/>
+                    <Button Name="BtnShowToolkitLogSummary" Content="RESUMO DOS LOGS DO TOOLKIT" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnOpenLatestUpdateSummary" Content="ABRIR ULTIMO RESUMO DO UPDATE" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnExportToolkitSupportPackage" Content="GERAR PACOTE DE SUPORTE" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/>
+                    <Button Name="BtnCopyOutput" Content="Copiar resultado"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Border>
 <Grid Grid.Column="1" Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
 <Border Background="White" CornerRadius="16" Padding="18" Margin="0,0,0,10"><StackPanel><TextBlock Text="Central de Suporte Técnico" FontSize="22" FontWeight="Bold" Foreground="#101828"/><TextBlock Text="Selecione uma área, execute a ação desejada e acompanhe o resultado técnico no painel ao lado." FontSize="13" Foreground="#667085"/></StackPanel></Border>
 <Grid Grid.Row="1" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Border Grid.Column="0" Background="White" CornerRadius="16" Padding="18" Margin="0,0,10,0"><StackPanel><TextBlock Text="Hostname" Foreground="#667085" FontSize="12"/><TextBlock Name="CardHostname" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border><Border Grid.Column="1" Background="White" CornerRadius="16" Padding="18" Margin="0,0,10,0"><StackPanel><TextBlock Text="Usuário" Foreground="#667085" FontSize="12"/><TextBlock Name="CardUser" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border><Border Grid.Column="2" Background="White" CornerRadius="16" Padding="18" Margin="0,0,10,0"><StackPanel><TextBlock Text="Windows" Foreground="#667085" FontSize="12"/><TextBlock Name="CardWindows" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border><Border Grid.Column="3" Background="White" CornerRadius="16" Padding="18"><StackPanel><TextBlock Text="IP" Foreground="#667085" FontSize="12"/><TextBlock Name="CardIp" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border></Grid>
