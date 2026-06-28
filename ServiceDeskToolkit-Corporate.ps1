@@ -3664,7 +3664,7 @@ $latestUpdateSummaryText
 
 Último backup
 -------------
-$latestBackupText
+$($latestBackupText)
 "@
 
         OutText $output
