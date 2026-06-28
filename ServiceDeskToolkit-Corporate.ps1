@@ -3944,45 +3944,7 @@ if ($null -ne $BtnOpenLatestUpdateSummary) {
                 $jsonInfo = "`r`nJSON correspondente: não encontrado.`r`n"
             }
 
-            $logsPath = Join-Path $toolkitRoot "logs"
-        $reportsPath = Join-Path $toolkitRoot "reports"
 
-        $latestUpdateLog = Get-ChildItem $logsPath -Filter "update-*.log" -File -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-
-        if ($null -ne $latestUpdateLog) {
-            $latestUpdateLogText = $latestUpdateLog.FullName
-        }
-
-        $latestUpdateSummary = Get-ChildItem $reportsPath -Filter "update-summary-*.txt" -File -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-
-        if ($null -ne $latestUpdateSummary) {
-            $latestUpdateSummaryText = $latestUpdateSummary.FullName
-        }
-
-        $backupsPath = Join-Path $toolkitRoot "backups"
-
-        $latestBackup = Get-ChildItem $backupsPath -Directory -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -like "update-*" } |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-
-        if ($null -ne $latestBackup) {
-            $latestBackupText = $latestBackup.FullName
-        }
-
-        $supportPackagesPath = Join-Path $reportsPath "support-packages"
-
-        $latestSupportPackage = Get-ChildItem $supportPackagesPath -Filter "ServiceDeskToolkit-SupportPackage-*.zip" -File -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-
-        if ($null -ne $latestSupportPackage) {
-            $latestSupportPackageText = $latestSupportPackage.FullName
-        }
         $output = @"
 ULTIMO RESUMO DO UPDATE
 =======================
