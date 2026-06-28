@@ -2691,14 +2691,34 @@ function Write-ToolkitErrorLog {
         <Setter Property="Background" Value="#FFF1F2"/>
         <Setter Property="BorderBrush" Value="#FDA4AF"/>
         <Setter Property="Foreground" Value="#9F1239"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#FFE4E6"/>
+                <Setter Property="BorderBrush" Value="#FB7185"/>
+                <Setter Property="Foreground" Value="#881337"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#FECDD3"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="#1D4ED8"/>
         <Setter Property="BorderBrush" Value="#1D4ED8"/>
         <Setter Property="Foreground" Value="White"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#2563EB"/>
+                <Setter Property="BorderBrush" Value="#2563EB"/>
+                <Setter Property="Foreground" Value="White"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#1E40AF"/>
+                <Setter Property="BorderBrush" Value="#1E40AF"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
-
     <Style TargetType="TextBox">
         <Setter Property="FontFamily" Value="Consolas"/>
         <Setter Property="FontSize" Value="12"/>
