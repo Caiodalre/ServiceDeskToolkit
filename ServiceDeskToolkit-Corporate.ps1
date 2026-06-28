@@ -3569,6 +3569,7 @@ if ($null -ne $BtnToolkitStatus) {
 
         $latestUpdateLogText = "Não encontrado"
         $latestUpdateSummaryText = "Não encontrado"
+        $latestBackupText = "Não encontrado"
 
         if (Test-Path $versionPath) {
             $versionInfo = Get-Content $versionPath -Raw -ErrorAction Stop | ConvertFrom-Json
@@ -3619,6 +3620,17 @@ if ($null -ne $BtnToolkitStatus) {
         if ($null -ne $latestUpdateSummary) {
             $latestUpdateSummaryText = $latestUpdateSummary.FullName
         }
+
+        $backupsPath = Join-Path $toolkitRoot "backups"
+
+        $latestBackup = Get-ChildItem $backupsPath -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "update-*" } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestBackup) {
+            $latestBackupText = $latestBackup.FullName
+        }
         $output = @"
 PAINEL DE STATUS DO TOOLKIT
 ===========================
@@ -3649,6 +3661,10 @@ $latestUpdateLogText
 Último resumo do update
 -----------------------
 $latestUpdateSummaryText
+
+Último backup
+-------------
+$latestBackupText
 "@
 
         OutText $output
@@ -3930,6 +3946,17 @@ if ($null -ne $BtnOpenLatestUpdateSummary) {
 
         if ($null -ne $latestUpdateSummary) {
             $latestUpdateSummaryText = $latestUpdateSummary.FullName
+        }
+
+        $backupsPath = Join-Path $toolkitRoot "backups"
+
+        $latestBackup = Get-ChildItem $backupsPath -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "update-*" } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestBackup) {
+            $latestBackupText = $latestBackup.FullName
         }
         $output = @"
 ULTIMO RESUMO DO UPDATE
