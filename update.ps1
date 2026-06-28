@@ -163,6 +163,109 @@ function Write-ToolkitUpdateSummary {
     }
 }
 
+
+function Write-ToolkitUpdateSummaryV2 {
+    param(
+        [string]$InstallPath,
+        [string]$LogsPath,
+        [string]$ReportsPath,
+        [string]$Branch,
+        [string]$SourceRefPath,
+        [string]$UpdateLogPath
+    )
+
+    try {
+        Ensure-Folder $ReportsPath
+
+        $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+        $summaryTxtPath = Join-Path $ReportsPath "update-summary-$timestamp.txt"
+        $summaryJsonPath = Join-Path $ReportsPath "update-summary-$timestamp.json"
+
+        $logLines = @()
+
+        if (Test-Path $UpdateLogPath) {
+            $logLines = @(Get-Content $UpdateLogPath -ErrorAction SilentlyContinue)
+        }
+
+        $okCount = @($logLines | Where-Object { $_ -match '\[OK\]| OK |baixado|Atualizado|concluido|salvo' }).Count
+        $warnCount = @($logLines | Where-Object { $_ -match '\[WARN\]| WARN |AVISO|ignorado|Nao foi possivel' }).Count
+        $failCount = @($logLines | Where-Object { $_ -match '\[FAIL\]|\[ERROR\]| ERRO |Falha|REPROVADO|throw' }).Count
+
+        $sourceRefContent = $null
+
+        if (Test-Path $SourceRefPath) {
+            try {
+                $sourceRefContent = Get-Content $SourceRefPath -Raw | ConvertFrom-Json
+            }
+            catch {
+                $sourceRefContent = $null
+            }
+        }
+
+        $summary = [ordered]@{
+            generatedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+            installPath = $InstallPath
+            branch = $Branch
+            sourceRefPath = $SourceRefPath
+            sourceRef = $sourceRefContent
+            updateLogPath = $UpdateLogPath
+            ok = $okCount
+            warn = $warnCount
+            fail = $failCount
+            result = if ($failCount -eq 0) { "APROVADO" } else { "VERIFICAR" }
+        }
+
+        $utf8Bom = New-Object System.Text.UTF8Encoding($true)
+        $json = $summary | ConvertTo-Json -Depth 8
+
+        [System.IO.File]::WriteAllText($summaryJsonPath, $json, $utf8Bom)
+
+        $lines = New-Object System.Collections.Generic.List[string]
+
+        [void]$lines.Add("Resumo Final do Update")
+        [void]$lines.Add("=======================")
+        [void]$lines.Add("Gerado em: $($summary.generatedAt)")
+        [void]$lines.Add("Instalacao: $InstallPath")
+        [void]$lines.Add("Branch usada: $Branch")
+        [void]$lines.Add("Source ref: $SourceRefPath")
+        [void]$lines.Add("Log analisado: $UpdateLogPath")
+        [void]$lines.Add("")
+        [void]$lines.Add("Resultado")
+        [void]$lines.Add("---------")
+        [void]$lines.Add("OK: $okCount")
+        [void]$lines.Add("WARN: $warnCount")
+        [void]$lines.Add("FAIL: $failCount")
+        [void]$lines.Add("Status: $($summary.result)")
+        [void]$lines.Add("")
+        [void]$lines.Add("Arquivos gerados")
+        [void]$lines.Add("---------------")
+        [void]$lines.Add($summaryTxtPath)
+        [void]$lines.Add($summaryJsonPath)
+
+        [System.IO.File]::WriteAllLines($summaryTxtPath, $lines, $utf8Bom)
+
+        Write-UpdateLog "Resumo final do update gerado: $summaryTxtPath" "OK"
+        Write-UpdateLog "Resumo final do update JSON: $summaryJsonPath" "OK"
+
+        Write-Host ""
+        Write-Host "Resumo Final do Update" -ForegroundColor Cyan
+        Write-Host "=======================" -ForegroundColor Cyan
+        Write-Host "Branch usada: $Branch"
+        Write-Host "OK: $okCount" -ForegroundColor Green
+        Write-Host "WARN: $warnCount" -ForegroundColor Yellow
+        Write-Host "FAIL: $failCount" -ForegroundColor Red
+        Write-Host "Relatorio TXT: $summaryTxtPath" -ForegroundColor Cyan
+        Write-Host "Relatorio JSON: $summaryJsonPath" -ForegroundColor Cyan
+        Write-Host ""
+    }
+    catch {
+        try {
+            Write-UpdateLog "Falha ao gerar resumo final do update V2: $($_.Exception.Message)" "WARN"
+        }
+        catch {}
+    }
+}
+
 function Write-UpdateLog {
     param(
         [string]$Message,
@@ -488,6 +591,14 @@ Write-ToolkitUpdateSummary `
     -ReportsPath $ReportsPath `
     -Branch $Branch `
     -SourceRefPath $SourceRefPath
+
+Write-ToolkitUpdateSummaryV2 `
+    -InstallPath $InstallPath `
+    -LogsPath $LogsPath `
+    -ReportsPath $ReportsPath `
+    -Branch $Branch `
+    -SourceRefPath $SourceRefPath `
+    -UpdateLogPath $UpdateLogPath
 Write-UpdateLog "Update concluido com sucesso." "OK"
 
     Write-Host ""
