@@ -3570,6 +3570,7 @@ if ($null -ne $BtnToolkitStatus) {
         $latestUpdateLogText = "Não encontrado"
         $latestUpdateSummaryText = "Não encontrado"
         $latestBackupText = "Não encontrado"
+        $latestSupportPackageText = "Não encontrado"
 
         if (Test-Path $versionPath) {
             $versionInfo = Get-Content $versionPath -Raw -ErrorAction Stop | ConvertFrom-Json
@@ -3631,6 +3632,16 @@ if ($null -ne $BtnToolkitStatus) {
         if ($null -ne $latestBackup) {
             $latestBackupText = $latestBackup.FullName
         }
+
+        $supportPackagesPath = Join-Path $reportsPath "support-packages"
+
+        $latestSupportPackage = Get-ChildItem $supportPackagesPath -Filter "ServiceDeskToolkit-SupportPackage-*.zip" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestSupportPackage) {
+            $latestSupportPackageText = $latestSupportPackage.FullName
+        }
         $output = @"
 PAINEL DE STATUS DO TOOLKIT
 ===========================
@@ -3665,6 +3676,10 @@ $latestUpdateSummaryText
 Último backup
 -------------
 $($latestBackupText)
+
+Último pacote de suporte
+------------------------
+$latestSupportPackageText
 "@
 
         OutText $output
@@ -3957,6 +3972,16 @@ if ($null -ne $BtnOpenLatestUpdateSummary) {
 
         if ($null -ne $latestBackup) {
             $latestBackupText = $latestBackup.FullName
+        }
+
+        $supportPackagesPath = Join-Path $reportsPath "support-packages"
+
+        $latestSupportPackage = Get-ChildItem $supportPackagesPath -Filter "ServiceDeskToolkit-SupportPackage-*.zip" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestSupportPackage) {
+            $latestSupportPackageText = $latestSupportPackage.FullName
         }
         $output = @"
 ULTIMO RESUMO DO UPDATE
