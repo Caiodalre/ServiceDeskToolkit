@@ -481,6 +481,13 @@ try {
 catch {
     Write-UpdateLog "Nao foi possivel atualizar source-ref.json: $($_.Exception.Message)" "WARN"
 }
+
+Write-ToolkitUpdateSummary `
+    -InstallPath $InstallPath `
+    -LogsPath $LogsPath `
+    -ReportsPath $ReportsPath `
+    -Branch $Branch `
+    -SourceRefPath $SourceRefPath
 Write-UpdateLog "Update concluido com sucesso." "OK"
 
     Write-Host ""
