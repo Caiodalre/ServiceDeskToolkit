@@ -2750,6 +2750,7 @@ function Write-ToolkitErrorLog {
 <TextBlock Text="VPN / Appgate" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/><Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/><Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
 <TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnToolkitDiagnostic" Content="GERAR DIAGNOSTICO DO TOOLKIT" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/><Button Name="BtnValidateToolkitInstalled" Content="VALIDAR INSTALACAO DO TOOLKIT" Style="{StaticResource PrimaryButton}"/><TextBlock Text="Administracao do Toolkit" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,10,0,6"/><Button Name="BtnRunToolkitUpdate" Content="ATUALIZAR TOOLKIT" Style="{StaticResource PrimaryButton}"/><Button Name="BtnRunRollbackDryRun" Content="TESTAR ROLLBACK DRY-RUN"/><Button Name="BtnOpenUpdateRollbackLogs" Content="ABRIR LOGS UPDATE/ROLLBACK"/>
 <Button Name="BtnShowToolkitLogSummary" Content="RESUMO DOS LOGS DO TOOLKIT" Style="{StaticResource PrimaryButton}"/>
+<Button Name="BtnOpenLatestUpdateSummary" Content="ABRIR ULTIMO RESUMO DO UPDATE" Style="{StaticResource PrimaryButton}"/>
 <Button Name="BtnExportToolkitSupportPackage" Content="GERAR PACOTE DE SUPORTE" Style="{StaticResource PrimaryButton}"/><Button Name="BtnOpenBackups" Content="ABRIR BACKUPS"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
 </StackPanel></ScrollViewer></Border>
 <Grid Grid.Column="1" Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -3446,7 +3447,7 @@ $TxtPrintersOutput = $window.FindName("TxtPrintersOutput")
 
 
 # Find names
-$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnExportToolkitSupportPackage','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
+$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnOpenLatestUpdateSummary','BtnExportToolkitSupportPackage','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
 foreach($n in $names){ Set-Variable -Name $n -Value ($window.FindName($n)) -Scope Script }
 
 if(Test-Admin){$TxtAdminStatus.Text='Executando como administrador.'}else{$TxtAdminStatus.Text='Atenção: não está como administrador. Algumas funções podem falhar.'}
@@ -3760,6 +3761,81 @@ if ($null -ne $BtnExportToolkitSupportPackage) {
             catch {}
 
             OutText "Erro ao gerar pacote de suporte:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+if ($null -ne $BtnOpenLatestUpdateSummary) {
+    $BtnOpenLatestUpdateSummary.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "OpenLatestUpdateSummary" `
+                -Status "Started" `
+                -Message "Abertura do ultimo resumo do update solicitada pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = "C:\ServiceDeskToolkit"
+            $reportsPath = Join-Path $toolkitRoot "reports"
+
+            if (!(Test-Path $reportsPath)) {
+                OutText "Pasta de reports nao encontrada:`r`n$reportsPath"
+                return
+            }
+
+            $latestSummary = Get-ChildItem $reportsPath -Filter "update-summary-*.txt" -File -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+
+            if ($null -eq $latestSummary) {
+                OutText "Nenhum resumo de update foi encontrado.`r`n`r`nPasta analisada:`r`n$reportsPath`r`n`r`nExecute o update.ps1 novamente para gerar o primeiro resumo."
+                return
+            }
+
+            $summaryContent = Get-Content $latestSummary.FullName -Raw -ErrorAction Stop
+
+            $jsonPath = [System.IO.Path]::ChangeExtension($latestSummary.FullName, ".json")
+            $jsonInfo = ""
+
+            if (Test-Path $jsonPath) {
+                $jsonInfo = "`r`nJSON correspondente:`r`n$jsonPath`r`n"
+            }
+            else {
+                $jsonInfo = "`r`nJSON correspondente: nao encontrado.`r`n"
+            }
+
+            $output = @"
+ULTIMO RESUMO DO UPDATE
+=======================
+
+Arquivo TXT:
+$($latestSummary.FullName)
+
+Ultima alteracao:
+$($latestSummary.LastWriteTime)
+
+$jsonInfo
+Conteudo:
+---------
+
+$summaryContent
+"@
+
+            OutText $output
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Administration" `
+                    -Action "OpenLatestUpdateSummary" `
+                    -Status "Failed" `
+                    -Message "Falha ao abrir ultimo resumo do update pela interface." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao abrir ultimo resumo do update:`r`n$($_.Exception.Message)"
         }
     })
 }
