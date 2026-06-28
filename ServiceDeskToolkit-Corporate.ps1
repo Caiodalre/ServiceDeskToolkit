@@ -3586,6 +3586,18 @@ if ($null -ne $BtnToolkitStatus) {
             $sourceRepository = $sourceInfo.repository
             $sourceRef = $sourceInfo.ref
             $sourceInstalledAt = $sourceInfo.installedAt
+
+            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
+                $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+
+            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
+                $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+
+            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
+                $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
         }
         else {
             $status = "VERIFICAR"
