@@ -13,7 +13,7 @@ catch {}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"
-$DefaultRef = "v2.2.0"
+$DefaultRef = "v2.3.0"
 $Ref = $env:SDTK_REF
 
 if ([string]::IsNullOrWhiteSpace($Ref)) {
@@ -317,4 +317,3 @@ catch {
     Write-Host "Abra manualmente pelo atalho ou execute:" -ForegroundColor Yellow
     Write-Host $CmdPath -ForegroundColor Cyan
 }
-

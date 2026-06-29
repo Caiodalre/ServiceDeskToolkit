@@ -11,7 +11,7 @@ $RepoName = "ServiceDeskToolkit"
 $Ref = $env:SDTK_REF
 
 if ([string]::IsNullOrWhiteSpace($Ref)) {
-    $Ref = "v2.2.0"
+    $Ref = "v2.3.0"
 }
 
 $Timestamp = Get-Date -Format "yyyyMMddHHmmss"
