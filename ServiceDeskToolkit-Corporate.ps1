@@ -35,7 +35,67 @@ function Invoke-GpUpdate { try{gpupdate /force 2>&1|Out-String}catch{"Erro: $($_
 function Invoke-GpResult { try{$f=New-ReportName 'GPResult' 'html'; gpresult /h $f /f 2>&1|Out-Null; Start-Process $f; "GPResult gerado:`n$f"}catch{"Erro: $($_.Exception.Message)"} }
 function Test-TcpPort($hostName,[int]$port){ try{Test-NetConnection -ComputerName $hostName -Port $port -InformationLevel Detailed|Format-List|Out-String}catch{"Erro TCP: $($_.Exception.Message)"} }
 function Export-ReportTxt { try{$f=New-ReportName 'RelatorioCompleto' 'txt'; @("INVENTÃRIO",(Get-InventoryText),"REDE",(Test-NetworkBasic),"TPM",(Get-TpmBasic),"BITLOCKER",(Get-BitlockerBasic),"DEFENDER",(Get-DefenderBasic),"UAC",(Get-UacBasic),"ADMINS",(Get-AdminsBasic),"EVENTOS",(Get-CriticalEvents)) -join "`n`n"|Out-File $f -Encoding UTF8; "Relatório TXT gerado:`n$f"}catch{"Erro: $($_.Exception.Message)"} }
-function Export-ReportHtml { try{$f=New-ReportName 'RelatorioCompleto' 'html'; $inv=Get-InventoryText; $net=Test-NetworkBasic; $html="<html><head><meta charset='utf-8'><title>ServiceDesk Toolkit</title><style>body{font-family:Segoe UI,Arial;background:#f5f7fa;padding:30px}.hero{background:#1849A9;color:white;padding:24px;border-radius:16px}pre{background:white;padding:16px;border-radius:12px;white-space:pre-wrap}</style></head><body><div class='hero'><h1>ServiceDesk Toolkit</h1><p>Relatório $env:COMPUTERNAME - $(Get-Date)</p></div><h2>Inventário</h2><pre>$([System.Net.WebUtility]::HtmlEncode($inv))</pre><h2>Rede</h2><pre>$([System.Net.WebUtility]::HtmlEncode($net))</pre></body></html>"; $html|Out-File $f -Encoding UTF8; Start-Process $f; "Relatório HTML gerado:`n$f"}catch{"Erro: $($_.Exception.Message)"} }
+function Export-ReportHtml {
+    try {
+        $f = New-ReportName 'RelatorioCompleto' 'html'
+
+        $inv = Get-InventoryText
+        $net = Test-NetworkBasic
+
+        $invHtml = [System.Net.WebUtility]::HtmlEncode($inv)
+        $netHtml = [System.Net.WebUtility]::HtmlEncode($net)
+
+        $html = @"
+<html>
+<head>
+<meta charset='utf-8'>
+<title>ServiceDesk Toolkit</title>
+<style>
+body {
+    font-family: Segoe UI, Arial;
+    background: #f5f7fa;
+    padding: 30px;
+}
+
+.hero {
+    background: #1849A9;
+    color: white;
+    padding: 24px;
+    border-radius: 16px;
+}
+
+pre {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    white-space: pre-wrap;
+}
+</style>
+</head>
+<body>
+<div class='hero'>
+    <h1>ServiceDesk Toolkit</h1>
+    <p>Relatório $env:COMPUTERNAME - $(Get-Date)</p>
+</div>
+
+<h2>Inventário</h2>
+<pre>$invHtml</pre>
+
+<h2>Rede</h2>
+<pre>$netHtml</pre>
+</body>
+</html>
+"@
+
+        $html | Out-File $f -Encoding UTF8
+        Start-Process $f
+
+        return "Relatório HTML gerado:`n$f"
+    }
+    catch {
+        return "Erro: $($_.Exception.Message)"
+    }
+}
 
 # VPN / Appgate
 function Invoke-AppgateFix { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $cfg='C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config'; if(!(Test-Path $cfg)){return "Arquivo não encontrado:`n$cfg"}; $b=Join-Path $Backups ("Appgate SDP Service.dll.config.backup-$(Get-Date -Format yyyy-MM-dd_HH-mm-ss)"); Copy-Item $cfg $b -Force; $xml=New-Object System.Xml.XmlDocument; $xml.PreserveWhitespace=$true; $xml.Load($cfg); $n=$xml.SelectSingleNode("//applicationSettings/Cryptzone.Stratus.WindowsClient.Properties.Application/setting[@name='RunScriptTimeout']/value"); if(!$n){return "RunScriptTimeout não encontrado. Backup: $b"}; $old=$n.InnerText; $n.InnerText='300000'; $xml.Save($cfg); Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name ConsentPromptBehaviorAdmin -Value 5 -Type DWord; "Correção Appgate concluída.`nRunScriptTimeout: $old -> 300000`nUAC ConsentPromptBehaviorAdmin = 5`nBackup: $b" }catch{"ERRO Appgate: $($_.Exception.Message)"} }
