@@ -52,23 +52,65 @@ function Export-ReportHtml {
 <title>ServiceDesk Toolkit</title>
 <style>
 body {
-    font-family: Segoe UI, Arial;
-    background: #f5f7fa;
-    padding: 30px;
+    margin: 0;
+    font-family: Segoe UI, Arial, sans-serif;
+    background: #E9EEF5;
+    color: #0F172A;
+}
+
+body::before {
+    content: "";
+    display: block;
+    height: 8px;
+    background: linear-gradient(90deg, #0F2F70, #1D4ED8, #38BDF8);
 }
 
 .hero {
-    background: #1849A9;
+    background: linear-gradient(135deg, #0F2F70, #1D4ED8);
     color: white;
-    padding: 24px;
-    border-radius: 16px;
+    padding: 28px 32px;
+    border-radius: 20px;
+    margin: 30px auto 22px auto;
+    max-width: 1180px;
+    box-shadow: 0 18px 45px rgba(15, 47, 112, .22);
+}
+
+.hero h1 {
+    margin: 0 0 8px 0;
+    font-size: 30px;
+}
+
+.hero p {
+    margin: 0;
+    opacity: .92;
+    font-size: 14px;
+}
+
+h2 {
+    max-width: 1180px;
+    margin: 18px auto 0 auto;
+    background: #FFFFFF;
+    border: 1px solid #DDE7F0;
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 20px;
+    font-size: 18px;
+    color: #0F172A;
 }
 
 pre {
-    background: white;
-    padding: 16px;
-    border-radius: 12px;
+    max-width: 1180px;
+    margin: 0 auto 18px auto;
+    background: #FFFFFF;
+    border: 1px solid #DDE7F0;
+    border-radius: 0 0 16px 16px;
+    padding: 18px 20px;
     white-space: pre-wrap;
+    word-break: break-word;
+    font-family: Consolas, Cascadia Mono, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .05);
 }
 </style>
 </head>
