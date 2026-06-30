@@ -2832,6 +2832,17 @@ function Write-ToolkitErrorLog {
 
             <Border Style="{StaticResource SidebarGroup}">
                 <StackPanel>
+                    <TextBlock Text="Manutenção Windows" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnMaintenanceStatus" Content="Status Windows / Reparo" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnMaintenanceSfc" Content="Verificar sistema com SFC"/>
+                    <Button Name="BtnMaintenanceDism" Content="Reparar imagem com DISM"/>
+                    <Button Name="BtnMaintenanceTemp" Content="Limpar temporários"/>
+                    <Button Name="BtnMaintenanceWuServices" Content="Reiniciar serviços Windows Update"/>
+                    <Button Name="BtnMaintenanceNetworkQuick" Content="Reparo rápido de rede"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
                     <TextBlock Text="VPN / Appgate" Style="{StaticResource SidebarSectionTitle}"/>
                     <Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/>
                     <Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/>
@@ -3660,7 +3671,7 @@ $TxtPrintersOutput = $window.FindName("TxtPrintersOutput")
 
 
 # Find names
-$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnToolkitStatus','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnOpenLatestUpdateSummary','BtnExportToolkitSupportPackage','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
+$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnMaintenanceStatus','BtnMaintenanceSfc','BtnMaintenanceDism','BtnMaintenanceTemp','BtnMaintenanceWuServices','BtnMaintenanceNetworkQuick','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnToolkitStatus','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnOpenLatestUpdateSummary','BtnExportToolkitSupportPackage','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
 foreach($n in $names){ Set-Variable -Name $n -Value ($window.FindName($n)) -Scope Script }
 
 if(Test-Admin){$TxtAdminStatus.Text='Executando como administrador.'}else{$TxtAdminStatus.Text='Atenção: não está como administrador. Algumas funções podem falhar.'}
@@ -3687,6 +3698,57 @@ $BtnDeviceManager.Add_Click({
     try { Write-ToolkitActionLog -Module "Windows" -Action "OpenDeviceManager" -Status "Started" -Message "Abertura do Gerenciador de Dispositivos solicitada." } catch {}Start-Process 'devmgmt.msc';OutText 'Gerenciador de Dispositivos aberto.'})
 $BtnNetworkConnections.Add_Click({
     try { Write-ToolkitActionLog -Module "Network" -Action "OpenNetworkConnections" -Status "Started" -Message "Abertura de Conexoes de Rede solicitada." } catch {}Start-Process 'ncpa.cpl';OutText 'Conexões de Rede aberto.'})
+if ($null -ne $BtnMaintenanceStatus) {
+    $BtnMaintenanceStatus.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "MaintenanceStatus" -Status "Started" -Message "Status de manutencao Windows solicitado." } catch {}
+        OutText (Get-WindowsRepairStatus)
+    })
+}
+
+if ($null -ne $BtnMaintenanceSfc) {
+    $BtnMaintenanceSfc.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "StartSfc" -Status "Started" -Message "Verificacao SFC solicitada." } catch {}
+        if ([System.Windows.MessageBox]::Show('Executar SFC /scannow em uma janela elevada? Pode demorar alguns minutos.','Verificar sistema com SFC','YesNo','Warning') -eq 'Yes') {
+            OutText (Start-SfcOnly)
+        }
+    })
+}
+
+if ($null -ne $BtnMaintenanceDism) {
+    $BtnMaintenanceDism.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "StartDism" -Status "Started" -Message "Reparo DISM solicitado." } catch {}
+        if ([System.Windows.MessageBox]::Show('Executar DISM /RestoreHealth em uma janela elevada? Pode demorar alguns minutos.','Reparar imagem com DISM','YesNo','Warning') -eq 'Yes') {
+            OutText (Start-DismOnly)
+        }
+    })
+}
+
+if ($null -ne $BtnMaintenanceTemp) {
+    $BtnMaintenanceTemp.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "ClearTemp" -Status "Started" -Message "Limpeza de temporarios solicitada pela sidebar." } catch {}
+        if ([System.Windows.MessageBox]::Show('Limpar arquivos temporários do usuário atual?','Limpar temporários','YesNo','Warning') -eq 'Yes') {
+            OutText (Clear-UserTemp)
+        }
+    })
+}
+
+if ($null -ne $BtnMaintenanceWuServices) {
+    $BtnMaintenanceWuServices.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "RestartWUServices" -Status "Started" -Message "Reinicio dos servicos Windows Update solicitado." } catch {}
+        if ([System.Windows.MessageBox]::Show('Reiniciar serviços do Windows Update?','Windows Update','YesNo','Warning') -eq 'Yes') {
+            OutText (Restart-WUServices)
+        }
+    })
+}
+
+if ($null -ne $BtnMaintenanceNetworkQuick) {
+    $BtnMaintenanceNetworkQuick.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "QuickNetworkRepair" -Status "Started" -Message "Reparo rapido de rede solicitado." } catch {}
+        if ([System.Windows.MessageBox]::Show('Executar limpeza de DNS e diagnóstico rápido de rede?','Reparo rápido de rede','YesNo','Warning') -eq 'Yes') {
+            OutText ((Invoke-FlushDns) + "`n`n" + (Test-NetworkBasic))
+        }
+    })
+}
 $BtnAppgateFix.Add_Click({
     try { Write-ToolkitActionLog -Module "Appgate" -Action "AppgateFix" -Status "Started" -Message "Correcao Appgate/UAC solicitada." } catch {}if([System.Windows.MessageBox]::Show('Alterar config do Appgate e UAC para 5?','Corrigir Appgate','YesNo','Warning') -eq 'Yes'){OutText (Invoke-ToolkitProtectedAppgateFix)}})
 $BtnAppgateRestart.Add_Click({
