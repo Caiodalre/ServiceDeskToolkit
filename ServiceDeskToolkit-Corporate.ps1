@@ -45,6 +45,15 @@ function Export-ReportHtml {
         $invHtml = [System.Net.WebUtility]::HtmlEncode($inv)
         $netHtml = [System.Net.WebUtility]::HtmlEncode($net)
 
+        $generatedAt = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
+        $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+        $adminStatus = if (Test-Admin) { "Administrador" } else { "Usuario comum" }
+
+        $hostHtml = [System.Net.WebUtility]::HtmlEncode($env:COMPUTERNAME)
+        $userHtml = [System.Net.WebUtility]::HtmlEncode($currentUser)
+        $generatedAtHtml = [System.Net.WebUtility]::HtmlEncode($generatedAt)
+        $adminStatusHtml = [System.Net.WebUtility]::HtmlEncode($adminStatus)
+
         $html = @"
 <html>
 <head>
@@ -86,6 +95,50 @@ body::before {
     font-size: 14px;
 }
 
+.cards {
+    max-width: 1180px;
+    margin: 0 auto 22px auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.info-card {
+    background: #FFFFFF;
+    border: 1px solid #DDE7F0;
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .05);
+}
+
+.info-card .label {
+    color: #64748B;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-weight: 700;
+}
+
+.info-card .value {
+    margin-top: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0F172A;
+    word-break: break-word;
+}
+
+@media (max-width: 900px) {
+    .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .cards {
+        grid-template-columns: 1fr;
+    }
+}
+
 h2 {
     max-width: 1180px;
     margin: 18px auto 0 auto;
@@ -117,7 +170,29 @@ pre {
 <body>
 <div class='hero'>
     <h1>ServiceDesk Toolkit</h1>
-    <p>Relatório $env:COMPUTERNAME - $(Get-Date)</p>
+    <p>Relatório executivo gerado em $generatedAtHtml</p>
+</div>
+
+<div class='cards'>
+    <div class='info-card'>
+        <div class='label'>Hostname</div>
+        <div class='value'>$hostHtml</div>
+    </div>
+
+    <div class='info-card'>
+        <div class='label'>Usuario</div>
+        <div class='value'>$userHtml</div>
+    </div>
+
+    <div class='info-card'>
+        <div class='label'>Execucao</div>
+        <div class='value'>$adminStatusHtml</div>
+    </div>
+
+    <div class='info-card'>
+        <div class='label'>Gerado em</div>
+        <div class='value'>$generatedAtHtml</div>
+    </div>
 </div>
 
 <h2>Inventário</h2>
