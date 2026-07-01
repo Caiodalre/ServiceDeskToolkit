@@ -597,6 +597,107 @@ function Invoke-V3VpnDiagnosticSummary {
 
     return $sb.ToString()
 }
+function Invoke-V3SafeFlushDns {
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine("CORRECAO SEGURA - LIMPAR DNS")
+    [void]$sb.AppendLine("----------------------------")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
+    [void]$sb.AppendLine("Risco da acao: Baixo")
+    [void]$sb.AppendLine("")
+
+    try {
+        $dnsBeforeOk = $false
+        $dnsBeforeError = $null
+
+        try {
+            $before = Resolve-DnsName -Name "www.microsoft.com" -Type A -ErrorAction Stop
+
+            if ($before) {
+                $dnsBeforeOk = $true
+            }
+        }
+        catch {
+            $dnsBeforeError = $_.Exception.Message
+        }
+
+        [void]$sb.AppendLine("VALIDACAO ANTES")
+        [void]$sb.AppendLine("---------------")
+        [void]$sb.AppendLine("Resolucao DNS www.microsoft.com: $(if ($dnsBeforeOk) { 'Sim' } else { 'Nao' })")
+
+        if (-not $dnsBeforeOk -and $dnsBeforeError) {
+            [void]$sb.AppendLine("Erro antes: $dnsBeforeError")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("EXECUCAO")
+        [void]$sb.AppendLine("--------")
+
+        $flushResult = ipconfig /flushdns 2>&1 | Out-String
+
+        if ([string]::IsNullOrWhiteSpace($flushResult)) {
+            [void]$sb.AppendLine("Comando executado: ipconfig /flushdns")
+        }
+        else {
+            [void]$sb.AppendLine($flushResult.Trim())
+        }
+
+        Start-Sleep -Seconds 1
+
+        $dnsAfterOk = $false
+        $dnsAfterError = $null
+
+        try {
+            $after = Resolve-DnsName -Name "www.microsoft.com" -Type A -ErrorAction Stop
+
+            if ($after) {
+                $dnsAfterOk = $true
+            }
+        }
+        catch {
+            $dnsAfterError = $_.Exception.Message
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("VALIDACAO DEPOIS")
+        [void]$sb.AppendLine("----------------")
+        [void]$sb.AppendLine("Resolucao DNS www.microsoft.com: $(if ($dnsAfterOk) { 'Sim' } else { 'Nao' })")
+
+        if (-not $dnsAfterOk -and $dnsAfterError) {
+            [void]$sb.AppendLine("Erro depois: $dnsAfterError")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
+        [void]$sb.AppendLine("--------------------")
+
+        if (-not $dnsBeforeOk -and $dnsAfterOk) {
+            [void]$sb.AppendLine("Resultado: DNS corrigido apos limpeza de cache.")
+            [void]$sb.AppendLine("Proxima acao recomendada: pedir ao usuario para testar novamente o sistema ou site afetado.")
+        }
+        elseif ($dnsBeforeOk -and $dnsAfterOk) {
+            [void]$sb.AppendLine("Resultado: DNS ja estava funcional antes e continuou funcional depois.")
+            [void]$sb.AppendLine("Proxima acao recomendada: se o problema persistir, validar proxy, VPN, firewall ou destino especifico.")
+        }
+        elseif (-not $dnsAfterOk) {
+            [void]$sb.AppendLine("Resultado: limpeza de DNS executada, mas a resolucao continua falhando.")
+            [void]$sb.AppendLine("Proxima acao recomendada: validar servidores DNS, rede local, VPN, proxy ou bloqueio externo.")
+        }
+        else {
+            [void]$sb.AppendLine("Resultado: acao concluida, mas o diagnostico nao foi conclusivo.")
+            [void]$sb.AppendLine("Proxima acao recomendada: executar o fluxo Sem internet para diagnostico completo.")
+        }
+    }
+    catch {
+        [void]$sb.AppendLine("Falha ao executar limpeza segura de DNS.")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+    }
+
+    return $sb.ToString()
+}
 function New-V3WorkflowResult {
     param(
         [Parameter(Mandatory = $true)]
@@ -1051,7 +1152,7 @@ $window.FindName("BtnV3QuickInternet").Add_Click({ Set-V3Output (Invoke-V3Workfl
 $window.FindName("BtnV3QuickVpn").Add_Click({ Set-V3Output (Invoke-V3WorkflowVpn) })
 $window.FindName("BtnV3Inventory").Add_Click({ Set-V3Output (Get-V3InventoryLite) })
 $window.FindName("BtnV3Network").Add_Click({ Set-V3Output (Invoke-V3NetworkDiagnostic) })
-$window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3FlushDns) })
+$window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3SafeFlushDns) })
 $window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3TimeSync) })
 $window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3RestartSpooler) })
 $window.FindName("BtnV3AdvancedInfo").Add_Click({ Set-V3Output "Área avançada protegida.`r`n`r`nNesta primeira V3, ações críticas não ficam expostas na tela principal.`r`nElas serão conectadas depois com confirmação, risco e log." })
@@ -1074,6 +1175,7 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
+
 
 
 
