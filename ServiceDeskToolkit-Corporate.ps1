@@ -3002,7 +3002,7 @@ function Write-ToolkitErrorLog {
             </Border>
             <Border Style="{StaticResource SidebarGroup}">
                 <StackPanel>
-                    <TextBlock Text="Ações principais" Style="{StaticResource SidebarSectionTitle}"/>
+                    <TextBlock Text="Ferramentas rápidas" Style="{StaticResource SidebarSectionTitle}"/>
                     <Button Name="BtnInventory" Content="Inventário completo"/>
                     <Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/>
                     <Button Name="BtnFlushDns" Content="Limpar DNS"/>
@@ -3014,7 +3014,7 @@ function Write-ToolkitErrorLog {
 
             <Border Style="{StaticResource SidebarGroup}">
                 <StackPanel>
-                    <TextBlock Text="Windows" Style="{StaticResource SidebarSectionTitle}"/>
+                    <TextBlock Text="Atalhos do Windows" Style="{StaticResource SidebarSectionTitle}"/>
                     <Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/>
                     <Button Name="BtnPrograms" Content="Programas e Recursos"/>
                     <Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/>
@@ -3024,7 +3024,7 @@ function Write-ToolkitErrorLog {
 
             <Border Style="{StaticResource SidebarGroup}">
                 <StackPanel>
-                    <TextBlock Text="Manutenção Windows" Style="{StaticResource SidebarSectionTitle}"/>
+                    <TextBlock Text="Reparo Windows" Style="{StaticResource SidebarSectionTitle}"/>
                     <Button Name="BtnMaintenanceStatus" Content="Status Windows / Reparo" Style="{StaticResource PrimaryButton}"/>
                     <Button Name="BtnMaintenanceSfc" Content="Verificar sistema com SFC"/>
                     <Button Name="BtnMaintenanceDism" Content="Reparar imagem com DISM"/>
@@ -3044,7 +3044,7 @@ function Write-ToolkitErrorLog {
 
             <Border Style="{StaticResource SidebarGroup}">
                 <StackPanel>
-                    <TextBlock Text="Evidências / Relatórios" Style="{StaticResource SidebarSectionTitle}"/>
+                    <TextBlock Text="Evidências" Style="{StaticResource SidebarSectionTitle}"/>
                     <Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/>
                     <Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/>
                     <Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/>
@@ -3055,7 +3055,7 @@ function Write-ToolkitErrorLog {
 
             <Border Style="{StaticResource SidebarGroup}">
                 <StackPanel>
-                    <TextBlock Text="Administracao do Toolkit" Style="{StaticResource SidebarSectionTitle}"/>
+                    <TextBlock Text="Toolkit" Style="{StaticResource SidebarSectionTitle}"/>
                     <Button Name="BtnToolkitStatus" Content="Status do Toolkit" Style="{StaticResource PrimaryButton}"/>
                     <Button Name="BtnRunToolkitUpdate" Content="Atualizar Toolkit" Style="{StaticResource PrimaryButton}"/>
                     <Button Name="BtnRunRollbackDryRun" Content="Testar rollback dry-run"/>
