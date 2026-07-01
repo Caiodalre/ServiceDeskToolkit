@@ -41,9 +41,11 @@ function Export-ReportHtml {
 
         $inv = Get-InventoryText
         $net = Test-NetworkBasic
+        $winRepair = Get-WindowsRepairStatus
 
         $invHtml = [System.Net.WebUtility]::HtmlEncode($inv)
         $netHtml = [System.Net.WebUtility]::HtmlEncode($net)
+        $winRepairHtml = [System.Net.WebUtility]::HtmlEncode($winRepair)
 
         $generatedAt = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
         $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
@@ -200,6 +202,9 @@ pre {
 
 <h2>Rede</h2>
 <pre>$netHtml</pre>
+
+<h2>Manutenção Windows</h2>
+<pre>$winRepairHtml</pre>
 </body>
 </html>
 "@
