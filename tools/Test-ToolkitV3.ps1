@@ -223,7 +223,13 @@ $markers = @(
     "function Invoke-V3InternetDiagnosticSummary",
     "Invoke-V3InternetDiagnosticSummary",
     "DIAGNOSTICO AUTOMATICO DE INTERNET",
-    "CONCLUSAO AUTOMATICA"
+    "CONCLUSAO AUTOMATICA",
+    "function Invoke-V3VpnDiagnosticSummary",
+    "Invoke-V3VpnDiagnosticSummary",
+    "DIAGNOSTICO AUTOMATICO DE VPN / APPGATE",
+    "CONECTIVIDADE LOCAL",
+    "SERVICOS",
+    "PROCESSOS"
 )
 
         foreach ($marker in $markers) {
