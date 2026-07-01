@@ -3,6 +3,7 @@
 $Root = Split-Path -Parent $PSScriptRoot
 $App = Join-Path $Root "ServiceDeskToolkit-CorporateV3.ps1"
 $Cmd = Join-Path $Root "ServiceDeskToolkitV3.cmd"
+$Readme = Join-Path $Root "docs\V3-README.md"
 $Reports = Join-Path $Root "reports"
 
 if (-not (Test-Path $Reports)) {
@@ -71,7 +72,38 @@ else {
 if (Test-Path $Cmd) {
     Add-Result "OK" "Arquivo existe: ServiceDeskToolkitV3.cmd"
 
+    
+if (Test-Path $Readme) {
+    Add-Result "OK" "Arquivo existe: docs\V3-README.md"
+
     try {
+        $readmeContent = Get-Content $Readme -Raw
+
+        $readmeMarkers = @(
+            "ServiceDesk Toolkit Corporate V3",
+            "Como executar",
+            "Como validar",
+            "APROVADO - V3 validada sem falhas",
+            "v2.3.0"
+        )
+
+        foreach ($marker in $readmeMarkers) {
+            if ($readmeContent.Contains($marker)) {
+                Add-Result "OK" "README contem: $marker"
+            }
+            else {
+                Add-Result "FALHA" "README nao contem: $marker"
+            }
+        }
+    }
+    catch {
+        Add-Result "FALHA" "Erro ao validar README da V3: $($_.Exception.Message)"
+    }
+}
+else {
+    Add-Result "FALHA" "Arquivo nao encontrado: docs\V3-README.md"
+}
+try {
         $cmdContent = Get-Content $Cmd -Raw
 
         if ($cmdContent.Contains("ServiceDeskToolkit-CorporateV3.ps1")) {
