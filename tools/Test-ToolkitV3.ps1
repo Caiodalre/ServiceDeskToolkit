@@ -189,38 +189,42 @@ if (Test-Path $App) {
             Add-Result "OK" "Sem sinais comuns de encoding quebrado"
         }
 
-        $markers = @(
-            "ServiceDesk Toolkit Corporate V3",
-            "Central de Atendimento Técnico",
-            "function Test-V3Admin",
-            "function Get-V3VersionInfo",
-            "function Set-V3Output",
-            "function Get-V3HomeText",
-            "function Invoke-V3QuickInternet",
-            "function Invoke-V3QuickVpn",
-            "function Open-V3ExternalLink",
-            "BtnV3QuickInternet",
-            "BtnV3QuickVpn",
-            "BtnV3Inventory",
-            "BtnV3Network",
-            "BtnV3FlushDns",
-            "BtnV3TimeSync",
-            "BtnV3Spooler",
-            "BtnV3AdvancedInfo",
-            "BtnV3CopyOutput",
-            "BtnV3LinkedIn",
-            "BtnV3GitHub",
-            "FooterLinkButton",
-            "Made by Caio Dal Re",
-            "Set-V3Output (Get-V3HomeText)"
+$markers = @(
+    "ServiceDesk Toolkit Corporate V3",
+    "Central de Atendimento Técnico",
+    "function Test-V3Admin",
+    "function Get-V3VersionInfo",
+    "function Set-V3Output",
+    "function Get-V3HomeText",
+    "function Invoke-V3QuickInternet",
+    "function Invoke-V3QuickVpn",
+    "function Open-V3ExternalLink",
+    "BtnV3QuickInternet",
+    "BtnV3QuickVpn",
+    "BtnV3Inventory",
+    "BtnV3Network",
+    "BtnV3FlushDns",
+    "BtnV3TimeSync",
+    "BtnV3Spooler",
+    "BtnV3AdvancedInfo",
+    "BtnV3CopyOutput",
+    "BtnV3LinkedIn",
+    "BtnV3GitHub",
+    "FooterLinkButton",
+    "Made by Caio Dal Re",
+    "Set-V3Output (Get-V3HomeText)",
     "function New-V3WorkflowResult",
     "function Get-V3GuidedHomeText",
     "function Invoke-V3WorkflowNoInternet",
     "function Invoke-V3WorkflowVpn",
     "Invoke-V3WorkflowNoInternet",
     "Invoke-V3WorkflowVpn",
-    "Get-V3GuidedHomeText"
-        )
+    "Get-V3GuidedHomeText",
+    "function Invoke-V3InternetDiagnosticSummary",
+    "Invoke-V3InternetDiagnosticSummary",
+    "DIAGNOSTICO AUTOMATICO DE INTERNET",
+    "CONCLUSAO AUTOMATICA"
+)
 
         foreach ($marker in $markers) {
             if ($content.Contains($marker)) {
