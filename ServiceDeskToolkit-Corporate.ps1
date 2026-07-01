@@ -2992,6 +2992,16 @@ function Write-ToolkitErrorLog {
 
             <Border Style="{StaticResource SidebarGroup}">
                 <StackPanel>
+                    <TextBlock Text="Atendimento Rápido" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnSidebarQuickInternet" Content="Sem internet" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnSidebarQuickAppgate" Content="VPN / Appgate"/>
+                    <Button Name="BtnSidebarQuickTeams" Content="Teams"/>
+                    <Button Name="BtnSidebarQuickPrinter" Content="Impressora"/>
+                    <Button Name="BtnSidebarQuickFullReport" Content="Relatório geral"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
                     <TextBlock Text="Ações principais" Style="{StaticResource SidebarSectionTitle}"/>
                     <Button Name="BtnInventory" Content="Inventário completo"/>
                     <Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/>
@@ -3853,12 +3863,47 @@ $TxtPrintersOutput = $window.FindName("TxtPrintersOutput")
 
 
 # Find names
-$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnMaintenanceStatus','BtnMaintenanceSfc','BtnMaintenanceDism','BtnMaintenanceTemp','BtnMaintenanceWuServices','BtnMaintenanceNetworkQuick','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnToolkitStatus','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnOpenLatestUpdateSummary','BtnExportToolkitSupportPackage','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
+$names='BtnSidebarQuickInternet','BtnSidebarQuickAppgate','BtnSidebarQuickTeams','BtnSidebarQuickPrinter','BtnSidebarQuickFullReport','BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnMaintenanceStatus','BtnMaintenanceSfc','BtnMaintenanceDism','BtnMaintenanceTemp','BtnMaintenanceWuServices','BtnMaintenanceNetworkQuick','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnToolkitStatus','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnOpenLatestUpdateSummary','BtnExportToolkitSupportPackage','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
 foreach($n in $names){ Set-Variable -Name $n -Value ($window.FindName($n)) -Scope Script }
 
 if(Test-Admin){$TxtAdminStatus.Text='Executando como administrador.'}else{$TxtAdminStatus.Text='Atenção: não está como administrador. Algumas funções podem falhar.'}
 try{$i=Get-InventoryObj;if($i -isnot [string]){$CardHostname.Text=$i.Hostname;$CardUser.Text=$i.Usuario;$CardWindows.Text=$i.Windows;$CardIp.Text=$i.IP}}catch{}
 
+# sidebar quick support events
+if ($null -ne $BtnSidebarQuickInternet) {
+    $BtnSidebarQuickInternet.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickInternet" -Status "Started" -Message "Atendimento rapido de internet solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickInternet)
+    })
+}
+
+if ($null -ne $BtnSidebarQuickAppgate) {
+    $BtnSidebarQuickAppgate.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickAppgate" -Status "Started" -Message "Atendimento rapido de Appgate solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickAppgate)
+    })
+}
+
+if ($null -ne $BtnSidebarQuickTeams) {
+    $BtnSidebarQuickTeams.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickTeams" -Status "Started" -Message "Atendimento rapido de Teams solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickTeams)
+    })
+}
+
+if ($null -ne $BtnSidebarQuickPrinter) {
+    $BtnSidebarQuickPrinter.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickPrinter" -Status "Started" -Message "Atendimento rapido de impressora solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickPrinter)
+    })
+}
+
+if ($null -ne $BtnSidebarQuickFullReport) {
+    $BtnSidebarQuickFullReport.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickFullReport" -Status "Started" -Message "Relatorio rapido geral solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickFullReport)
+    })
+}
 # main events
 $BtnInventory.Add_Click({
     try { Write-ToolkitActionLog -Module "Overview" -Action "Inventory" -Status "Started" -Message "Inventario da maquina solicitado." } catch {}OutText (Get-InventoryText)})
