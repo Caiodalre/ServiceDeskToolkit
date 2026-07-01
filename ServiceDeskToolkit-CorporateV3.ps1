@@ -326,6 +326,125 @@ $script:V3LastExternalLinkAt = Get-Date "2000-01-01"
 $script:V3LastExternalLinkUrl = ""
 $script:V3LastExternalLinkAt = Get-Date "2000-01-01"
 
+function Invoke-V3InternetDiagnosticSummary {
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine("DIAGNOSTICO AUTOMATICO DE INTERNET")
+    [void]$sb.AppendLine("----------------------------------")
+    [void]$sb.AppendLine("")
+
+    try {
+        $adapters = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "IPEnabled=True" -ErrorAction SilentlyContinue
+        $adapter = $adapters | Select-Object -First 1
+
+        if ($null -eq $adapter) {
+            [void]$sb.AppendLine("Status: Nenhum adaptador de rede ativo encontrado.")
+            [void]$sb.AppendLine("")
+            [void]$sb.AppendLine("Causa provavel: adaptador desativado, cabo desconectado, Wi-Fi desconectado ou driver de rede indisponivel.")
+            [void]$sb.AppendLine("Proxima acao recomendada: validar conexao fisica/Wi-Fi e verificar adaptador de rede.")
+            return $sb.ToString()
+        }
+
+        $ipList = @()
+        if ($adapter.IPAddress) {
+            $ipList = $adapter.IPAddress | Where-Object { $_ -and ($_ -notlike "fe80*") }
+        }
+
+        $gateway = $null
+        if ($adapter.DefaultIPGateway) {
+            $gateway = $adapter.DefaultIPGateway | Select-Object -First 1
+        }
+
+        $dnsList = @()
+        if ($adapter.DNSServerSearchOrder) {
+            $dnsList = $adapter.DNSServerSearchOrder
+        }
+
+        $hasIp = ($ipList.Count -gt 0)
+        $hasGateway = -not [string]::IsNullOrWhiteSpace($gateway)
+        $hasDns = ($dnsList.Count -gt 0)
+
+        $gatewayOk = $false
+        if ($hasGateway) {
+            $gatewayOk = Test-Connection -ComputerName $gateway -Count 1 -Quiet -ErrorAction SilentlyContinue
+        }
+
+        $internetIpOk = Test-Connection -ComputerName "1.1.1.1" -Count 1 -Quiet -ErrorAction SilentlyContinue
+
+        $dnsOk = $false
+        $dnsError = $null
+
+        try {
+            $resolved = Resolve-DnsName -Name "www.microsoft.com" -Type A -ErrorAction Stop
+            if ($resolved) {
+                $dnsOk = $true
+            }
+        }
+        catch {
+            $dnsError = $_.Exception.Message
+        }
+
+        [void]$sb.AppendLine("Adaptador: $($adapter.Description)")
+        [void]$sb.AppendLine("IP: $(if ($hasIp) { $ipList -join ', ' } else { 'Nao encontrado' })")
+        [void]$sb.AppendLine("Gateway: $(if ($hasGateway) { $gateway } else { 'Nao encontrado' })")
+        [void]$sb.AppendLine("DNS: $(if ($hasDns) { $dnsList -join ', ' } else { 'Nao encontrado' })")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("TESTES")
+        [void]$sb.AppendLine("------")
+        [void]$sb.AppendLine("Gateway responde: $(if ($gatewayOk) { 'Sim' } else { 'Nao' })")
+        [void]$sb.AppendLine("Internet por IP 1.1.1.1: $(if ($internetIpOk) { 'Sim' } else { 'Nao' })")
+        [void]$sb.AppendLine("Resolucao DNS www.microsoft.com: $(if ($dnsOk) { 'Sim' } else { 'Nao' })")
+
+        if (-not $dnsOk -and $dnsError) {
+            [void]$sb.AppendLine("Erro DNS: $dnsError")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
+        [void]$sb.AppendLine("--------------------")
+
+        $cause = ""
+        $nextAction = ""
+
+        if (-not $hasIp) {
+            $cause = "A maquina nao possui IP valido no adaptador ativo."
+            $nextAction = "Validar cabo, Wi-Fi, DHCP, driver de rede ou reiniciar o adaptador."
+        }
+        elseif (-not $hasGateway) {
+            $cause = "A maquina possui IP, mas nao possui gateway configurado."
+            $nextAction = "Validar configuracao de rede, DHCP e escopo entregue ao equipamento."
+        }
+        elseif (-not $gatewayOk) {
+            $cause = "O gateway configurado nao respondeu ao teste."
+            $nextAction = "Validar rede local, roteador, switch, VLAN, cabo ou Wi-Fi."
+        }
+        elseif ($internetIpOk -and -not $dnsOk) {
+            $cause = "A internet por IP respondeu, mas a resolucao de nomes falhou. Indicio forte de problema de DNS."
+            $nextAction = "Executar Limpar DNS, validar servidores DNS e testar resolucao novamente."
+        }
+        elseif (-not $internetIpOk -and $gatewayOk) {
+            $cause = "A rede local responde, mas nao houve resposta externa por IP."
+            $nextAction = "Validar rota, firewall, proxy, provedor ou bloqueio de saida."
+        }
+        elseif ($internetIpOk -and $dnsOk) {
+            $cause = "Conectividade basica aparenta estar funcional."
+            $nextAction = "Validar o sistema especifico informado pelo usuario, proxy, VPN ou indisponibilidade do destino."
+        }
+        else {
+            $cause = "Falha de conectividade nao conclusiva com os testes basicos."
+            $nextAction = "Coletar evidencias adicionais e escalar para rede se a falha persistir."
+        }
+
+        [void]$sb.AppendLine("Causa provavel: $cause")
+        [void]$sb.AppendLine("Proxima acao recomendada: $nextAction")
+    }
+    catch {
+        [void]$sb.AppendLine("Falha ao executar diagnostico automatico de internet.")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+    }
+
+    return $sb.ToString()
+}
 function New-V3WorkflowResult {
     param(
         [Parameter(Mandatory = $true)]
@@ -443,7 +562,7 @@ function Invoke-V3WorkflowNoInternet {
     return New-V3WorkflowResult `
         -Title "Atendimento Guiado - Sem Internet" `
         -Problem "Usuario relata falha de conexao, lentidao, ausencia de internet ou indisponibilidade de acesso a sistemas." `
-        -EvidenceScript { Invoke-V3QuickInternet } `
+        -EvidenceScript { Invoke-V3InternetDiagnosticSummary } `
         -LikelyCauses @(
             "Falha de DNS",
             "Gateway indisponivel",
@@ -461,7 +580,6 @@ function Invoke-V3WorkflowNoInternet {
         ) `
         -RiskLevel "Baixo"
 }
-
 function Invoke-V3WorkflowVpn {
     return New-V3WorkflowResult `
         -Title "Atendimento Guiado - VPN / Appgate" `
@@ -802,6 +920,8 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
+
+
 
 
 
