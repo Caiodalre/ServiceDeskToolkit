@@ -326,6 +326,36 @@ $script:V3LastExternalLinkAt = Get-Date "2000-01-01"
 $script:V3LastExternalLinkUrl = ""
 $script:V3LastExternalLinkAt = Get-Date "2000-01-01"
 
+function Copy-V3OutputToClipboard {
+    try {
+        if ($null -eq $script:TxtV3Output) {
+            return
+        }
+
+        $currentText = $script:TxtV3Output.Text
+
+        if ([string]::IsNullOrWhiteSpace($currentText)) {
+            Set-V3Output "Nenhum resultado disponível para copiar."
+            return
+        }
+
+        $cleanText = [regex]::Replace(
+            $currentText,
+            "(\r?\n){2}\[COPIADO\].*$",
+            ""
+        )
+
+        [System.Windows.Clipboard]::SetText($cleanText)
+
+        $feedback = "[COPIADO] Resultado copiado para a área de transferência em $(Get-Date -Format 'HH:mm:ss')."
+
+        $script:TxtV3Output.Text = $cleanText.TrimEnd() + "`r`n`r`n" + $feedback
+        $script:TxtV3Output.ScrollToEnd()
+    }
+    catch {
+        Set-V3Output "Não foi possível copiar o resultado para a área de transferência.`r`n`r`nDetalhe: $($_.Exception.Message)"
+    }
+}
 function Open-V3ExternalLink {
     param(
         [string]$Url,
@@ -595,15 +625,7 @@ $window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3FlushDns) }
 $window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3TimeSync) })
 $window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3RestartSpooler) })
 $window.FindName("BtnV3AdvancedInfo").Add_Click({ Set-V3Output "Área avançada protegida.`r`n`r`nNesta primeira V3, ações críticas não ficam expostas na tela principal.`r`nElas serão conectadas depois com confirmação, risco e log." })
-$window.FindName("BtnV3CopyOutput").Add_Click({
-    try {
-        [System.Windows.Clipboard]::SetText($script:TxtV3Output.Text)
-        [System.Windows.MessageBox]::Show("Resultado copiado.", "ServiceDesk Toolkit V3") | Out-Null
-    }
-    catch {
-        [System.Windows.MessageBox]::Show("Erro ao copiar: $($_.Exception.Message)", "ServiceDesk Toolkit V3") | Out-Null
-    }
-})
+$window.FindName("BtnV3CopyOutput").Add_Click({ Copy-V3OutputToClipboard })
 $BtnV3LinkedIn = $window.FindName("BtnV3LinkedIn")
 $BtnV3GitHub = $window.FindName("BtnV3GitHub")
 
@@ -622,4 +644,5 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
+
 
