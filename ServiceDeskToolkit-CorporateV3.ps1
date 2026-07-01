@@ -445,6 +445,158 @@ function Invoke-V3InternetDiagnosticSummary {
 
     return $sb.ToString()
 }
+function Invoke-V3VpnDiagnosticSummary {
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine("DIAGNOSTICO AUTOMATICO DE VPN / APPGATE")
+    [void]$sb.AppendLine("---------------------------------------")
+    [void]$sb.AppendLine("")
+
+    try {
+        $internetIpOk = Test-Connection -ComputerName "1.1.1.1" -Count 1 -Quiet -ErrorAction SilentlyContinue
+
+        $dnsOk = $false
+        $dnsError = $null
+
+        try {
+            $resolved = Resolve-DnsName -Name "www.microsoft.com" -Type A -ErrorAction Stop
+
+            if ($resolved) {
+                $dnsOk = $true
+            }
+        }
+        catch {
+            $dnsError = $_.Exception.Message
+        }
+
+        $services = @(Get-Service -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -like "*appgate*" -or
+            $_.DisplayName -like "*appgate*" -or
+            $_.Name -like "*sdp*" -or
+            $_.DisplayName -like "*sdp*"
+        })
+
+        $processes = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+            $_.ProcessName -like "*appgate*" -or
+            $_.ProcessName -like "*sdp*"
+        })
+
+        $programPaths = @(
+            "C:\Program Files\Appgate SDP",
+            "C:\Program Files (x86)\Appgate SDP",
+            "C:\Program Files\Appgate",
+            "C:\Program Files (x86)\Appgate"
+        )
+
+        $installedPaths = @()
+
+        foreach ($path in $programPaths) {
+            if (Test-Path $path) {
+                $installedPaths += $path
+            }
+        }
+
+        [void]$sb.AppendLine("CONECTIVIDADE LOCAL")
+        [void]$sb.AppendLine("-------------------")
+        [void]$sb.AppendLine("Internet por IP 1.1.1.1: $(if ($internetIpOk) { 'Sim' } else { 'Nao' })")
+        [void]$sb.AppendLine("Resolucao DNS www.microsoft.com: $(if ($dnsOk) { 'Sim' } else { 'Nao' })")
+
+        if (-not $dnsOk -and $dnsError) {
+            [void]$sb.AppendLine("Erro DNS: $dnsError")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("INSTALACAO")
+        [void]$sb.AppendLine("----------")
+
+        if ($installedPaths.Count -gt 0) {
+            foreach ($path in $installedPaths) {
+                [void]$sb.AppendLine("Encontrado: $path")
+            }
+        }
+        else {
+            [void]$sb.AppendLine("Nenhum diretorio padrao do Appgate encontrado em Program Files.")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("SERVICOS")
+        [void]$sb.AppendLine("--------")
+
+        if ($services.Count -gt 0) {
+            foreach ($service in $services) {
+                [void]$sb.AppendLine("$($service.DisplayName) | Name: $($service.Name) | Status: $($service.Status) | StartType: $($service.StartType)")
+            }
+        }
+        else {
+            [void]$sb.AppendLine("Nenhum servico relacionado a Appgate/SDP encontrado.")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("PROCESSOS")
+        [void]$sb.AppendLine("---------")
+
+        if ($processes.Count -gt 0) {
+            foreach ($process in $processes) {
+                [void]$sb.AppendLine("$($process.ProcessName) | PID: $($process.Id)")
+            }
+        }
+        else {
+            [void]$sb.AppendLine("Nenhum processo relacionado a Appgate/SDP encontrado em execucao.")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
+        [void]$sb.AppendLine("--------------------")
+
+        $runningServices = @($services | Where-Object { $_.Status -eq "Running" })
+        $stoppedServices = @($services | Where-Object { $_.Status -ne "Running" })
+
+        $cause = ""
+        $nextAction = ""
+
+        if (-not $internetIpOk) {
+            $cause = "A maquina nao possui conectividade externa basica. A VPN pode falhar antes mesmo de autenticar."
+            $nextAction = "Resolver primeiro a internet local antes de atuar no Appgate."
+        }
+        elseif ($internetIpOk -and -not $dnsOk) {
+            $cause = "A internet por IP responde, mas DNS falhou. A VPN pode nao resolver o endereco do concentrador."
+            $nextAction = "Limpar DNS, validar servidores DNS e testar novamente."
+        }
+        elseif ($installedPaths.Count -eq 0 -and $services.Count -eq 0 -and $processes.Count -eq 0) {
+            $cause = "Nao ha sinais claros de instalacao do Appgate na maquina."
+            $nextAction = "Validar se o cliente Appgate esta instalado ou reinstalar conforme padrao corporativo."
+        }
+        elseif ($services.Count -gt 0 -and $runningServices.Count -eq 0) {
+            $cause = "Servicos relacionados ao Appgate foram encontrados, mas nenhum esta em execucao."
+            $nextAction = "Abrir a area avancada e reiniciar o Appgate, ou executar como administrador se necessario."
+        }
+        elseif ($stoppedServices.Count -gt 0) {
+            $cause = "Ha servicos relacionados ao Appgate parados ou em estado diferente de Running."
+            $nextAction = "Validar servicos parados, reiniciar o cliente e coletar erro se voltar a falhar."
+        }
+        elseif ($services.Count -gt 0 -and $runningServices.Count -gt 0 -and $processes.Count -eq 0) {
+            $cause = "Servico do Appgate esta ativo, mas nenhum processo cliente foi encontrado."
+            $nextAction = "Abrir o cliente Appgate manualmente e validar se ele inicia sem erro."
+        }
+        elseif ($services.Count -gt 0 -and $runningServices.Count -gt 0 -and $processes.Count -gt 0) {
+            $cause = "Appgate aparenta estar instalado e em execucao. A falha pode estar em autenticacao, politica, certificado, rota ou servidor."
+            $nextAction = "Coletar mensagem exata do erro, horario da tentativa, usuario afetado e escalar com a evidencia."
+        }
+        else {
+            $cause = "Diagnostico nao conclusivo com os testes basicos."
+            $nextAction = "Coletar print do erro, validar internet local, reiniciar cliente e escalar se persistir."
+        }
+
+        [void]$sb.AppendLine("Causa provavel: $cause")
+        [void]$sb.AppendLine("Proxima acao recomendada: $nextAction")
+    }
+    catch {
+        [void]$sb.AppendLine("Falha ao executar diagnostico automatico de VPN / Appgate.")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+    }
+
+    return $sb.ToString()
+}
 function New-V3WorkflowResult {
     param(
         [Parameter(Mandatory = $true)]
@@ -584,11 +736,12 @@ function Invoke-V3WorkflowVpn {
     return New-V3WorkflowResult `
         -Title "Atendimento Guiado - VPN / Appgate" `
         -Problem "Usuario relata falha para conectar VPN, Appgate, acesso remoto ou sistemas internos." `
-        -EvidenceScript { Invoke-V3QuickVpn } `
+        -EvidenceScript { Invoke-V3VpnDiagnosticSummary } `
         -LikelyCauses @(
             "Servico de VPN parado",
+            "Cliente Appgate nao encontrado",
             "Rede local sem internet",
-            "DNS ou rota impedindo acesso ao concentrador",
+            "Falha de DNS impedindo acesso ao concentrador",
             "Cliente VPN corrompido ou desatualizado",
             "Credencial, certificado ou politica de acesso com falha",
             "Interferencia de firewall, proxy ou antivirus"
@@ -596,7 +749,8 @@ function Invoke-V3WorkflowVpn {
         -NextActions @(
             "Confirmar se a internet local esta funcionando",
             "Validar se o erro ocorre antes ou depois da autenticacao",
-            "Reiniciar o cliente VPN/Appgate",
+            "Verificar se servicos e processos do Appgate estao ativos",
+            "Reiniciar o cliente VPN/Appgate se houver indicio de servico parado",
             "Coletar print ou mensagem exata do erro",
             "Escalar com evidencia se houver falha de certificado, politica ou servidor"
         ) `
@@ -920,6 +1074,7 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
+
 
 
 
