@@ -2,6 +2,7 @@
 
 $Root = Split-Path -Parent $PSScriptRoot
 $App = Join-Path $Root "ServiceDeskToolkit-CorporateV3.ps1"
+$Cmd = Join-Path $Root "ServiceDeskToolkitV3.cmd"
 $Reports = Join-Path $Root "reports"
 
 if (-not (Test-Path $Reports)) {
@@ -65,6 +66,34 @@ if (Test-Path $App) {
 }
 else {
     Add-Result "FALHA" "Arquivo nao encontrado: ServiceDeskToolkit-CorporateV3.ps1"
+}
+
+if (Test-Path $Cmd) {
+    Add-Result "OK" "Arquivo existe: ServiceDeskToolkitV3.cmd"
+
+    try {
+        $cmdContent = Get-Content $Cmd -Raw
+
+        if ($cmdContent.Contains("ServiceDeskToolkit-CorporateV3.ps1")) {
+            Add-Result "OK" "Launcher CMD aponta para a V3"
+        }
+        else {
+            Add-Result "FALHA" "Launcher CMD nao aponta para ServiceDeskToolkit-CorporateV3.ps1"
+        }
+
+        if ($cmdContent.Contains("powershell.exe -STA -NoProfile -ExecutionPolicy Bypass")) {
+            Add-Result "OK" "Launcher CMD usa PowerShell em STA"
+        }
+        else {
+            Add-Result "FALHA" "Launcher CMD nao usa PowerShell em STA"
+        }
+    }
+    catch {
+        Add-Result "FALHA" "Erro ao validar launcher CMD: $($_.Exception.Message)"
+    }
+}
+else {
+    Add-Result "FALHA" "Arquivo nao encontrado: ServiceDeskToolkitV3.cmd"
 }
 
 if (Test-Path $App) {
