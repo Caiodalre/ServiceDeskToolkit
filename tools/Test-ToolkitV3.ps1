@@ -229,7 +229,12 @@ $markers = @(
     "DIAGNOSTICO AUTOMATICO DE VPN / APPGATE",
     "CONECTIVIDADE LOCAL",
     "SERVICOS",
-    "PROCESSOS"
+    "PROCESSOS",
+    "function Invoke-V3SafeFlushDns",
+    "Invoke-V3SafeFlushDns",
+    "CORRECAO SEGURA - LIMPAR DNS",
+    "VALIDACAO ANTES",
+    "VALIDACAO DEPOIS"
 )
 
         foreach ($marker in $markers) {
