@@ -69,29 +69,123 @@ Use Atendimento Guiado para iniciar uma triagem.
 }
 
 function Get-V3InventoryLite {
-    try {
-        $cs = Get-CimInstance Win32_ComputerSystem
-        $os = Get-CimInstance Win32_OperatingSystem
-        $bios = Get-CimInstance Win32_BIOS
+    $sb = New-Object System.Text.StringBuilder
 
-        [pscustomobject]@{
-            Hostname = $env:COMPUTERNAME
-            Usuario = "$env:USERDOMAIN\$env:USERNAME"
-            Fabricante = $cs.Manufacturer
-            Modelo = $cs.Model
-            Dominio = $cs.Domain
-            Windows = $os.Caption
-            Versao = $os.Version
-            Build = $os.BuildNumber
-            Serial = $bios.SerialNumber
-            RAM_GB = [math]::Round($cs.TotalPhysicalMemory / 1GB, 2)
-        } | Format-List | Out-String
+    [void]$sb.AppendLine("INVENTÁRIO DA MÁQUINA")
+    [void]$sb.AppendLine("======================")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+    [void]$sb.AppendLine("")
+
+    try {
+        $computer = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop
+        $bios = Get-CimInstance Win32_BIOS -ErrorAction Stop
+        $os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+        $cpu = Get-CimInstance Win32_Processor -ErrorAction Stop | Select-Object -First 1
+        $disks = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue
+        $network = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "IPEnabled=True" -ErrorAction SilentlyContinue
+
+        $ramGb = [math]::Round(($computer.TotalPhysicalMemory / 1GB), 2)
+        $uptime = (Get-Date) - $os.LastBootUpTime
+
+        [void]$sb.AppendLine("IDENTIFICAÇÃO")
+        [void]$sb.AppendLine("--------------")
+        [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+        [void]$sb.AppendLine("Usuário: $env:USERDOMAIN\$env:USERNAME")
+        [void]$sb.AppendLine("Domínio/Workgroup: $($computer.Domain)")
+        [void]$sb.AppendLine("Administrador: $(if (Test-V3Admin) { 'Sim' } else { 'Não' })")
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("EQUIPAMENTO")
+        [void]$sb.AppendLine("-----------")
+        [void]$sb.AppendLine("Fabricante: $($computer.Manufacturer)")
+        [void]$sb.AppendLine("Modelo: $($computer.Model)")
+        [void]$sb.AppendLine("Serial Number: $($bios.SerialNumber)")
+        [void]$sb.AppendLine("BIOS: $($bios.SMBIOSBIOSVersion)")
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("WINDOWS")
+        [void]$sb.AppendLine("-------")
+        [void]$sb.AppendLine("Sistema: $($os.Caption)")
+        [void]$sb.AppendLine("Versão: $($os.Version)")
+        [void]$sb.AppendLine("Build: $($os.BuildNumber)")
+        [void]$sb.AppendLine("Arquitetura: $($os.OSArchitecture)")
+        [void]$sb.AppendLine("Último boot: $($os.LastBootUpTime.ToString('dd/MM/yyyy HH:mm:ss'))")
+                $uptimeText = "Uptime: {0} dia(s), {1} hora(s), {2} minuto(s)" -f $uptime.Days, $uptime.Hours, $uptime.Minutes
+        [void]$sb.AppendLine($uptimeText)
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("HARDWARE")
+        [void]$sb.AppendLine("--------")
+        [void]$sb.AppendLine("Processador: $($cpu.Name)")
+        [void]$sb.AppendLine("Memória RAM: $ramGb GB")
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("DISCOS")
+        [void]$sb.AppendLine("------")
+
+        if ($disks) {
+            foreach ($disk in $disks) {
+                $sizeGb = [math]::Round(($disk.Size / 1GB), 2)
+                $freeGb = [math]::Round(($disk.FreeSpace / 1GB), 2)
+
+                if ($disk.Size -gt 0) {
+                    $usedPercent = [math]::Round((($disk.Size - $disk.FreeSpace) / $disk.Size) * 100, 2)
+                }
+                else {
+                    $usedPercent = 0
+                }
+
+                [void]$sb.AppendLine("$($disk.DeviceID) Total: $sizeGb GB | Livre: $freeGb GB | Uso: $usedPercent%")
+            }
+        }
+        else {
+            [void]$sb.AppendLine("Nenhum disco local encontrado.")
+        }
+
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("REDE")
+        [void]$sb.AppendLine("----")
+
+        if ($network) {
+            foreach ($adapter in $network) {
+                [void]$sb.AppendLine("Adaptador: $($adapter.Description)")
+
+                if ($adapter.IPAddress) {
+                    [void]$sb.AppendLine("IP: $($adapter.IPAddress -join ', ')")
+                }
+
+                if ($adapter.DefaultIPGateway) {
+                    [void]$sb.AppendLine("Gateway: $($adapter.DefaultIPGateway -join ', ')")
+                }
+
+                if ($adapter.DNSServerSearchOrder) {
+                    [void]$sb.AppendLine("DNS: $($adapter.DNSServerSearchOrder -join ', ')")
+                }
+
+                [void]$sb.AppendLine("")
+            }
+        }
+        else {
+            [void]$sb.AppendLine("Nenhum adaptador de rede ativo encontrado.")
+            [void]$sb.AppendLine("")
+        }
+
+        [void]$sb.AppendLine("STATUS")
+        [void]$sb.AppendLine("------")
+        [void]$sb.AppendLine("Inventário gerado com sucesso.")
+        [void]$sb.AppendLine("Esta ação é somente leitura e não altera configurações da máquina.")
     }
     catch {
-        "Erro ao coletar inventário:`r`n$($_.Exception.Message)"
+        [void]$sb.AppendLine("ERRO")
+        [void]$sb.AppendLine("----")
+        [void]$sb.AppendLine("Não foi possível gerar o inventário completo.")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
     }
-}
 
+    return $sb.ToString()
+}
 function Invoke-V3NetworkDiagnostic {
     $sb = New-Object System.Text.StringBuilder
 
