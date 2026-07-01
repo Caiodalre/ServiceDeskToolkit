@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Continue"
+﻿$ErrorActionPreference = "Continue"
 
 $Root = Split-Path -Parent $PSScriptRoot
 $App = Join-Path $Root "ServiceDeskToolkit-CorporateV3.ps1"
@@ -14,6 +14,30 @@ $ReportTxt = Join-Path $Reports "v3-validation-$stamp.txt"
 $results = New-Object System.Collections.Generic.List[string]
 $failures = 0
 
+function Write-V3ValidationLine {
+    param(
+        [string]$Status,
+        [string]$Message
+    )
+
+    $line = "[$Status] $Message"
+
+    switch ($Status) {
+        "OK" {
+            Write-Host $line -ForegroundColor Green
+        }
+        "FALHA" {
+            Write-Host $line -ForegroundColor Red
+        }
+        "AVISO" {
+            Write-Host $line -ForegroundColor Yellow
+        }
+        default {
+            Write-Host $line -ForegroundColor Gray
+        }
+    }
+}
+
 function Add-Result {
     param(
         [string]$Status,
@@ -22,16 +46,16 @@ function Add-Result {
 
     $line = "[$Status] $Message"
     $script:results.Add($line) | Out-Null
-    Write-Host $line
+
+    Write-V3ValidationLine -Status $Status -Message $Message
 
     if ($Status -eq "FALHA") {
         $script:failures++
     }
 }
-
 Write-Host ""
-Write-Host "ServiceDesk Toolkit Corporate V3 - Validation"
-Write-Host "Root: $Root"
+Write-Host "ServiceDesk Toolkit Corporate V3 - Validation" -ForegroundColor Cyan
+Write-Host "Root: $Root" -ForegroundColor DarkCyan
 Write-Host ""
 
 Add-Result "OK" "Validacao iniciada em $stamp"
@@ -70,8 +94,34 @@ if (Test-Path $App) {
             Add-Result "AVISO" "Encoding UTF-8 BOM nao detectado"
         }
 
-        $badEncodingPattern = "Ã|Â|�"
-        if ($content -match $badEncodingPattern) {
+        $badEncodingSequences = @(
+            (-join @([char]0x00C3, [char]0x00A1)),
+            (-join @([char]0x00C3, [char]0x00A9)),
+            (-join @([char]0x00C3, [char]0x00AD)),
+            (-join @([char]0x00C3, [char]0x00B3)),
+            (-join @([char]0x00C3, [char]0x00BA)),
+            (-join @([char]0x00C3, [char]0x00A3)),
+            (-join @([char]0x00C3, [char]0x00B5)),
+            (-join @([char]0x00C3, [char]0x00A7)),
+            (-join @([char]0x00C3, [char]0x00AA)),
+            (-join @([char]0x00C3, [char]0x00B4)),
+            (-join @([char]0x00C2, [char]0x00A0))
+        )
+
+        $hasBadEncoding = $false
+
+        foreach ($sequence in $badEncodingSequences) {
+            if ($content.Contains($sequence)) {
+                $hasBadEncoding = $true
+                break
+            }
+        }
+
+        if ($content.IndexOf([char]0xFFFD) -ge 0) {
+            $hasBadEncoding = $true
+        }
+
+        if ($hasBadEncoding) {
             Add-Result "FALHA" "Possivel encoding quebrado encontrado"
         }
         else {
@@ -145,16 +195,16 @@ if (Test-Path $App) {
 $results | Out-File $ReportTxt -Encoding UTF8
 
 Write-Host ""
-Write-Host "Resultado da Validacao V3"
-Write-Host "========================="
+Write-Host "Resultado da Validacao V3" -ForegroundColor Cyan
+Write-Host "=========================" -ForegroundColor Cyan
 
 if ($failures -eq 0) {
-    Write-Host "APROVADO - V3 validada sem falhas."
+    Write-Host "APROVADO - V3 validada sem falhas." -ForegroundColor Green
 }
 else {
-    Write-Host "REPROVADO - V3 possui $failures falha(s)."
+    Write-Host "REPROVADO - V3 possui $failures falha(s)." -ForegroundColor Red
 }
 
 Write-Host ""
-Write-Host "Relatorio:"
+Write-Host "Relatorio:" -ForegroundColor DarkCyan
 Write-Host $ReportTxt

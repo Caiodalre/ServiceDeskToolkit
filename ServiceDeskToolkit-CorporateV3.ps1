@@ -486,21 +486,7 @@ $CardV3User.Text = "$env:USERDOMAIN\$env:USERNAME"
 $CardV3Admin.Text = if (Test-V3Admin) { "Sim" } else { "Não" }
 $CardV3Version.Text = Get-V3VersionInfo
 
-$window.FindName("BtnV3NavHome").Add_Click({ $BtnV3LinkedIn = $window.FindName("BtnV3LinkedIn")
-$BtnV3GitHub = $window.FindName("BtnV3GitHub")
-
-if ($null -ne $BtnV3LinkedIn) {
-    $BtnV3LinkedIn.Add_Click({
-        Open-V3ExternalLink -Url "https://www.linkedin.com/in/caiodalre/" -Label "LinkedIn"
-    })
-}
-
-if ($null -ne $BtnV3GitHub) {
-    $BtnV3GitHub.Add_Click({
-        Open-V3ExternalLink -Url "https://github.com/Caiodalre" -Label "GitHub"
-    })
-}
-Set-V3Output (Get-V3HomeText) })
+$window.FindName("BtnV3NavHome").Add_Click({ Set-V3Output (Get-V3HomeText) })
 $window.FindName("BtnV3NavGuided").Add_Click({ Set-V3Output "Atendimento Guiado:`r`n- Sem internet`r`n- VPN / Appgate`r`n- Teams / Outlook`r`n- Impressora`r`n- Windows Update`r`n- Máquina lenta" })
 $window.FindName("BtnV3NavEvidence").Add_Click({ Set-V3Output "Evidências:`r`n- Inventário`r`n- Diagnóstico de rede`r`n- Relatório`r`n- Pacote de suporte`r`n- Copiar resultado" })
 $window.FindName("BtnV3NavSafeFix").Add_Click({ Set-V3Output "Correções Seguras:`r`n- Limpar DNS`r`n- Renovar IP`r`n- Sincronizar horário`r`n- Reiniciar spooler`r`n- Limpar temporários" })
@@ -524,7 +510,6 @@ $window.FindName("BtnV3CopyOutput").Add_Click({
         [System.Windows.MessageBox]::Show("Erro ao copiar: $($_.Exception.Message)", "ServiceDesk Toolkit V3") | Out-Null
     }
 })
-
 $BtnV3LinkedIn = $window.FindName("BtnV3LinkedIn")
 $BtnV3GitHub = $window.FindName("BtnV3GitHub")
 
@@ -539,6 +524,7 @@ if ($null -ne $BtnV3GitHub) {
         Open-V3ExternalLink -Url "https://github.com/Caiodalre" -Label "GitHub"
     })
 }
+
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
