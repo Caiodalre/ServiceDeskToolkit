@@ -213,6 +213,13 @@ if (Test-Path $App) {
             "FooterLinkButton",
             "Made by Caio Dal Re",
             "Set-V3Output (Get-V3HomeText)"
+    "function New-V3WorkflowResult",
+    "function Get-V3GuidedHomeText",
+    "function Invoke-V3WorkflowNoInternet",
+    "function Invoke-V3WorkflowVpn",
+    "Invoke-V3WorkflowNoInternet",
+    "Invoke-V3WorkflowVpn",
+    "Get-V3GuidedHomeText"
         )
 
         foreach ($marker in $markers) {
