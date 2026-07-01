@@ -326,6 +326,164 @@ $script:V3LastExternalLinkAt = Get-Date "2000-01-01"
 $script:V3LastExternalLinkUrl = ""
 $script:V3LastExternalLinkAt = Get-Date "2000-01-01"
 
+function New-V3WorkflowResult {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Title,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Problem,
+
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$EvidenceScript,
+
+        [string[]]$LikelyCauses = @(),
+
+        [string[]]$NextActions = @(),
+
+        [string]$RiskLevel = "Baixo"
+    )
+
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine($Title.ToUpper())
+    [void]$sb.AppendLine(("=" * $Title.Length))
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
+    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
+    [void]$sb.AppendLine("Risco da acao: $RiskLevel")
+    [void]$sb.AppendLine("")
+
+    [void]$sb.AppendLine("PROBLEMA")
+    [void]$sb.AppendLine("--------")
+    [void]$sb.AppendLine($Problem)
+    [void]$sb.AppendLine("")
+
+    [void]$sb.AppendLine("COLETA AUTOMATICA")
+    [void]$sb.AppendLine("-----------------")
+
+    try {
+        $evidence = & $EvidenceScript
+
+        if ([string]::IsNullOrWhiteSpace($evidence)) {
+            [void]$sb.AppendLine("Nenhuma evidencia automatica retornada.")
+        }
+        else {
+            [void]$sb.AppendLine($evidence.Trim())
+        }
+    }
+    catch {
+        [void]$sb.AppendLine("Falha ao coletar evidencia automatica.")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+    }
+
+    [void]$sb.AppendLine("")
+
+    [void]$sb.AppendLine("CAUSAS PROVAVEIS")
+    [void]$sb.AppendLine("----------------")
+
+    if ($LikelyCauses.Count -gt 0) {
+        foreach ($cause in $LikelyCauses) {
+            [void]$sb.AppendLine("- $cause")
+        }
+    }
+    else {
+        [void]$sb.AppendLine("- Nao definido.")
+    }
+
+    [void]$sb.AppendLine("")
+
+    [void]$sb.AppendLine("PROXIMAS ACOES")
+    [void]$sb.AppendLine("--------------")
+
+    if ($NextActions.Count -gt 0) {
+        foreach ($action in $NextActions) {
+            [void]$sb.AppendLine("- $action")
+        }
+    }
+    else {
+        [void]$sb.AppendLine("- Nao definido.")
+    }
+
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("OBSERVACAO")
+    [void]$sb.AppendLine("----------")
+    [void]$sb.AppendLine("Este fluxo guiado organiza o atendimento e nao executa correcoes destrutivas automaticamente.")
+
+    return $sb.ToString()
+}
+
+function Get-V3GuidedHomeText {
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine("ATENDIMENTO GUIADO")
+    [void]$sb.AppendLine("==================")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Escolha um problema para o Toolkit conduzir o atendimento.")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Fluxos disponiveis nesta etapa:")
+    [void]$sb.AppendLine("- Sem internet")
+    [void]$sb.AppendLine("- VPN / Appgate")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Cada fluxo organiza:")
+    [void]$sb.AppendLine("- Problema")
+    [void]$sb.AppendLine("- Coleta automatica")
+    [void]$sb.AppendLine("- Causas provaveis")
+    [void]$sb.AppendLine("- Proximas acoes")
+    [void]$sb.AppendLine("- Evidencia para copiar")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Nenhuma correcao critica e executada automaticamente.")
+
+    return $sb.ToString()
+}
+
+function Invoke-V3WorkflowNoInternet {
+    return New-V3WorkflowResult `
+        -Title "Atendimento Guiado - Sem Internet" `
+        -Problem "Usuario relata falha de conexao, lentidao, ausencia de internet ou indisponibilidade de acesso a sistemas." `
+        -EvidenceScript { Invoke-V3QuickInternet } `
+        -LikelyCauses @(
+            "Falha de DNS",
+            "Gateway indisponivel",
+            "Adaptador sem IP valido",
+            "Rede local desconectada",
+            "Bloqueio temporario de conectividade",
+            "Instabilidade externa do provedor ou rota"
+        ) `
+        -NextActions @(
+            "Confirmar se o cabo ou Wi-Fi esta conectado",
+            "Validar IP, gateway e DNS retornados na coleta",
+            "Testar acesso por nome e por IP",
+            "Executar Limpar DNS se houver indicio de cache incorreto",
+            "Escalar para rede se gateway ou rota estiver indisponivel"
+        ) `
+        -RiskLevel "Baixo"
+}
+
+function Invoke-V3WorkflowVpn {
+    return New-V3WorkflowResult `
+        -Title "Atendimento Guiado - VPN / Appgate" `
+        -Problem "Usuario relata falha para conectar VPN, Appgate, acesso remoto ou sistemas internos." `
+        -EvidenceScript { Invoke-V3QuickVpn } `
+        -LikelyCauses @(
+            "Servico de VPN parado",
+            "Rede local sem internet",
+            "DNS ou rota impedindo acesso ao concentrador",
+            "Cliente VPN corrompido ou desatualizado",
+            "Credencial, certificado ou politica de acesso com falha",
+            "Interferencia de firewall, proxy ou antivirus"
+        ) `
+        -NextActions @(
+            "Confirmar se a internet local esta funcionando",
+            "Validar se o erro ocorre antes ou depois da autenticacao",
+            "Reiniciar o cliente VPN/Appgate",
+            "Coletar print ou mensagem exata do erro",
+            "Escalar com evidencia se houver falha de certificado, politica ou servidor"
+        ) `
+        -RiskLevel "Baixo"
+}
 function Copy-V3OutputToClipboard {
     try {
         if ($null -eq $script:TxtV3Output) {
@@ -611,14 +769,14 @@ $CardV3Admin.Text = if (Test-V3Admin) { "Sim" } else { "Não" }
 $CardV3Version.Text = Get-V3VersionInfo
 
 $window.FindName("BtnV3NavHome").Add_Click({ Set-V3Output (Get-V3HomeText) })
-$window.FindName("BtnV3NavGuided").Add_Click({ Set-V3Output "Atendimento Guiado:`r`n- Sem internet`r`n- VPN / Appgate`r`n- Teams / Outlook`r`n- Impressora`r`n- Windows Update`r`n- Máquina lenta" })
+$window.FindName("BtnV3NavGuided").Add_Click({ Set-V3Output (Get-V3GuidedHomeText) })
 $window.FindName("BtnV3NavEvidence").Add_Click({ Set-V3Output "Evidências:`r`n- Inventário`r`n- Diagnóstico de rede`r`n- Relatório`r`n- Pacote de suporte`r`n- Copiar resultado" })
 $window.FindName("BtnV3NavSafeFix").Add_Click({ Set-V3Output "Correções Seguras:`r`n- Limpar DNS`r`n- Renovar IP`r`n- Sincronizar horário`r`n- Reiniciar spooler`r`n- Limpar temporários" })
 $window.FindName("BtnV3NavAdvanced").Add_Click({ Set-V3Output "Área avançada:`r`nAções críticas ficarão protegidas por confirmação, mensagem de risco e log.`r`n`r`nExemplos:`r`n- SFC`r`n- DISM`r`n- Reset Winsock`r`n- Reset TCP/IP`r`n- Correções Appgate/TPM" })
 $window.FindName("BtnV3NavToolkit").Add_Click({ Set-V3Output "Toolkit:`r`n- Status`r`n- Atualização`r`n- Rollback`r`n- Logs`r`n- Validação`r`n`r`nEssas funções serão conectadas ao motor atual em etapas futuras." })
 
-$window.FindName("BtnV3QuickInternet").Add_Click({ Set-V3Output (Invoke-V3QuickInternet) })
-$window.FindName("BtnV3QuickVpn").Add_Click({ Set-V3Output (Invoke-V3QuickVpn) })
+$window.FindName("BtnV3QuickInternet").Add_Click({ Set-V3Output (Invoke-V3WorkflowNoInternet) })
+$window.FindName("BtnV3QuickVpn").Add_Click({ Set-V3Output (Invoke-V3WorkflowVpn) })
 $window.FindName("BtnV3Inventory").Add_Click({ Set-V3Output (Get-V3InventoryLite) })
 $window.FindName("BtnV3Network").Add_Click({ Set-V3Output (Invoke-V3NetworkDiagnostic) })
 $window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3FlushDns) })
@@ -644,5 +802,6 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
+
 
 
