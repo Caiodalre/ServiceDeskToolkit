@@ -698,6 +698,132 @@ function Invoke-V3SafeFlushDns {
 
     return $sb.ToString()
 }
+function Invoke-V3SafeTimeSync {
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine("CORRECAO SEGURA - SINCRONIZAR HORARIO")
+    [void]$sb.AppendLine("-------------------------------------")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
+    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
+    [void]$sb.AppendLine("Risco da acao: Baixo")
+    [void]$sb.AppendLine("")
+
+    try {
+        $serviceBefore = Get-Service -Name "w32time" -ErrorAction SilentlyContinue
+
+        [void]$sb.AppendLine("VALIDACAO ANTES")
+        [void]$sb.AppendLine("---------------")
+
+        if ($null -eq $serviceBefore) {
+            [void]$sb.AppendLine("Servico Windows Time: Nao encontrado")
+        }
+        else {
+            [void]$sb.AppendLine("Servico Windows Time: $($serviceBefore.Status)")
+        }
+
+        $statusBeforeRaw = & w32tm /query /status 2>&1
+        $statusBeforeText = $statusBeforeRaw | Out-String
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Status antes:")
+        [void]$sb.AppendLine($statusBeforeText.Trim())
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("EXECUCAO")
+        [void]$sb.AppendLine("--------")
+
+        if ($null -ne $serviceBefore -and $serviceBefore.Status -ne "Running") {
+            if (Test-V3Admin) {
+                try {
+                    Start-Service -Name "w32time" -ErrorAction Stop
+                    [void]$sb.AppendLine("Servico Windows Time iniciado.")
+                    Start-Sleep -Seconds 1
+                }
+                catch {
+                    [void]$sb.AppendLine("Nao foi possivel iniciar o servico Windows Time.")
+                    [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+                }
+            }
+            else {
+                [void]$sb.AppendLine("Servico Windows Time esta parado, mas a ferramenta nao esta em modo administrador.")
+                [void]$sb.AppendLine("A sincronizacao sera tentada mesmo assim.")
+            }
+        }
+        else {
+            [void]$sb.AppendLine("Servico Windows Time ja estava em execucao ou nao foi localizado.")
+        }
+
+        $resyncRaw = & w32tm /resync /force 2>&1
+        $resyncExitCode = $LASTEXITCODE
+        $resyncText = $resyncRaw | Out-String
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Resultado do comando:")
+        [void]$sb.AppendLine($resyncText.Trim())
+
+        Start-Sleep -Seconds 2
+
+        $serviceAfter = Get-Service -Name "w32time" -ErrorAction SilentlyContinue
+
+        $statusAfterRaw = & w32tm /query /status 2>&1
+        $statusAfterText = $statusAfterRaw | Out-String
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("VALIDACAO DEPOIS")
+        [void]$sb.AppendLine("----------------")
+
+        if ($null -eq $serviceAfter) {
+            [void]$sb.AppendLine("Servico Windows Time: Nao encontrado")
+        }
+        else {
+            [void]$sb.AppendLine("Servico Windows Time: $($serviceAfter.Status)")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Status depois:")
+        [void]$sb.AppendLine($statusAfterText.Trim())
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
+        [void]$sb.AppendLine("--------------------")
+
+        $resyncLooksOk = $false
+
+        if ($resyncExitCode -eq 0) {
+            $resyncLooksOk = $true
+        }
+
+        if ($resyncText -match "success|successful|exito|concluido|conclu.do") {
+            $resyncLooksOk = $true
+        }
+
+        if ($resyncLooksOk) {
+            [void]$sb.AppendLine("Resultado: sincronizacao de horario solicitada com sucesso.")
+            [void]$sb.AppendLine("Proxima acao recomendada: pedir ao usuario para testar novamente login, VPN, Teams, Outlook ou sistema afetado.")
+        }
+        elseif ($null -ne $serviceAfter -and $serviceAfter.Status -ne "Running") {
+            [void]$sb.AppendLine("Resultado: sincronizacao nao confirmada e o servico Windows Time nao esta em execucao.")
+            [void]$sb.AppendLine("Proxima acao recomendada: executar como administrador, iniciar o servico Windows Time e tentar novamente.")
+        }
+        elseif (-not (Test-V3Admin)) {
+            [void]$sb.AppendLine("Resultado: sincronizacao nao confirmada. Pode haver restricao por falta de permissao administrativa.")
+            [void]$sb.AppendLine("Proxima acao recomendada: executar a ferramenta como administrador e tentar novamente.")
+        }
+        else {
+            [void]$sb.AppendLine("Resultado: sincronizacao nao confirmada pelo comando w32tm.")
+            [void]$sb.AppendLine("Proxima acao recomendada: validar GPO de horario, NTP, dominio, firewall, proxy ou conectividade com o controlador de dominio.")
+        }
+    }
+    catch {
+        [void]$sb.AppendLine("Falha ao executar sincronizacao segura de horario.")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+    }
+
+    return $sb.ToString()
+}
 function New-V3WorkflowResult {
     param(
         [Parameter(Mandatory = $true)]
@@ -1153,7 +1279,7 @@ $window.FindName("BtnV3QuickVpn").Add_Click({ Set-V3Output (Invoke-V3WorkflowVpn
 $window.FindName("BtnV3Inventory").Add_Click({ Set-V3Output (Get-V3InventoryLite) })
 $window.FindName("BtnV3Network").Add_Click({ Set-V3Output (Invoke-V3NetworkDiagnostic) })
 $window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3SafeFlushDns) })
-$window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3TimeSync) })
+$window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3SafeTimeSync) })
 $window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3RestartSpooler) })
 $window.FindName("BtnV3AdvancedInfo").Add_Click({ Set-V3Output "Área avançada protegida.`r`n`r`nNesta primeira V3, ações críticas não ficam expostas na tela principal.`r`nElas serão conectadas depois com confirmação, risco e log." })
 $window.FindName("BtnV3CopyOutput").Add_Click({ Copy-V3OutputToClipboard })
@@ -1175,6 +1301,7 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
+
 
 
 
