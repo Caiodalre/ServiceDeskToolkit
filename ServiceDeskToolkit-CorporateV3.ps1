@@ -824,6 +824,142 @@ function Invoke-V3SafeTimeSync {
 
     return $sb.ToString()
 }
+function Invoke-V3SafeSpoolerRestart {
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine("CORRECAO SEGURA - REINICIAR SPOOLER")
+    [void]$sb.AppendLine("-----------------------------------")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
+    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
+    [void]$sb.AppendLine("Risco da acao: Baixo")
+    [void]$sb.AppendLine("")
+
+    try {
+        $serviceBefore = Get-Service -Name "Spooler" -ErrorAction SilentlyContinue
+
+        $jobsBefore = @()
+
+        try {
+            $jobsBefore = @(Get-CimInstance Win32_PrintJob -ErrorAction SilentlyContinue)
+        }
+        catch {
+            $jobsBefore = @()
+        }
+
+        [void]$sb.AppendLine("VALIDACAO ANTES")
+        [void]$sb.AppendLine("---------------")
+
+        if ($null -eq $serviceBefore) {
+            [void]$sb.AppendLine("Servico Spooler: Nao encontrado")
+        }
+        else {
+            [void]$sb.AppendLine("Servico Spooler: $($serviceBefore.Status)")
+        }
+
+        [void]$sb.AppendLine("Trabalhos na fila de impressao: $($jobsBefore.Count)")
+
+        if ($jobsBefore.Count -gt 0) {
+            [void]$sb.AppendLine("")
+            [void]$sb.AppendLine("Filas detectadas antes:")
+            foreach ($job in ($jobsBefore | Select-Object -First 10)) {
+                [void]$sb.AppendLine("- $($job.Name)")
+            }
+
+            if ($jobsBefore.Count -gt 10) {
+                [void]$sb.AppendLine("- Outros trabalhos omitidos: $($jobsBefore.Count - 10)")
+            }
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("EXECUCAO")
+        [void]$sb.AppendLine("--------")
+
+        if ($null -eq $serviceBefore) {
+            [void]$sb.AppendLine("Nao foi possivel reiniciar. O servico Spooler nao foi encontrado.")
+        }
+        elseif (-not (Test-V3Admin)) {
+            [void]$sb.AppendLine("A ferramenta nao esta em modo administrador.")
+            [void]$sb.AppendLine("O Spooler normalmente exige permissao administrativa para reiniciar.")
+            [void]$sb.AppendLine("Nenhuma alteracao foi executada.")
+        }
+        else {
+            try {
+                if ($serviceBefore.Status -eq "Running") {
+                    Restart-Service -Name "Spooler" -Force -ErrorAction Stop
+                    [void]$sb.AppendLine("Comando executado: Restart-Service -Name Spooler -Force")
+                }
+                else {
+                    Start-Service -Name "Spooler" -ErrorAction Stop
+                    [void]$sb.AppendLine("Servico estava parado. Comando executado: Start-Service -Name Spooler")
+                }
+
+                Start-Sleep -Seconds 2
+            }
+            catch {
+                [void]$sb.AppendLine("Falha ao reiniciar/iniciar o Spooler.")
+                [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+            }
+        }
+
+        $serviceAfter = Get-Service -Name "Spooler" -ErrorAction SilentlyContinue
+
+        $jobsAfter = @()
+
+        try {
+            $jobsAfter = @(Get-CimInstance Win32_PrintJob -ErrorAction SilentlyContinue)
+        }
+        catch {
+            $jobsAfter = @()
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("VALIDACAO DEPOIS")
+        [void]$sb.AppendLine("----------------")
+
+        if ($null -eq $serviceAfter) {
+            [void]$sb.AppendLine("Servico Spooler: Nao encontrado")
+        }
+        else {
+            [void]$sb.AppendLine("Servico Spooler: $($serviceAfter.Status)")
+        }
+
+        [void]$sb.AppendLine("Trabalhos na fila de impressao: $($jobsAfter.Count)")
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
+        [void]$sb.AppendLine("--------------------")
+
+        if ($null -eq $serviceBefore) {
+            [void]$sb.AppendLine("Resultado: o servico Spooler nao foi localizado nesta maquina.")
+            [void]$sb.AppendLine("Proxima acao recomendada: validar instalacao do recurso de impressao do Windows.")
+        }
+        elseif (-not (Test-V3Admin)) {
+            [void]$sb.AppendLine("Resultado: nenhuma correcao foi executada por falta de permissao administrativa.")
+            [void]$sb.AppendLine("Proxima acao recomendada: executar o Toolkit como administrador e tentar novamente.")
+        }
+        elseif ($null -ne $serviceAfter -and $serviceAfter.Status -eq "Running") {
+            [void]$sb.AppendLine("Resultado: Spooler esta em execucao apos a correcao.")
+            [void]$sb.AppendLine("Proxima acao recomendada: pedir ao usuario para testar impressao novamente.")
+        }
+        elseif ($null -ne $serviceAfter -and $serviceAfter.Status -ne "Running") {
+            [void]$sb.AppendLine("Resultado: Spooler foi encontrado, mas nao ficou em execucao.")
+            [void]$sb.AppendLine("Proxima acao recomendada: validar driver de impressora, fila travada, permissao, evento do Windows ou reiniciar a maquina.")
+        }
+        else {
+            [void]$sb.AppendLine("Resultado: acao concluida, mas o estado final nao foi conclusivo.")
+            [void]$sb.AppendLine("Proxima acao recomendada: validar servico, filas e logs de impressao.")
+        }
+    }
+    catch {
+        [void]$sb.AppendLine("Falha ao executar correcao segura do Spooler.")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+    }
+
+    return $sb.ToString()
+}
 function New-V3WorkflowResult {
     param(
         [Parameter(Mandatory = $true)]
@@ -1280,7 +1416,7 @@ $window.FindName("BtnV3Inventory").Add_Click({ Set-V3Output (Get-V3InventoryLite
 $window.FindName("BtnV3Network").Add_Click({ Set-V3Output (Invoke-V3NetworkDiagnostic) })
 $window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3SafeFlushDns) })
 $window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3SafeTimeSync) })
-$window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3RestartSpooler) })
+$window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3SafeSpoolerRestart) })
 $window.FindName("BtnV3AdvancedInfo").Add_Click({ Set-V3Output "Área avançada protegida.`r`n`r`nNesta primeira V3, ações críticas não ficam expostas na tela principal.`r`nElas serão conectadas depois com confirmação, risco e log." })
 $window.FindName("BtnV3CopyOutput").Add_Click({ Copy-V3OutputToClipboard })
 $BtnV3LinkedIn = $window.FindName("BtnV3LinkedIn")
@@ -1301,6 +1437,7 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
+
 
 
 
