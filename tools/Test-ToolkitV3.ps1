@@ -234,7 +234,10 @@ $markers = @(
     "Invoke-V3SafeFlushDns",
     "CORRECAO SEGURA - LIMPAR DNS",
     "VALIDACAO ANTES",
-    "VALIDACAO DEPOIS"
+    "VALIDACAO DEPOIS",
+    "function Invoke-V3SafeTimeSync",
+    "Invoke-V3SafeTimeSync",
+    "CORRECAO SEGURA - SINCRONIZAR HORARIO"
 )
 
         foreach ($marker in $markers) {
