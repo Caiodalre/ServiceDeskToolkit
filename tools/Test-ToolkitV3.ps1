@@ -237,7 +237,10 @@ $markers = @(
     "VALIDACAO DEPOIS",
     "function Invoke-V3SafeTimeSync",
     "Invoke-V3SafeTimeSync",
-    "CORRECAO SEGURA - SINCRONIZAR HORARIO"
+    "CORRECAO SEGURA - SINCRONIZAR HORARIO",
+    "function Invoke-V3SafeSpoolerRestart",
+    "Invoke-V3SafeSpoolerRestart",
+    "CORRECAO SEGURA - REINICIAR SPOOLER"
 )
 
         foreach ($marker in $markers) {
