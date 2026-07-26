@@ -240,7 +240,13 @@ $markers = @(
     "CORRECAO SEGURA - SINCRONIZAR HORARIO",
     "function Invoke-V3SafeSpoolerRestart",
     "Invoke-V3SafeSpoolerRestart",
-    "CORRECAO SEGURA - REINICIAR SPOOLER"
+    "CORRECAO SEGURA - REINICIAR SPOOLER",
+    "function Invoke-V3NetworkDiagnostic",
+    "DIAGNOSTICO DE REDE - PAINEL CONSOLIDADO",
+    "ADAPTADORES ATIVOS",
+    "TESTES DE CONECTIVIDADE",
+    "ROTAS PRINCIPAIS",
+    "Tipo de acao: Diagnostico sem correcao"
 )
 
         foreach ($marker in $markers) {
