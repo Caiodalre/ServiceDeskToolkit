@@ -249,7 +249,11 @@ $requiredMarkers = @(
     "function Invoke-V3SafeTimeSync",
     "function Invoke-V3SafeFlushDns",
     "function Invoke-V3InternetDiagnosticSummary",
-    "function Invoke-V3VpnDiagnosticSummary"
+    "function Invoke-V3VpnDiagnosticSummary",
+    "INVENTARIO DA MAQUINA - PAINEL CONSOLIDADO",
+    "Tipo de acao: Coleta de inventario sem correcao",
+    "REDE RESUMIDA",
+    "BIOS / SERIAL"
 )
 
 foreach ($marker in $requiredMarkers) {
