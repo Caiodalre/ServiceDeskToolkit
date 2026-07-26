@@ -36,6 +36,7 @@ function Get-V3RawText {
 
     $response = Invoke-WebRequest -Uri $Url -UseBasicParsing
     $content = [string]$response.Content
+    $content = $content.TrimStart([char]0xFEFF)
 
     if ([string]::IsNullOrWhiteSpace($content)) {
         throw "Falha: conteudo vazio ao baixar $Name. URL: $Url"
