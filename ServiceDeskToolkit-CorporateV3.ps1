@@ -189,38 +189,206 @@ function Get-V3InventoryLite {
 function Invoke-V3NetworkDiagnostic {
     $sb = New-Object System.Text.StringBuilder
 
-    [void]$sb.AppendLine("Diagnóstico de Rede")
-    [void]$sb.AppendLine("===================")
+    [void]$sb.AppendLine("DIAGNOSTICO DE REDE - PAINEL CONSOLIDADO")
+    [void]$sb.AppendLine("----------------------------------------")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
+    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
+    [void]$sb.AppendLine("Tipo de acao: Diagnostico sem correcao")
     [void]$sb.AppendLine("")
 
     try {
-        [void]$sb.AppendLine("Configuração IP:")
-        [void]$sb.AppendLine((Get-NetIPConfiguration | Format-List | Out-String))
-    }
-    catch {
-        [void]$sb.AppendLine("Erro ao consultar IP: $($_.Exception.Message)")
-    }
+        $adapters = @(Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "IPEnabled=True" -ErrorAction SilentlyContinue)
 
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("Testes básicos:")
+        [void]$sb.AppendLine("ADAPTADORES ATIVOS")
+        [void]$sb.AppendLine("------------------")
 
-    foreach ($target in @("8.8.8.8", "google.com")) {
+        if ($adapters.Count -eq 0) {
+            [void]$sb.AppendLine("Nenhum adaptador com IP ativo encontrado.")
+        }
+        else {
+            foreach ($adapter in $adapters) {
+                $ipv4 = @()
+                $ipv6 = @()
+                $dnsList = @()
+                $gatewayList = @()
+
+                if ($adapter.IPAddress) {
+                    $ipv4 = @($adapter.IPAddress | Where-Object { $_ -match '^\d{1,3}(\.\d{1,3}){3}$' })
+                    $ipv6 = @($adapter.IPAddress | Where-Object { $_ -and $_ -notmatch '^\d{1,3}(\.\d{1,3}){3}$' -and $_ -notlike 'fe80*' })
+                }
+
+                if ($adapter.DNSServerSearchOrder) {
+                    $dnsList = @($adapter.DNSServerSearchOrder)
+                }
+
+                if ($adapter.DefaultIPGateway) {
+                    $gatewayList = @($adapter.DefaultIPGateway | Where-Object { $_ -and $_ -notlike 'fe80*' })
+                }
+
+                [void]$sb.AppendLine("Adaptador: $($adapter.Description)")
+                [void]$sb.AppendLine("MAC: $(if ($adapter.MACAddress) { $adapter.MACAddress } else { 'Nao encontrado' })")
+                [void]$sb.AppendLine("DHCP ativo: $(if ($adapter.DHCPEnabled) { 'Sim' } else { 'Nao' })")
+                [void]$sb.AppendLine("IPv4: $(if ($ipv4.Count -gt 0) { $ipv4 -join ', ' } else { 'Nao encontrado' })")
+                [void]$sb.AppendLine("IPv6: $(if ($ipv6.Count -gt 0) { $ipv6 -join ', ' } else { 'Nao listado' })")
+                [void]$sb.AppendLine("Gateway: $(if ($gatewayList.Count -gt 0) { $gatewayList -join ', ' } else { 'Nao encontrado' })")
+                [void]$sb.AppendLine("DNS: $(if ($dnsList.Count -gt 0) { $dnsList -join ', ' } else { 'Nao encontrado' })")
+                [void]$sb.AppendLine("")
+            }
+        }
+
+        $primaryAdapter = $adapters |
+            Where-Object { $_.DefaultIPGateway -and $_.IPAddress } |
+            Select-Object -First 1
+
+        if ($null -eq $primaryAdapter) {
+            $primaryAdapter = $adapters | Select-Object -First 1
+        }
+
+        $primaryIpv4 = @()
+        $primaryGateway = $null
+        $primaryDns = @()
+
+        if ($null -ne $primaryAdapter) {
+            if ($primaryAdapter.IPAddress) {
+                $primaryIpv4 = @($primaryAdapter.IPAddress | Where-Object { $_ -match '^\d{1,3}(\.\d{1,3}){3}$' })
+            }
+
+            if ($primaryAdapter.DefaultIPGateway) {
+                $primaryGateway = $primaryAdapter.DefaultIPGateway |
+                    Where-Object { $_ -and $_ -notlike 'fe80*' } |
+                    Select-Object -First 1
+            }
+
+            if ($primaryAdapter.DNSServerSearchOrder) {
+                $primaryDns = @($primaryAdapter.DNSServerSearchOrder)
+            }
+        }
+
+        $hasAdapter = ($null -ne $primaryAdapter)
+        $hasIp = ($primaryIpv4.Count -gt 0)
+        $hasGateway = -not [string]::IsNullOrWhiteSpace($primaryGateway)
+        $hasDns = ($primaryDns.Count -gt 0)
+
+        $gatewayOk = $false
+        $internetCloudflareOk = $false
+        $internetGoogleOk = $false
+        $dnsMicrosoftOk = $false
+        $dnsError = $null
+
+        if ($hasGateway) {
+            $gatewayOk = Test-Connection -ComputerName $primaryGateway -Count 1 -Quiet -ErrorAction SilentlyContinue
+        }
+
+        $internetCloudflareOk = Test-Connection -ComputerName "1.1.1.1" -Count 1 -Quiet -ErrorAction SilentlyContinue
+        $internetGoogleOk = Test-Connection -ComputerName "8.8.8.8" -Count 1 -Quiet -ErrorAction SilentlyContinue
+
         try {
-            $ok = Test-Connection -ComputerName $target -Count 2 -Quiet -ErrorAction SilentlyContinue
-            [void]$sb.AppendLine("- Ping $($target): $(if ($ok) { 'OK' } else { 'Falhou' })")
+            $resolved = Resolve-DnsName -Name "www.microsoft.com" -Type A -ErrorAction Stop
+
+            if ($resolved) {
+                $dnsMicrosoftOk = $true
+            }
         }
         catch {
-            [void]$sb.AppendLine("- Ping $($target): erro - $($_.Exception.Message)")
+            $dnsError = $_.Exception.Message
         }
-    }
 
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("Evidência para chamado:")
-    [void]$sb.AppendLine("- Anexar esta saída se houver falha de IP, gateway, DNS ou internet.")
+        [void]$sb.AppendLine("TESTES DE CONECTIVIDADE")
+        [void]$sb.AppendLine("-----------------------")
+        [void]$sb.AppendLine("Adaptador principal: $(if ($hasAdapter) { $primaryAdapter.Description } else { 'Nao encontrado' })")
+        [void]$sb.AppendLine("IPv4 principal: $(if ($hasIp) { $primaryIpv4 -join ', ' } else { 'Nao encontrado' })")
+        [void]$sb.AppendLine("Gateway principal: $(if ($hasGateway) { $primaryGateway } else { 'Nao encontrado' })")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Gateway responde: $(if ($gatewayOk) { 'Sim' } else { 'Nao' })")
+        [void]$sb.AppendLine("Internet por IP 1.1.1.1: $(if ($internetCloudflareOk) { 'Sim' } else { 'Nao' })")
+        [void]$sb.AppendLine("Internet por IP 8.8.8.8: $(if ($internetGoogleOk) { 'Sim' } else { 'Nao' })")
+        [void]$sb.AppendLine("Resolucao DNS www.microsoft.com: $(if ($dnsMicrosoftOk) { 'Sim' } else { 'Nao' })")
+
+        if (-not $dnsMicrosoftOk -and $dnsError) {
+            [void]$sb.AppendLine("Erro DNS: $dnsError")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("ROTAS PRINCIPAIS")
+        [void]$sb.AppendLine("----------------")
+
+        try {
+            if (Get-Command Get-NetRoute -ErrorAction SilentlyContinue) {
+                $routes = @(Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue |
+                    Sort-Object RouteMetric, InterfaceMetric |
+                    Select-Object -First 8 DestinationPrefix, NextHop, InterfaceAlias, RouteMetric, InterfaceMetric)
+
+                if ($routes.Count -gt 0) {
+                    [void]$sb.AppendLine(($routes | Format-Table -AutoSize | Out-String).Trim())
+                }
+                else {
+                    [void]$sb.AppendLine("Nenhuma rota padrao IPv4 encontrada via Get-NetRoute.")
+                }
+            }
+            else {
+                [void]$sb.AppendLine("Get-NetRoute indisponivel nesta versao do PowerShell/Windows.")
+            }
+        }
+        catch {
+            [void]$sb.AppendLine("Falha ao consultar rotas principais.")
+            [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
+        [void]$sb.AppendLine("--------------------")
+
+        $cause = ""
+        $nextAction = ""
+
+        if (-not $hasAdapter) {
+            $cause = "Nenhum adaptador de rede ativo foi encontrado."
+            $nextAction = "Validar cabo, Wi-Fi, adaptador desativado, driver de rede ou placa de rede."
+        }
+        elseif (-not $hasIp) {
+            $cause = "Adaptador ativo encontrado, mas sem IPv4 valido."
+            $nextAction = "Validar DHCP, cabo/Wi-Fi, VLAN, driver de rede ou renovar IP."
+        }
+        elseif (-not $hasGateway) {
+            $cause = "A maquina possui IPv4, mas nao possui gateway principal."
+            $nextAction = "Validar escopo DHCP, configuracao manual, VLAN ou politica de rede."
+        }
+        elseif (-not $gatewayOk) {
+            $cause = "Gateway configurado nao respondeu ao teste."
+            $nextAction = "Validar rede local, switch, roteador, Wi-Fi, VLAN ou bloqueio ICMP."
+        }
+        elseif ($gatewayOk -and -not $internetCloudflareOk -and -not $internetGoogleOk) {
+            $cause = "Rede local responde, mas nao houve resposta externa por IP."
+            $nextAction = "Validar rota externa, firewall, proxy, provedor, VPN ou bloqueio de saida."
+        }
+        elseif (($internetCloudflareOk -or $internetGoogleOk) -and -not $dnsMicrosoftOk) {
+            $cause = "Internet por IP responde, mas resolucao DNS falhou."
+            $nextAction = "Executar Limpar DNS, validar servidores DNS e testar novamente."
+        }
+        elseif ($gatewayOk -and ($internetCloudflareOk -or $internetGoogleOk) -and $dnsMicrosoftOk) {
+            $cause = "Conectividade basica aparenta estar funcional."
+            $nextAction = "Validar sistema especifico, proxy, VPN, URL de destino ou indisponibilidade externa."
+        }
+        else {
+            $cause = "Diagnostico nao conclusivo com os testes basicos."
+            $nextAction = "Executar fluxo Sem internet, coletar erro exato e escalar se persistir."
+        }
+
+        [void]$sb.AppendLine("Causa provavel: $cause")
+        [void]$sb.AppendLine("Proxima acao recomendada: $nextAction")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Observacao: este diagnostico nao executa nenhuma correcao automaticamente.")
+    }
+    catch {
+        [void]$sb.AppendLine("Falha ao executar diagnostico consolidado de rede.")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+    }
 
     return $sb.ToString()
 }
-
 function Invoke-V3QuickInternet {
     $sb = New-Object System.Text.StringBuilder
 
@@ -1437,6 +1605,7 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
+
 
 
 
