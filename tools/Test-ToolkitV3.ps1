@@ -246,7 +246,17 @@ $markers = @(
     "ADAPTADORES ATIVOS",
     "TESTES DE CONECTIVIDADE",
     "ROTAS PRINCIPAIS",
-    "Tipo de acao: Diagnostico sem correcao"
+    "Tipo de acao: Diagnostico sem correcao",
+    "function Get-V3InventoryLite",
+    "INVENTARIO DA MAQUINA - PAINEL CONSOLIDADO",
+    "IDENTIFICACAO",
+    "SISTEMA OPERACIONAL",
+    "HARDWARE PRINCIPAL",
+    "MEMORIA RAM",
+    "DISCOS",
+    "BIOS / SERIAL",
+    "REDE RESUMIDA",
+    "Tipo de acao: Coleta de inventario sem correcao"
 )
 
         foreach ($marker in $markers) {
