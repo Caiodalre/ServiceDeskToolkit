@@ -253,7 +253,21 @@ $requiredMarkers = @(
     "INVENTARIO DA MAQUINA - PAINEL CONSOLIDADO",
     "Tipo de acao: Coleta de inventario sem correcao",
     "REDE RESUMIDA",
-    "BIOS / SERIAL"
+    "BIOS / SERIAL",
+    "function Invoke-V3PrintersPanel",
+    "BtnV3Printers",
+    "Invoke-V3PrintersPanel",
+    "PAINEL DE IMPRESSORAS - DIAGNOSTICO CONSOLIDADO",
+    "Tipo de acao: Diagnostico de impressoras sem correcao",
+    "SERVICO SPOOLER",
+    "IMPRESSORAS INSTALADAS",
+    "FILA DE IMPRESSAO",
+    "IMPRESSORAS OFFLINE / COM ALERTA",
+    "PORTAS UTILIZADAS",
+    "DRIVERS PRINCIPAIS",
+    "CONCLUSAO AUTOMATICA",
+    "ActionGridButton",
+    "UniformGrid Columns"
 )
 
 foreach ($marker in $requiredMarkers) {
