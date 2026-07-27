@@ -5,6 +5,58 @@ Add-Type -AssemblyName System.Xaml
 
 $script:RootPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:TxtV3Output = $null
+$script:V3HealthModulesAvailable = $false
+$script:V3HealthModuleError = $null
+
+try {
+    $diagnosticsModulePath = Join-Path `
+        $script:RootPath `
+        "src\ServiceDeskToolkit.Diagnostics\ServiceDeskToolkit.Diagnostics.psm1"
+    $healthModulePath = Join-Path `
+        $script:RootPath `
+        "src\ServiceDeskToolkit.Health\ServiceDeskToolkit.Health.psm1"
+
+    Import-Module `
+        -Name $diagnosticsModulePath `
+        -Force `
+        -ErrorAction Stop
+    Import-Module `
+        -Name $healthModulePath `
+        -Force `
+        -ErrorAction Stop
+
+    $script:V3HealthModulesAvailable = $true
+}
+catch {
+    $script:V3HealthModuleError = $_.Exception.Message
+}
+
+$script:V3OperationalModulesAvailable = $false
+$script:V3OperationalModuleError = $null
+
+try {
+    $operationalModulePaths = @(
+        "src\ServiceDeskToolkit.Inventory\ServiceDeskToolkit.Inventory.psm1",
+        "src\ServiceDeskToolkit.Network\ServiceDeskToolkit.Network.psm1",
+        "src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1"
+    )
+
+    foreach ($relativeModulePath in $operationalModulePaths) {
+        $modulePath = Join-Path `
+            $script:RootPath `
+            $relativeModulePath
+
+        Import-Module `
+            -Name $modulePath `
+            -Force `
+            -ErrorAction Stop
+    }
+
+    $script:V3OperationalModulesAvailable = $true
+}
+catch {
+    $script:V3OperationalModuleError = $_.Exception.Message
+}
 
 function Test-V3Admin {
     try {
@@ -17,19 +69,74 @@ function Test-V3Admin {
     }
 }
 
+function New-V3OperationalFailureReport {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Header,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Divider,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ActionType,
+
+        [Parameter(Mandatory = $true)]
+        [string]$FailureMessage,
+
+        [string]$ErrorDetail,
+        [datetime]$GeneratedAt = (Get-Date)
+    )
+
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine($Header)
+    [void]$sb.AppendLine($Divider)
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine(
+        "Gerado em: $($GeneratedAt.ToString('dd/MM/yyyy HH:mm:ss'))"
+    )
+    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+    [void]$sb.AppendLine(
+        "Usuario: $env:USERDOMAIN\$env:USERNAME"
+    )
+    [void]$sb.AppendLine(
+        "Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })"
+    )
+    [void]$sb.AppendLine("Tipo de acao: $ActionType")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine($FailureMessage)
+
+    if (-not [string]::IsNullOrWhiteSpace($ErrorDetail)) {
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Detalhe: $ErrorDetail")
+    }
+
+    return $sb.ToString()
+}
+
 function Get-V3VersionInfo {
     try {
-        $versionPath = Join-Path $script:RootPath "version.json"
+        $versionPath = Join-Path $script:RootPath "version-v3.json"
 
         if (Test-Path $versionPath) {
             $json = Get-Content $versionPath -Raw | ConvertFrom-Json
-            return "$($json.version) / $($json.channel)"
+
+            if (-not [string]::IsNullOrWhiteSpace([string]$json.version)) {
+                $channel = if ([string]::IsNullOrWhiteSpace([string]$json.channel)) {
+                    "canal não informado"
+                }
+                else {
+                    [string]$json.channel
+                }
+
+                return "$($json.version) / $channel"
+            }
         }
 
-        return "V3 Preview"
+        return "V3 Preview / versão não informada"
     }
     catch {
-        return "V3 Preview"
+        return "V3 Preview / versão inválida"
     }
 }
 
@@ -69,452 +176,75 @@ Use Atendimento Guiado para iniciar uma triagem.
 }
 
 function Get-V3InventoryLite {
-    $sb = New-Object System.Text.StringBuilder
+    $generatedAt = Get-Date
+    $failureParameters = @{
+        Header = "INVENTARIO DA MAQUINA - PAINEL CONSOLIDADO"
+        Divider = "------------------------------------------"
+        ActionType = "Coleta de inventario sem correcao"
+        FailureMessage = "Nao foi possivel gerar o inventario completo."
+        GeneratedAt = $generatedAt
+    }
 
-    [void]$sb.AppendLine("INVENTARIO DA MAQUINA - PAINEL CONSOLIDADO")
-    [void]$sb.AppendLine("------------------------------------------")
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
-    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
-    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
-    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
-    [void]$sb.AppendLine("Tipo de acao: Coleta de inventario sem correcao")
-    [void]$sb.AppendLine("")
+    if (-not $script:V3OperationalModulesAvailable) {
+        $failureParameters.ErrorDetail = $script:V3OperationalModuleError
+        return New-V3OperationalFailureReport @failureParameters
+    }
 
     try {
-        $computer = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop
-        $os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
-        $bios = Get-CimInstance Win32_BIOS -ErrorAction Stop
-        $processor = Get-CimInstance Win32_Processor -ErrorAction Stop | Select-Object -First 1
-        $baseboard = Get-CimInstance Win32_BaseBoard -ErrorAction SilentlyContinue | Select-Object -First 1
-        $memoryModules = @(Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue)
-        $disks = @(Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue)
-        $adapters = @(Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "IPEnabled=True" -ErrorAction SilentlyContinue)
-
-        $totalRamGb = 0
-
-        if ($computer.TotalPhysicalMemory) {
-            $totalRamGb = [Math]::Round(($computer.TotalPhysicalMemory / 1GB), 2)
+        $snapshot = Get-ToolkitInventorySnapshot -ObservedAt $generatedAt
+        $assessment = Get-ToolkitInventoryAssessment -Snapshot $snapshot
+        $formatParameters = @{
+            Snapshot = $snapshot
+            Assessment = $assessment
+            ComputerName = $env:COMPUTERNAME
+            UserName = "$env:USERDOMAIN\$env:USERNAME"
+            IsAdministrator = (Test-V3Admin)
+            GeneratedAt = $generatedAt
         }
 
-        $lastBoot = $os.LastBootUpTime
-        $uptimeText = "Nao encontrado"
-
-        if ($lastBoot) {
-            $uptime = New-TimeSpan -Start $lastBoot -End (Get-Date)
-            $uptimeText = "{0} dia(s), {1} hora(s), {2} minuto(s)" -f $uptime.Days, $uptime.Hours, $uptime.Minutes
-        }
-
-        $installDateText = "Nao encontrado"
-
-        if ($os.InstallDate) {
-            $installDateText = $os.InstallDate.ToString("dd/MM/yyyy HH:mm:ss")
-        }
-
-        $biosDateText = "Nao encontrado"
-
-        if ($bios.ReleaseDate) {
-            $biosDateText = $bios.ReleaseDate.ToString("dd/MM/yyyy")
-        }
-
-        $domainText = "Nao encontrado"
-
-        if ($computer.PartOfDomain) {
-            $domainText = "Dominio: $($computer.Domain)"
-        }
-        else {
-            $domainText = "Grupo de trabalho: $($computer.Workgroup)"
-        }
-
-        [void]$sb.AppendLine("IDENTIFICACAO")
-        [void]$sb.AppendLine("-------------")
-        [void]$sb.AppendLine("Nome da maquina: $env:COMPUTERNAME")
-        [void]$sb.AppendLine("Fabricante: $(if ($computer.Manufacturer) { $computer.Manufacturer } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Modelo: $(if ($computer.Model) { $computer.Model } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Dominio/Workgroup: $domainText")
-        [void]$sb.AppendLine("Usuario logado: $env:USERDOMAIN\$env:USERNAME")
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("SISTEMA OPERACIONAL")
-        [void]$sb.AppendLine("-------------------")
-        [void]$sb.AppendLine("Sistema: $($os.Caption)")
-        [void]$sb.AppendLine("Versao: $($os.Version)")
-        [void]$sb.AppendLine("Build: $($os.BuildNumber)")
-        [void]$sb.AppendLine("Arquitetura: $($os.OSArchitecture)")
-        [void]$sb.AppendLine("Instalado em: $installDateText")
-        [void]$sb.AppendLine("Ultimo boot: $(if ($lastBoot) { $lastBoot.ToString('dd/MM/yyyy HH:mm:ss') } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Uptime: $uptimeText")
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("HARDWARE PRINCIPAL")
-        [void]$sb.AppendLine("------------------")
-        [void]$sb.AppendLine("Processador: $(if ($processor.Name) { $processor.Name.Trim() } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Nucleos fisicos: $(if ($processor.NumberOfCores) { $processor.NumberOfCores } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Processadores logicos: $(if ($processor.NumberOfLogicalProcessors) { $processor.NumberOfLogicalProcessors } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Clock maximo MHz: $(if ($processor.MaxClockSpeed) { $processor.MaxClockSpeed } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Memoria total: $totalRamGb GB")
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("MEMORIA RAM")
-        [void]$sb.AppendLine("-----------")
-
-        if ($memoryModules.Count -gt 0) {
-            foreach ($module in ($memoryModules | Sort-Object BankLabel)) {
-                $capacityGb = 0
-
-                if ($module.Capacity) {
-                    $capacityGb = [Math]::Round(($module.Capacity / 1GB), 2)
-                }
-
-                [void]$sb.AppendLine("Slot: $(if ($module.BankLabel) { $module.BankLabel } else { 'Nao informado' }) | Capacidade: $capacityGb GB | Velocidade: $(if ($module.Speed) { "$($module.Speed) MHz" } else { 'Nao informado' }) | Fabricante: $(if ($module.Manufacturer) { $module.Manufacturer } else { 'Nao informado' })")
-            }
-        }
-        else {
-            [void]$sb.AppendLine("Modulos de memoria nao encontrados via CIM.")
-        }
-
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("DISCOS")
-        [void]$sb.AppendLine("------")
-
-        if ($disks.Count -gt 0) {
-            foreach ($disk in ($disks | Sort-Object DeviceID)) {
-                $sizeGb = 0
-                $freeGb = 0
-                $freePercent = 0
-
-                if ($disk.Size) {
-                    $sizeGb = [Math]::Round(($disk.Size / 1GB), 2)
-                }
-
-                if ($disk.FreeSpace) {
-                    $freeGb = [Math]::Round(($disk.FreeSpace / 1GB), 2)
-                }
-
-                if ($disk.Size -gt 0) {
-                    $freePercent = [Math]::Round((($disk.FreeSpace / $disk.Size) * 100), 1)
-                }
-
-                [void]$sb.AppendLine("$($disk.DeviceID) | Tamanho: $sizeGb GB | Livre: $freeGb GB | Livre %: $freePercent% | Volume: $(if ($disk.VolumeName) { $disk.VolumeName } else { 'Sem nome' })")
-            }
-        }
-        else {
-            [void]$sb.AppendLine("Nenhum disco local encontrado.")
-        }
-
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("BIOS / SERIAL")
-        [void]$sb.AppendLine("-------------")
-        [void]$sb.AppendLine("Serial Number: $(if ($bios.SerialNumber) { $bios.SerialNumber } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("BIOS: $(if ($bios.SMBIOSBIOSVersion) { $bios.SMBIOSBIOSVersion } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Data BIOS: $biosDateText")
-        [void]$sb.AppendLine("Placa mae: $(if ($baseboard.Product) { $baseboard.Product } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Fabricante placa mae: $(if ($baseboard.Manufacturer) { $baseboard.Manufacturer } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("REDE RESUMIDA")
-        [void]$sb.AppendLine("-------------")
-
-        if ($adapters.Count -gt 0) {
-            foreach ($adapter in $adapters) {
-                $ipv4 = @()
-                $gateway = @()
-                $dns = @()
-
-                if ($adapter.IPAddress) {
-                    $ipv4 = @($adapter.IPAddress | Where-Object { $_ -match '^\d{1,3}(\.\d{1,3}){3}$' })
-                }
-
-                if ($adapter.DefaultIPGateway) {
-                    $gateway = @($adapter.DefaultIPGateway | Where-Object { $_ -and $_ -notlike 'fe80*' })
-                }
-
-                if ($adapter.DNSServerSearchOrder) {
-                    $dns = @($adapter.DNSServerSearchOrder)
-                }
-
-                [void]$sb.AppendLine("Adaptador: $($adapter.Description)")
-                [void]$sb.AppendLine("MAC: $(if ($adapter.MACAddress) { $adapter.MACAddress } else { 'Nao encontrado' })")
-                [void]$sb.AppendLine("DHCP: $(if ($adapter.DHCPEnabled) { 'Sim' } else { 'Nao' })")
-                [void]$sb.AppendLine("IPv4: $(if ($ipv4.Count -gt 0) { $ipv4 -join ', ' } else { 'Nao encontrado' })")
-                [void]$sb.AppendLine("Gateway: $(if ($gateway.Count -gt 0) { $gateway -join ', ' } else { 'Nao encontrado' })")
-                [void]$sb.AppendLine("DNS: $(if ($dns.Count -gt 0) { $dns -join ', ' } else { 'Nao encontrado' })")
-                [void]$sb.AppendLine("")
-            }
-        }
-        else {
-            [void]$sb.AppendLine("Nenhum adaptador de rede ativo encontrado.")
-            [void]$sb.AppendLine("")
-        }
-
-        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
-        [void]$sb.AppendLine("--------------------")
-
-        $observations = New-Object 'System.Collections.Generic.List[string]'
-
-        if ($totalRamGb -gt 0 -and $totalRamGb -lt 8) {
-            $observations.Add("Memoria RAM abaixo de 8 GB pode impactar desempenho em Office, Teams, navegador e ferramentas corporativas.")
-        }
-
-        $systemDrive = $disks | Where-Object { $_.DeviceID -eq $env:SystemDrive } | Select-Object -First 1
-
-        if ($systemDrive -and $systemDrive.Size -gt 0) {
-            $systemFreeGb = [Math]::Round(($systemDrive.FreeSpace / 1GB), 2)
-            $systemFreePercent = [Math]::Round((($systemDrive.FreeSpace / $systemDrive.Size) * 100), 1)
-
-            if ($systemFreeGb -lt 15 -or $systemFreePercent -lt 10) {
-                $observations.Add("Disco do sistema com pouco espaco livre: $systemFreeGb GB livres ($systemFreePercent%).")
-            }
-        }
-
-        if ($lastBoot) {
-            $currentUptime = New-TimeSpan -Start $lastBoot -End (Get-Date)
-
-            if ($currentUptime.TotalDays -ge 7) {
-                $observations.Add("Maquina esta ligada ha $([Math]::Floor($currentUptime.TotalDays)) dia(s). Reinicio pode ajudar em falhas intermitentes.")
-            }
-        }
-
-        if ($adapters.Count -eq 0) {
-            $observations.Add("Nenhum adaptador de rede ativo encontrado no inventario.")
-        }
-
-        if ($observations.Count -eq 0) {
-            [void]$sb.AppendLine("Resultado: inventario coletado sem alerta tecnico evidente.")
-            [void]$sb.AppendLine("Proxima acao recomendada: usar este resumo como base para triagem do chamado.")
-        }
-        else {
-            [void]$sb.AppendLine("Resultado: inventario coletado com observacoes relevantes.")
-            [void]$sb.AppendLine("")
-            [void]$sb.AppendLine("Observacoes:")
-            foreach ($item in $observations) {
-                [void]$sb.AppendLine("- $item")
-            }
-            [void]$sb.AppendLine("")
-            [void]$sb.AppendLine("Proxima acao recomendada: considerar as observacoes acima durante a triagem.")
-        }
-
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("OBSERVACOES PARA ATENDIMENTO")
-        [void]$sb.AppendLine("----------------------------")
-        [void]$sb.AppendLine("- Este inventario nao executa nenhuma correcao.")
-        [void]$sb.AppendLine("- Use o botao Copiar resultado para anexar as informacoes no chamado.")
-        [void]$sb.AppendLine("- Para falhas de rede, use tambem o Diagnostico de rede.")
-        [void]$sb.AppendLine("- Para problemas de impressao, use Reiniciar spooler como correcao segura.")
+        return Format-ToolkitInventoryReport @formatParameters
     }
     catch {
-        [void]$sb.AppendLine("Nao foi possivel gerar o inventario completo.")
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+        $failureParameters.ErrorDetail = $_.Exception.Message
+        return New-V3OperationalFailureReport @failureParameters
     }
-
-    return $sb.ToString()
 }
+
 function Invoke-V3NetworkDiagnostic {
-    $sb = New-Object System.Text.StringBuilder
+    $generatedAt = Get-Date
+    $failureParameters = @{
+        Header = "DIAGNOSTICO DE REDE - PAINEL CONSOLIDADO"
+        Divider = "----------------------------------------"
+        ActionType = "Diagnostico sem correcao"
+        FailureMessage = "Falha ao executar diagnostico consolidado de rede."
+        GeneratedAt = $generatedAt
+    }
 
-    [void]$sb.AppendLine("DIAGNOSTICO DE REDE - PAINEL CONSOLIDADO")
-    [void]$sb.AppendLine("----------------------------------------")
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
-    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
-    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
-    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
-    [void]$sb.AppendLine("Tipo de acao: Diagnostico sem correcao")
-    [void]$sb.AppendLine("")
+    if (-not $script:V3OperationalModulesAvailable) {
+        $failureParameters.ErrorDetail = $script:V3OperationalModuleError
+        return New-V3OperationalFailureReport @failureParameters
+    }
 
     try {
-        $adapters = @(Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "IPEnabled=True" -ErrorAction SilentlyContinue)
-
-        [void]$sb.AppendLine("ADAPTADORES ATIVOS")
-        [void]$sb.AppendLine("------------------")
-
-        if ($adapters.Count -eq 0) {
-            [void]$sb.AppendLine("Nenhum adaptador com IP ativo encontrado.")
-        }
-        else {
-            foreach ($adapter in $adapters) {
-                $ipv4 = @()
-                $ipv6 = @()
-                $dnsList = @()
-                $gatewayList = @()
-
-                if ($adapter.IPAddress) {
-                    $ipv4 = @($adapter.IPAddress | Where-Object { $_ -match '^\d{1,3}(\.\d{1,3}){3}$' })
-                    $ipv6 = @($adapter.IPAddress | Where-Object { $_ -and $_ -notmatch '^\d{1,3}(\.\d{1,3}){3}$' -and $_ -notlike 'fe80*' })
-                }
-
-                if ($adapter.DNSServerSearchOrder) {
-                    $dnsList = @($adapter.DNSServerSearchOrder)
-                }
-
-                if ($adapter.DefaultIPGateway) {
-                    $gatewayList = @($adapter.DefaultIPGateway | Where-Object { $_ -and $_ -notlike 'fe80*' })
-                }
-
-                [void]$sb.AppendLine("Adaptador: $($adapter.Description)")
-                [void]$sb.AppendLine("MAC: $(if ($adapter.MACAddress) { $adapter.MACAddress } else { 'Nao encontrado' })")
-                [void]$sb.AppendLine("DHCP ativo: $(if ($adapter.DHCPEnabled) { 'Sim' } else { 'Nao' })")
-                [void]$sb.AppendLine("IPv4: $(if ($ipv4.Count -gt 0) { $ipv4 -join ', ' } else { 'Nao encontrado' })")
-                [void]$sb.AppendLine("IPv6: $(if ($ipv6.Count -gt 0) { $ipv6 -join ', ' } else { 'Nao listado' })")
-                [void]$sb.AppendLine("Gateway: $(if ($gatewayList.Count -gt 0) { $gatewayList -join ', ' } else { 'Nao encontrado' })")
-                [void]$sb.AppendLine("DNS: $(if ($dnsList.Count -gt 0) { $dnsList -join ', ' } else { 'Nao encontrado' })")
-                [void]$sb.AppendLine("")
-            }
+        $snapshot = Get-ToolkitNetworkSnapshot -ObservedAt $generatedAt
+        $assessment = Get-ToolkitNetworkAssessment -Snapshot $snapshot
+        $formatParameters = @{
+            Snapshot = $snapshot
+            Assessment = $assessment
+            ComputerName = $env:COMPUTERNAME
+            UserName = "$env:USERDOMAIN\$env:USERNAME"
+            IsAdministrator = (Test-V3Admin)
+            GeneratedAt = $generatedAt
         }
 
-        $primaryAdapter = $adapters |
-            Where-Object { $_.DefaultIPGateway -and $_.IPAddress } |
-            Select-Object -First 1
-
-        if ($null -eq $primaryAdapter) {
-            $primaryAdapter = $adapters | Select-Object -First 1
-        }
-
-        $primaryIpv4 = @()
-        $primaryGateway = $null
-        $primaryDns = @()
-
-        if ($null -ne $primaryAdapter) {
-            if ($primaryAdapter.IPAddress) {
-                $primaryIpv4 = @($primaryAdapter.IPAddress | Where-Object { $_ -match '^\d{1,3}(\.\d{1,3}){3}$' })
-            }
-
-            if ($primaryAdapter.DefaultIPGateway) {
-                $primaryGateway = $primaryAdapter.DefaultIPGateway |
-                    Where-Object { $_ -and $_ -notlike 'fe80*' } |
-                    Select-Object -First 1
-            }
-
-            if ($primaryAdapter.DNSServerSearchOrder) {
-                $primaryDns = @($primaryAdapter.DNSServerSearchOrder)
-            }
-        }
-
-        $hasAdapter = ($null -ne $primaryAdapter)
-        $hasIp = ($primaryIpv4.Count -gt 0)
-        $hasGateway = -not [string]::IsNullOrWhiteSpace($primaryGateway)
-        $hasDns = ($primaryDns.Count -gt 0)
-
-        $gatewayOk = $false
-        $internetCloudflareOk = $false
-        $internetGoogleOk = $false
-        $dnsMicrosoftOk = $false
-        $dnsError = $null
-
-        if ($hasGateway) {
-            $gatewayOk = Test-Connection -ComputerName $primaryGateway -Count 1 -Quiet -ErrorAction SilentlyContinue
-        }
-
-        $internetCloudflareOk = Test-Connection -ComputerName "1.1.1.1" -Count 1 -Quiet -ErrorAction SilentlyContinue
-        $internetGoogleOk = Test-Connection -ComputerName "8.8.8.8" -Count 1 -Quiet -ErrorAction SilentlyContinue
-
-        try {
-            $resolved = Resolve-DnsName -Name "www.microsoft.com" -Type A -ErrorAction Stop
-
-            if ($resolved) {
-                $dnsMicrosoftOk = $true
-            }
-        }
-        catch {
-            $dnsError = $_.Exception.Message
-        }
-
-        [void]$sb.AppendLine("TESTES DE CONECTIVIDADE")
-        [void]$sb.AppendLine("-----------------------")
-        [void]$sb.AppendLine("Adaptador principal: $(if ($hasAdapter) { $primaryAdapter.Description } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("IPv4 principal: $(if ($hasIp) { $primaryIpv4 -join ', ' } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("Gateway principal: $(if ($hasGateway) { $primaryGateway } else { 'Nao encontrado' })")
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("Gateway responde: $(if ($gatewayOk) { 'Sim' } else { 'Nao' })")
-        [void]$sb.AppendLine("Internet por IP 1.1.1.1: $(if ($internetCloudflareOk) { 'Sim' } else { 'Nao' })")
-        [void]$sb.AppendLine("Internet por IP 8.8.8.8: $(if ($internetGoogleOk) { 'Sim' } else { 'Nao' })")
-        [void]$sb.AppendLine("Resolucao DNS www.microsoft.com: $(if ($dnsMicrosoftOk) { 'Sim' } else { 'Nao' })")
-
-        if (-not $dnsMicrosoftOk -and $dnsError) {
-            [void]$sb.AppendLine("Erro DNS: $dnsError")
-        }
-
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("ROTAS PRINCIPAIS")
-        [void]$sb.AppendLine("----------------")
-
-        try {
-            if (Get-Command Get-NetRoute -ErrorAction SilentlyContinue) {
-                $routes = @(Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue |
-                    Sort-Object RouteMetric, InterfaceMetric |
-                    Select-Object -First 8 DestinationPrefix, NextHop, InterfaceAlias, RouteMetric, InterfaceMetric)
-
-                if ($routes.Count -gt 0) {
-                    [void]$sb.AppendLine(($routes | Format-Table -AutoSize | Out-String).Trim())
-                }
-                else {
-                    [void]$sb.AppendLine("Nenhuma rota padrao IPv4 encontrada via Get-NetRoute.")
-                }
-            }
-            else {
-                [void]$sb.AppendLine("Get-NetRoute indisponivel nesta versao do PowerShell/Windows.")
-            }
-        }
-        catch {
-            [void]$sb.AppendLine("Falha ao consultar rotas principais.")
-            [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
-        }
-
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
-        [void]$sb.AppendLine("--------------------")
-
-        $cause = ""
-        $nextAction = ""
-
-        if (-not $hasAdapter) {
-            $cause = "Nenhum adaptador de rede ativo foi encontrado."
-            $nextAction = "Validar cabo, Wi-Fi, adaptador desativado, driver de rede ou placa de rede."
-        }
-        elseif (-not $hasIp) {
-            $cause = "Adaptador ativo encontrado, mas sem IPv4 valido."
-            $nextAction = "Validar DHCP, cabo/Wi-Fi, VLAN, driver de rede ou renovar IP."
-        }
-        elseif (-not $hasGateway) {
-            $cause = "A maquina possui IPv4, mas nao possui gateway principal."
-            $nextAction = "Validar escopo DHCP, configuracao manual, VLAN ou politica de rede."
-        }
-        elseif (-not $gatewayOk) {
-            $cause = "Gateway configurado nao respondeu ao teste."
-            $nextAction = "Validar rede local, switch, roteador, Wi-Fi, VLAN ou bloqueio ICMP."
-        }
-        elseif ($gatewayOk -and -not $internetCloudflareOk -and -not $internetGoogleOk) {
-            $cause = "Rede local responde, mas nao houve resposta externa por IP."
-            $nextAction = "Validar rota externa, firewall, proxy, provedor, VPN ou bloqueio de saida."
-        }
-        elseif (($internetCloudflareOk -or $internetGoogleOk) -and -not $dnsMicrosoftOk) {
-            $cause = "Internet por IP responde, mas resolucao DNS falhou."
-            $nextAction = "Executar Limpar DNS, validar servidores DNS e testar novamente."
-        }
-        elseif ($gatewayOk -and ($internetCloudflareOk -or $internetGoogleOk) -and $dnsMicrosoftOk) {
-            $cause = "Conectividade basica aparenta estar funcional."
-            $nextAction = "Validar sistema especifico, proxy, VPN, URL de destino ou indisponibilidade externa."
-        }
-        else {
-            $cause = "Diagnostico nao conclusivo com os testes basicos."
-            $nextAction = "Executar fluxo Sem internet, coletar erro exato e escalar se persistir."
-        }
-
-        [void]$sb.AppendLine("Causa provavel: $cause")
-        [void]$sb.AppendLine("Proxima acao recomendada: $nextAction")
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("Observacao: este diagnostico nao executa nenhuma correcao automaticamente.")
+        return Format-ToolkitNetworkReport @formatParameters
     }
     catch {
-        [void]$sb.AppendLine("Falha ao executar diagnostico consolidado de rede.")
-        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+        $failureParameters.ErrorDetail = $_.Exception.Message
+        return New-V3OperationalFailureReport @failureParameters
     }
-
-    return $sb.ToString()
 }
+
 function Invoke-V3QuickInternet {
     $sb = New-Object System.Text.StringBuilder
 
@@ -1119,266 +849,40 @@ function Invoke-V3SafeTimeSync {
     return $sb.ToString()
 }
 function Invoke-V3PrintersPanel {
-    $sb = New-Object System.Text.StringBuilder
+    $generatedAt = Get-Date
+    $failureParameters = @{
+        Header = "PAINEL DE IMPRESSORAS - DIAGNOSTICO CONSOLIDADO"
+        Divider = "------------------------------------------------"
+        ActionType = "Diagnostico de impressoras sem correcao"
+        FailureMessage = "Falha ao gerar painel de impressoras."
+        GeneratedAt = $generatedAt
+    }
 
-    [void]$sb.AppendLine("PAINEL DE IMPRESSORAS - DIAGNOSTICO CONSOLIDADO")
-    [void]$sb.AppendLine("------------------------------------------------")
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
-    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
-    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
-    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
-    [void]$sb.AppendLine("Tipo de acao: Diagnostico de impressoras sem correcao")
-    [void]$sb.AppendLine("")
+    if (-not $script:V3OperationalModulesAvailable) {
+        $failureParameters.ErrorDetail = $script:V3OperationalModuleError
+        return New-V3OperationalFailureReport @failureParameters
+    }
 
     try {
-        $spooler = Get-Service -Name "Spooler" -ErrorAction SilentlyContinue
-        $printers = @(Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue)
-        $jobs = @(Get-CimInstance Win32_PrintJob -ErrorAction SilentlyContinue)
-        $drivers = @(Get-CimInstance Win32_PrinterDriver -ErrorAction SilentlyContinue)
-
-        $ports = @()
-
-        if (Get-Command Get-PrinterPort -ErrorAction SilentlyContinue) {
-            try {
-                $ports = @(Get-PrinterPort -ErrorAction SilentlyContinue)
-            }
-            catch {
-                $ports = @()
-            }
+        $snapshot = Get-ToolkitPrinterSnapshot -ObservedAt $generatedAt
+        $assessment = Get-ToolkitPrinterAssessment -Snapshot $snapshot
+        $formatParameters = @{
+            Snapshot = $snapshot
+            Assessment = $assessment
+            ComputerName = $env:COMPUTERNAME
+            UserName = "$env:USERDOMAIN\$env:USERNAME"
+            IsAdministrator = (Test-V3Admin)
+            GeneratedAt = $generatedAt
         }
 
-        $defaultPrinter = $printers | Where-Object { $_.Default -eq $true } | Select-Object -First 1
-        $offlinePrinters = @($printers | Where-Object { $_.WorkOffline -eq $true })
-        $errorPrinters = @($printers | Where-Object { $_.PrinterStatus -in @(4,5,6,7) })
-        $networkPrinters = @($printers | Where-Object { $_.Network -eq $true })
-        $localPrinters = @($printers | Where-Object { $_.Local -eq $true })
-
-        [void]$sb.AppendLine("SERVICO SPOOLER")
-        [void]$sb.AppendLine("---------------")
-
-        if ($null -eq $spooler) {
-            [void]$sb.AppendLine("Status: Servico Spooler nao encontrado")
-        }
-        else {
-            [void]$sb.AppendLine("Status: $($spooler.Status)")
-            [void]$sb.AppendLine("Nome: $($spooler.Name)")
-            [void]$sb.AppendLine("DisplayName: $($spooler.DisplayName)")
-        }
-
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("RESUMO")
-        [void]$sb.AppendLine("------")
-        [void]$sb.AppendLine("Total de impressoras: $($printers.Count)")
-        [void]$sb.AppendLine("Impressoras locais: $($localPrinters.Count)")
-        [void]$sb.AppendLine("Impressoras de rede: $($networkPrinters.Count)")
-        [void]$sb.AppendLine("Impressoras offline: $($offlinePrinters.Count)")
-        [void]$sb.AppendLine("Impressoras com possivel erro: $($errorPrinters.Count)")
-        [void]$sb.AppendLine("Jobs na fila: $($jobs.Count)")
-        [void]$sb.AppendLine("Impressora padrao: $(if ($defaultPrinter) { $defaultPrinter.Name } else { 'Nao encontrada' })")
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("IMPRESSORAS INSTALADAS")
-        [void]$sb.AppendLine("----------------------")
-
-        if ($printers.Count -eq 0) {
-            [void]$sb.AppendLine("Nenhuma impressora encontrada.")
-        }
-        else {
-            foreach ($printer in ($printers | Sort-Object Name)) {
-                $statusText = switch ($printer.PrinterStatus) {
-                    1 { "Outro" }
-                    2 { "Desconhecido" }
-                    3 { "Ociosa/Pronta" }
-                    4 { "Imprimindo" }
-                    5 { "Aquecendo" }
-                    6 { "Parada" }
-                    7 { "Offline" }
-                    default { "Status $($printer.PrinterStatus)" }
-                }
-
-                [void]$sb.AppendLine("Nome: $($printer.Name)")
-                [void]$sb.AppendLine("Padrao: $(if ($printer.Default) { 'Sim' } else { 'Nao' })")
-                [void]$sb.AppendLine("Local/Rede: $(if ($printer.Network) { 'Rede' } elseif ($printer.Local) { 'Local' } else { 'Nao identificado' })")
-                [void]$sb.AppendLine("Status: $statusText")
-                [void]$sb.AppendLine("Offline: $(if ($printer.WorkOffline) { 'Sim' } else { 'Nao' })")
-                [void]$sb.AppendLine("Porta: $(if ($printer.PortName) { $printer.PortName } else { 'Nao informada' })")
-                [void]$sb.AppendLine("Driver: $(if ($printer.DriverName) { $printer.DriverName } else { 'Nao informado' })")
-                [void]$sb.AppendLine("")
-            }
-        }
-
-        [void]$sb.AppendLine("FILA DE IMPRESSAO")
-        [void]$sb.AppendLine("-----------------")
-
-        if ($jobs.Count -eq 0) {
-            [void]$sb.AppendLine("Nenhum job de impressao encontrado.")
-        }
-        else {
-            foreach ($job in ($jobs | Sort-Object Name)) {
-                [void]$sb.AppendLine("Job: $($job.Name)")
-                [void]$sb.AppendLine("Documento: $(if ($job.Document) { $job.Document } else { 'Nao informado' })")
-                [void]$sb.AppendLine("Usuario: $(if ($job.Owner) { $job.Owner } else { 'Nao informado' })")
-                [void]$sb.AppendLine("Status: $(if ($job.Status) { $job.Status } else { 'Nao informado' })")
-                [void]$sb.AppendLine("Tamanho: $(if ($job.Size) { "$($job.Size) bytes" } else { 'Nao informado' })")
-                [void]$sb.AppendLine("Paginas: $(if ($job.TotalPages) { $job.TotalPages } else { 'Nao informado' })")
-                [void]$sb.AppendLine("")
-            }
-        }
-
-        [void]$sb.AppendLine("IMPRESSORAS OFFLINE / COM ALERTA")
-        [void]$sb.AppendLine("--------------------------------")
-
-        if ($offlinePrinters.Count -eq 0 -and $errorPrinters.Count -eq 0) {
-            [void]$sb.AppendLine("Nenhuma impressora offline ou com alerta evidente encontrada.")
-        }
-        else {
-            $alertPrinters = @($offlinePrinters + $errorPrinters | Sort-Object Name -Unique)
-
-            foreach ($printer in $alertPrinters) {
-                [void]$sb.AppendLine("- $($printer.Name) | Offline: $(if ($printer.WorkOffline) { 'Sim' } else { 'Nao' }) | Status: $($printer.PrinterStatus) | Porta: $($printer.PortName)")
-            }
-        }
-
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("PORTAS UTILIZADAS")
-        [void]$sb.AppendLine("-----------------")
-
-        if ($ports.Count -gt 0) {
-            foreach ($port in ($ports | Sort-Object Name | Select-Object -First 30)) {
-                $hostAddress = ""
-
-                if ($port.PSObject.Properties.Name -contains "PrinterHostAddress") {
-                    $hostAddress = $port.PrinterHostAddress
-                }
-
-                [void]$sb.AppendLine("Porta: $($port.Name) | Host/IP: $(if ($hostAddress) { $hostAddress } else { 'Nao informado' })")
-            }
-
-            if ($ports.Count -gt 30) {
-                [void]$sb.AppendLine("Observacao: exibindo as primeiras 30 portas de $($ports.Count).")
-            }
-        }
-        else {
-            $usedPorts = @($printers | Where-Object { $_.PortName } | Select-Object -ExpandProperty PortName -Unique | Sort-Object)
-
-            if ($usedPorts.Count -gt 0) {
-                foreach ($portName in $usedPorts) {
-                    [void]$sb.AppendLine("Porta em uso: $portName")
-                }
-            }
-            else {
-                [void]$sb.AppendLine("Nenhuma porta encontrada.")
-            }
-        }
-
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("DRIVERS PRINCIPAIS")
-        [void]$sb.AppendLine("------------------")
-
-        $usedDrivers = @($printers | Where-Object { $_.DriverName } | Select-Object -ExpandProperty DriverName -Unique | Sort-Object)
-
-        if ($usedDrivers.Count -eq 0) {
-            [void]$sb.AppendLine("Nenhum driver associado encontrado.")
-        }
-        else {
-            foreach ($driverName in $usedDrivers) {
-                $driverInfo = $drivers | Where-Object { $_.Name -like "*$driverName*" } | Select-Object -First 1
-
-                if ($driverInfo) {
-                    [void]$sb.AppendLine("Driver: $driverName | Versao: $(if ($driverInfo.DriverVersion) { $driverInfo.DriverVersion } else { 'Nao informada' })")
-                }
-                else {
-                    [void]$sb.AppendLine("Driver: $driverName")
-                }
-            }
-        }
-
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
-        [void]$sb.AppendLine("--------------------")
-
-        $observations = New-Object 'System.Collections.Generic.List[string]'
-
-        if ($null -eq $spooler) {
-            $observations.Add("Servico Spooler nao foi encontrado.")
-        }
-        elseif ($spooler.Status -ne "Running") {
-            $observations.Add("Servico Spooler nao esta em execucao.")
-        }
-
-        if ($printers.Count -eq 0) {
-            $observations.Add("Nenhuma impressora instalada foi encontrada.")
-        }
-
-        if ($null -eq $defaultPrinter -and $printers.Count -gt 0) {
-            $observations.Add("Ha impressoras instaladas, mas nenhuma impressora padrao foi encontrada.")
-        }
-
-        if ($offlinePrinters.Count -gt 0) {
-            $observations.Add("Existem $($offlinePrinters.Count) impressora(s) offline.")
-        }
-
-        if ($jobs.Count -gt 0) {
-            $observations.Add("Existem $($jobs.Count) job(s) na fila de impressao.")
-        }
-
-        if ($errorPrinters.Count -gt 0) {
-            $observations.Add("Existem $($errorPrinters.Count) impressora(s) com status de alerta.")
-        }
-
-        if ($observations.Count -eq 0) {
-            [void]$sb.AppendLine("Resultado: ambiente de impressao sem alerta evidente nos testes basicos.")
-            [void]$sb.AppendLine("Proxima acao recomendada: validar erro especifico do usuario, aplicativo de origem e impressora de destino.")
-        }
-        else {
-            [void]$sb.AppendLine("Resultado: foram encontrados pontos de atencao no ambiente de impressao.")
-            [void]$sb.AppendLine("")
-            [void]$sb.AppendLine("Observacoes:")
-            foreach ($item in $observations) {
-                [void]$sb.AppendLine("- $item")
-            }
-
-            [void]$sb.AppendLine("")
-            [void]$sb.AppendLine("Proxima acao recomendada:")
-
-            if ($null -eq $spooler -or $spooler.Status -ne "Running") {
-                [void]$sb.AppendLine("- Executar Reiniciar spooler como administrador.")
-            }
-            elseif ($jobs.Count -gt 0) {
-                [void]$sb.AppendLine("- Validar documentos travados na fila e considerar limpeza controlada da fila.")
-            }
-            elseif ($offlinePrinters.Count -gt 0) {
-                [void]$sb.AppendLine("- Validar conexao da impressora, porta, IP, cabo/rede e status fisico do equipamento.")
-            }
-            elseif ($null -eq $defaultPrinter -and $printers.Count -gt 0) {
-                [void]$sb.AppendLine("- Definir impressora padrao conforme unidade/setor.")
-            }
-            else {
-                [void]$sb.AppendLine("- Coletar erro exato, validar driver, porta e aplicativo de origem.")
-            }
-        }
-
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("OBSERVACOES PARA ATENDIMENTO")
-        [void]$sb.AppendLine("----------------------------")
-        [void]$sb.AppendLine("- Este painel nao executa nenhuma correcao.")
-        [void]$sb.AppendLine("- Use Reiniciar spooler apenas quando fizer sentido para o erro apresentado.")
-        [void]$sb.AppendLine("- Para limpeza de fila, validar impacto antes de remover jobs.")
-        [void]$sb.AppendLine("- Use Copiar resultado para anexar o diagnostico ao chamado.")
+        return Format-ToolkitPrinterReport @formatParameters
     }
     catch {
-        [void]$sb.AppendLine("Falha ao gerar painel de impressoras.")
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+        $failureParameters.ErrorDetail = $_.Exception.Message
+        return New-V3OperationalFailureReport @failureParameters
     }
-
-    return $sb.ToString()
 }
+
 function Invoke-V3SafeSpoolerRestart {
     $sb = New-Object System.Text.StringBuilder
 
@@ -1516,575 +1020,43 @@ function Invoke-V3SafeSpoolerRestart {
     return $sb.ToString()
 }
 function Invoke-V3MachineHealthPanel {
-    $sb = New-Object System.Text.StringBuilder
-
-    [void]$sb.AppendLine("PAINEL DE SAUDE DA MAQUINA")
-    [void]$sb.AppendLine("==========================")
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
-    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
-    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
-    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
-    [void]$sb.AppendLine("Tipo de acao: Diagnostico geral sem correcao")
-    [void]$sb.AppendLine("")
-
-    $score = 100
-
-    $issues = New-Object 'System.Collections.Generic.List[string]'
-    $actions = New-Object 'System.Collections.Generic.List[string]'
-
     try {
-        $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
-        $computer = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
-
-        # ====================================================
-        # SISTEMA
-        # ====================================================
-
-        $systemStatus = "OK"
-        $systemDetail = "Sistema operacional identificado"
-
-        if ($null -eq $os -or $null -eq $computer) {
-            $systemStatus = "CRITICO"
-            $systemDetail = "Nao foi possivel coletar informacoes basicas do sistema"
-            $score -= 20
-
-            [void]$issues.Add("Falha ao coletar informacoes basicas do Windows.")
-            [void]$actions.Add("Validar WMI/CIM, servicos do Windows e permissoes da ferramenta.")
-        }
-        else {
-            $systemDetail = "$($os.Caption) | Build $($os.BuildNumber) | $($os.OSArchitecture)"
-        }
-
-        # ====================================================
-        # MEMORIA RAM
-        # ====================================================
-
-        $memoryStatus = "OK"
-        $memoryDetail = "Dados de memoria indisponiveis"
-        $totalRamGb = 0
-        $memoryUsedPercent = 0
-
-        if ($null -ne $computer -and $computer.TotalPhysicalMemory) {
-            $totalRamGb = [Math]::Round(
-                ($computer.TotalPhysicalMemory / 1GB),
-                1
-            )
-        }
-
-        if ($null -ne $os -and $os.TotalVisibleMemorySize -gt 0) {
-            $usedMemoryKb = (
-                $os.TotalVisibleMemorySize -
-                $os.FreePhysicalMemory
-            )
-
-            $memoryUsedPercent = [Math]::Round(
-                (($usedMemoryKb / $os.TotalVisibleMemorySize) * 100),
-                1
-            )
-        }
-
-        if ($totalRamGb -gt 0) {
-            $memoryDetail = "$totalRamGb GB instalados | Uso atual: $memoryUsedPercent%"
-        }
-
-        if (
-            ($totalRamGb -gt 0 -and $totalRamGb -lt 8) -or
-            $memoryUsedPercent -ge 90
-        ) {
-            $memoryStatus = "CRITICO"
-            $score -= 20
-
-            [void]$issues.Add(
-                "Memoria RAM em estado critico: $memoryDetail."
-            )
-
-            [void]$actions.Add(
-                "Fechar aplicativos pesados, validar processos com consumo elevado e considerar aumento de memoria."
-            )
-        }
-        elseif (
-            ($totalRamGb -gt 0 -and $totalRamGb -lt 12) -or
-            $memoryUsedPercent -ge 80
-        ) {
-            $memoryStatus = "ATENCAO"
-            $score -= 10
-
-            [void]$issues.Add(
-                "Memoria RAM requer atencao: $memoryDetail."
-            )
-
-            [void]$actions.Add(
-                "Validar consumo no Gerenciador de Tarefas e reiniciar aplicativos com uso elevado."
-            )
-        }
-
-        # ====================================================
-        # DISCO DO WINDOWS
-        # ====================================================
-
-        $diskStatus = "OK"
-        $diskDetail = "Disco do Windows nao localizado"
-
-        $systemDrive = Get-CimInstance `
-            Win32_LogicalDisk `
-            -Filter "DriveType=3" `
-            -ErrorAction SilentlyContinue |
-            Where-Object {
-                $_.DeviceID -eq $env:SystemDrive
-            } |
-            Select-Object -First 1
-
-        if ($null -eq $systemDrive -or $systemDrive.Size -le 0) {
-            $diskStatus = "CRITICO"
-            $score -= 20
-
-            [void]$issues.Add(
-                "Nao foi possivel consultar o disco do Windows."
-            )
-
-            [void]$actions.Add(
-                "Validar armazenamento, WMI/CIM e integridade do sistema."
-            )
-        }
-        else {
-            $diskSizeGb = [Math]::Round(
-                ($systemDrive.Size / 1GB),
-                1
-            )
-
-            $diskFreeGb = [Math]::Round(
-                ($systemDrive.FreeSpace / 1GB),
-                1
-            )
-
-            $diskFreePercent = [Math]::Round(
-                (($systemDrive.FreeSpace / $systemDrive.Size) * 100),
-                1
-            )
-
-            $diskDetail = "$($systemDrive.DeviceID) $diskFreeGb GB livres de $diskSizeGb GB ($diskFreePercent%)"
-
-            if (
-                $diskFreeGb -lt 15 -or
-                $diskFreePercent -lt 10
-            ) {
-                $diskStatus = "CRITICO"
-                $score -= 30
-
-                [void]$issues.Add(
-                    "Disco do Windows com espaco livre critico: $diskDetail."
-                )
-
-                [void]$actions.Add(
-                    "Liberar espaco em disco antes de executar atualizacoes ou reparos."
-                )
-            }
-            elseif (
-                $diskFreeGb -lt 30 -or
-                $diskFreePercent -lt 20
-            ) {
-                $diskStatus = "ATENCAO"
-                $score -= 15
-
-                [void]$issues.Add(
-                    "Disco do Windows com pouco espaco livre: $diskDetail."
-                )
-
-                [void]$actions.Add(
-                    "Executar limpeza controlada de temporarios e revisar arquivos grandes."
-                )
-            }
-        }
-
-        # ====================================================
-        # UPTIME
-        # ====================================================
-
-        $uptimeStatus = "OK"
-        $uptimeDetail = "Uptime nao encontrado"
-
-        if ($null -ne $os -and $os.LastBootUpTime) {
-            $uptime = New-TimeSpan `
-                -Start $os.LastBootUpTime `
-                -End (Get-Date)
-
-            $uptimeDetail = "$($uptime.Days) dia(s), $($uptime.Hours) hora(s)"
-
-            if ($uptime.TotalDays -ge 30) {
-                $uptimeStatus = "CRITICO"
-                $score -= 10
-
-                [void]$issues.Add(
-                    "Maquina esta ligada ha mais de 30 dias."
-                )
-
-                [void]$actions.Add(
-                    "Agendar reinicio completo da maquina."
-                )
-            }
-            elseif ($uptime.TotalDays -ge 7) {
-                $uptimeStatus = "ATENCAO"
-                $score -= 5
-
-                [void]$issues.Add(
-                    "Maquina esta ligada ha mais de 7 dias."
-                )
-
-                [void]$actions.Add(
-                    "Recomendar reinicio para limpar estados temporarios."
-                )
-            }
-        }
-
-        # ====================================================
-        # REDE
-        # ====================================================
-
-        $networkStatus = "OK"
-        $networkDetail = "Nenhum adaptador ativo encontrado"
-        $ipv4List = @()
-        $gatewayList = @()
-
-        $adapters = @(
-            Get-CimInstance `
-                Win32_NetworkAdapterConfiguration `
-                -Filter "IPEnabled=True" `
-                -ErrorAction SilentlyContinue
-        )
-
-        $selectedAdapter = $null
-
-        foreach ($candidate in $adapters) {
-            $candidateIpv4 = @(
-                $candidate.IPAddress |
-                Where-Object {
-                    $_ -match '^\d{1,3}(\.\d{1,3}){3}$'
-                }
-            )
-
-            if ($candidateIpv4.Count -gt 0) {
-                $selectedAdapter = $candidate
-                $ipv4List = $candidateIpv4
-                break
-            }
-        }
-
-        if ($null -eq $selectedAdapter) {
-            $networkStatus = "CRITICO"
-            $score -= 25
-
-            [void]$issues.Add(
-                "Nenhum adaptador com endereco IPv4 valido foi encontrado."
-            )
-
-            [void]$actions.Add(
-                "Validar cabo, Wi-Fi, adaptador, driver e DHCP."
-            )
-        }
-        else {
-            $gatewayList = @(
-                $selectedAdapter.DefaultIPGateway |
-                Where-Object {
-                    -not [string]::IsNullOrWhiteSpace($_)
-                }
-            )
-
-            $networkDetail = "$($selectedAdapter.Description) | IP: $($ipv4List -join ', ')"
-
-            if (
-                @($ipv4List | Where-Object { $_ -like "169.254.*" }).Count -gt 0
-            ) {
-                $networkStatus = "CRITICO"
-                $score -= 25
-
-                [void]$issues.Add(
-                    "Adaptador recebeu endereco APIPA 169.254.x.x."
-                )
-
-                [void]$actions.Add(
-                    "Validar DHCP, cabo, Wi-Fi, switch ou VLAN."
-                )
-            }
-            elseif ($gatewayList.Count -eq 0) {
-                $networkStatus = "ATENCAO"
-                $score -= 15
-
-                [void]$issues.Add(
-                    "Adaptador possui IP, mas nao possui gateway."
-                )
-
-                [void]$actions.Add(
-                    "Validar configuracao de rede e escopo DHCP."
-                )
+        if (-not $script:V3HealthModulesAvailable) {
+            $moduleError = if ([string]::IsNullOrWhiteSpace($script:V3HealthModuleError)) {
+                "Motivo nao informado."
             }
             else {
-                $networkDetail += " | Gateway: $($gatewayList -join ', ')"
+                $script:V3HealthModuleError
             }
+
+            throw "Modulos do Painel de Saude indisponiveis: $moduleError"
         }
 
-        # ====================================================
-        # DNS
-        # ====================================================
+        $snapshot = Get-ToolkitMachineHealthSnapshot
+        $assessment = Get-ToolkitMachineHealthAssessment -Snapshot $snapshot
 
-        $dnsStatus = "OK"
-        $dnsDetail = "Resolucao www.microsoft.com funcionando"
-
-        try {
-            $dnsResult = Resolve-DnsName `
-                -Name "www.microsoft.com" `
-                -Type A `
-                -ErrorAction Stop
-
-            if ($null -eq $dnsResult) {
-                throw "Nenhum endereco retornado."
-            }
-        }
-        catch {
-            $dnsStatus = "ATENCAO"
-            $dnsDetail = "Falha de resolucao DNS"
-            $score -= 10
-
-            [void]$issues.Add(
-                "Resolucao DNS falhou durante o diagnostico."
-            )
-
-            [void]$actions.Add(
-                "Executar Limpar DNS e validar servidores DNS configurados."
-            )
-        }
-
-        # ====================================================
-        # HORARIO
-        # ====================================================
-
-        $timeStatus = "OK"
-        $timeDetail = "Fonte de horario nao encontrada"
-
-        $timeService = Get-Service `
-            -Name "w32time" `
-            -ErrorAction SilentlyContinue
-
-        $timeSourceRaw = & w32tm /query /source 2>&1
-        $timeSource = ($timeSourceRaw | Out-String).Trim()
-
-        if (-not [string]::IsNullOrWhiteSpace($timeSource)) {
-            $timeDetail = "Servico: $(if ($timeService) { $timeService.Status } else { 'Nao encontrado' }) | Fonte: $timeSource"
-        }
-
-        if (
-            $null -eq $timeService -or
-            $timeService.Status -ne "Running" -or
-            $timeSource -match "CMOS|Free-running|nao sincronizado|not synchronized|erro|error"
-        ) {
-            $timeStatus = "ATENCAO"
-            $score -= 5
-
-            [void]$issues.Add(
-                "Sincronizacao de horario requer validacao."
-            )
-
-            [void]$actions.Add(
-                "Executar Sincronizar horario e validar dominio, NTP ou GPO."
-            )
-        }
-
-        # ====================================================
-        # SPOOLER
-        # ====================================================
-
-        $spoolerStatus = "OK"
-        $spoolerDetail = "Servico Spooler em execucao"
-
-        $spooler = Get-Service `
-            -Name "Spooler" `
-            -ErrorAction SilentlyContinue
-
-        if ($null -eq $spooler) {
-            $spoolerStatus = "ATENCAO"
-            $spoolerDetail = "Servico Spooler nao encontrado"
-            $score -= 5
-
-            [void]$issues.Add(
-                "Servico Spooler nao foi encontrado."
-            )
-
-            [void]$actions.Add(
-                "Validar recursos de impressao instalados no Windows."
-            )
-        }
-        elseif ($spooler.Status -ne "Running") {
-            $spoolerStatus = "ATENCAO"
-            $spoolerDetail = "Servico Spooler: $($spooler.Status)"
-            $score -= 5
-
-            [void]$issues.Add(
-                "Servico Spooler nao esta em execucao."
-            )
-
-            [void]$actions.Add(
-                "Executar Reiniciar spooler como administrador."
-            )
-        }
-
-        # ====================================================
-        # REINICIO PENDENTE
-        # ====================================================
-
-        $pendingReboot = $false
-        $rebootReasons = New-Object 'System.Collections.Generic.List[string]'
-
-        $cbsPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending"
-        $wuPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"
-        $sessionManagerPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager"
-
-        if (Test-Path $cbsPath) {
-            $pendingReboot = $true
-            [void]$rebootReasons.Add("Component Based Servicing")
-        }
-
-        if (Test-Path $wuPath) {
-            $pendingReboot = $true
-            [void]$rebootReasons.Add("Windows Update")
-        }
-
-        $sessionManager = Get-ItemProperty `
-            -Path $sessionManagerPath `
-            -Name "PendingFileRenameOperations" `
-            -ErrorAction SilentlyContinue
-
-        if (
-            $null -ne $sessionManager -and
-            $null -ne $sessionManager.PendingFileRenameOperations
-        ) {
-            $pendingReboot = $true
-            [void]$rebootReasons.Add("PendingFileRenameOperations")
-        }
-
-        $rebootStatus = if ($pendingReboot) {
-            "ATENCAO"
-        }
-        else {
-            "OK"
-        }
-
-        $rebootDetail = if ($pendingReboot) {
-            "Sim | Motivo(s): $($rebootReasons -join ', ')"
-        }
-        else {
-            "Nao"
-        }
-
-        if ($pendingReboot) {
-            $score -= 5
-
-            [void]$issues.Add(
-                "Windows possui reinicio pendente."
-            )
-
-            [void]$actions.Add(
-                "Agendar reinicio da maquina antes de novos reparos."
-            )
-        }
-
-        $score = [Math]::Max(0, $score)
-
-        $classification = if ($score -ge 85) {
-            "SAUDAVEL"
-        }
-        elseif ($score -ge 65) {
-            "ATENCAO"
-        }
-        else {
-            "CRITICO"
-        }
-
-        # ====================================================
-        # RESULTADO
-        # ====================================================
-
-        [void]$sb.AppendLine("PONTUACAO GERAL")
-        [void]$sb.AppendLine("---------------")
-        [void]$sb.AppendLine("Pontuacao: $score de 100")
-        [void]$sb.AppendLine("Classificacao: $classification")
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("INDICADORES")
-        [void]$sb.AppendLine("-----------")
-        [void]$sb.AppendLine("Sistema: $systemStatus | $systemDetail")
-        [void]$sb.AppendLine("Memoria RAM: $memoryStatus | $memoryDetail")
-        [void]$sb.AppendLine("Disco do Windows: $diskStatus | $diskDetail")
-        [void]$sb.AppendLine("Uptime: $uptimeStatus | $uptimeDetail")
-        [void]$sb.AppendLine("Rede: $networkStatus | $networkDetail")
-        [void]$sb.AppendLine("DNS: $dnsStatus | $dnsDetail")
-        [void]$sb.AppendLine("Horario: $timeStatus | $timeDetail")
-        [void]$sb.AppendLine("Spooler: $spoolerStatus | $spoolerDetail")
-        [void]$sb.AppendLine("Reinicio pendente: $rebootStatus | $rebootDetail")
-        [void]$sb.AppendLine("")
-
-        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
-        [void]$sb.AppendLine("--------------------")
-
-        if ($issues.Count -eq 0) {
-            [void]$sb.AppendLine(
-                "Resultado: maquina saudavel nos indicadores basicos avaliados."
-            )
-
-            [void]$sb.AppendLine(
-                "Nao foi identificado alerta tecnico evidente."
-            )
-        }
-        else {
-            [void]$sb.AppendLine(
-                "Resultado: foram encontrados $($issues.Count) ponto(s) de atencao."
-            )
-
-            [void]$sb.AppendLine("")
-
-            foreach ($issue in $issues) {
-                [void]$sb.AppendLine("- $issue")
-            }
-        }
-
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("PROXIMAS ACOES")
-        [void]$sb.AppendLine("--------------")
-
-        $uniqueActions = @(
-            $actions |
-            Select-Object -Unique
-        )
-
-        if ($uniqueActions.Count -eq 0) {
-            [void]$sb.AppendLine(
-                "- Nenhuma correcao imediata recomendada."
-            )
-
-            [void]$sb.AppendLine(
-                "- Validar o sintoma especifico informado pelo usuario."
-            )
-        }
-        else {
-            foreach ($action in $uniqueActions) {
-                [void]$sb.AppendLine("- $action")
-            }
-        }
-
-        [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("OBSERVACAO")
-        [void]$sb.AppendLine("----------")
-        [void]$sb.AppendLine(
-            "Este painel realiza somente diagnostico e nao executa correcoes automaticamente."
-        )
+        return Format-ToolkitMachineHealthReport `
+            -Snapshot $snapshot `
+            -Assessment $assessment
     }
     catch {
+        $sb = New-Object System.Text.StringBuilder
+        [void]$sb.AppendLine("PAINEL DE SAUDE DA MAQUINA")
+        [void]$sb.AppendLine("==========================")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+        [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+        [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
+        [void]$sb.AppendLine("Tipo de acao: Diagnostico geral sem correcao")
+        [void]$sb.AppendLine("")
         [void]$sb.AppendLine("Falha ao gerar o Painel de Saude da Maquina.")
         [void]$sb.AppendLine("")
         [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
-    }
 
-    return $sb.ToString()
+        return $sb.ToString()
+    }
 }
+
 function New-V3WorkflowResult {
     param(
         [Parameter(Mandatory = $true)]

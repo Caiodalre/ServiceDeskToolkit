@@ -4,6 +4,22 @@ $Root = Split-Path -Parent $PSScriptRoot
 $App = Join-Path $Root "ServiceDeskToolkit-CorporateV3.ps1"
 $Cmd = Join-Path $Root "ServiceDeskToolkitV3.cmd"
 $Readme = Join-Path $Root "docs\V3-README.md"
+$VersionFile = Join-Path $Root "version-v3.json"
+$DiagnosticsModule = Join-Path `
+    $Root `
+    "src\ServiceDeskToolkit.Diagnostics\ServiceDeskToolkit.Diagnostics.psm1"
+$HealthModule = Join-Path `
+    $Root `
+    "src\ServiceDeskToolkit.Health\ServiceDeskToolkit.Health.psm1"
+$InventoryModule = Join-Path `
+    $Root `
+    "src\ServiceDeskToolkit.Inventory\ServiceDeskToolkit.Inventory.psm1"
+$NetworkModule = Join-Path `
+    $Root `
+    "src\ServiceDeskToolkit.Network\ServiceDeskToolkit.Network.psm1"
+$PrintersModule = Join-Path `
+    $Root `
+    "src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1"
 $Reports = Join-Path $Root "reports"
 
 if (-not (Test-Path $Reports)) {
@@ -69,6 +85,64 @@ else {
     Add-Result "FALHA" "Arquivo nao encontrado: ServiceDeskToolkit-CorporateV3.ps1"
 }
 
+if (Test-Path $VersionFile) {
+    try {
+        $versionInfo = Get-Content $VersionFile -Raw | ConvertFrom-Json
+
+        if ([string]::IsNullOrWhiteSpace([string]$versionInfo.version)) {
+            Add-Result "FALHA" "version-v3.json nao informa version"
+        }
+        else {
+            Add-Result "OK" "Versao V3 declarada: $($versionInfo.version)"
+        }
+
+        if ([string]::IsNullOrWhiteSpace([string]$versionInfo.channel)) {
+            Add-Result "FALHA" "version-v3.json nao informa channel"
+        }
+        else {
+            Add-Result "OK" "Canal V3 declarado: $($versionInfo.channel)"
+        }
+    }
+    catch {
+        Add-Result "FALHA" "version-v3.json invalido: $($_.Exception.Message)"
+    }
+}
+else {
+    Add-Result "FALHA" "Arquivo nao encontrado: version-v3.json"
+}
+
+$moduleFiles = @(
+    @{
+        Name = "Modulo de diagnosticos"
+        Path = $DiagnosticsModule
+    },
+    @{
+        Name = "Modulo de avaliacao de saude"
+        Path = $HealthModule
+    },
+    @{
+        Name = "Modulo de inventario"
+        Path = $InventoryModule
+    },
+    @{
+        Name = "Modulo de diagnostico de rede"
+        Path = $NetworkModule
+    },
+    @{
+        Name = "Modulo de diagnostico de impressoras"
+        Path = $PrintersModule
+    }
+)
+
+foreach ($moduleFile in $moduleFiles) {
+    if (Test-Path $moduleFile.Path) {
+        Add-Result "OK" "Arquivo existe: $($moduleFile.Name)"
+    }
+    else {
+        Add-Result "FALHA" "Arquivo nao encontrado: $($moduleFile.Path)"
+    }
+}
+
 if (Test-Path $Cmd) {
     Add-Result "OK" "Arquivo existe: ServiceDeskToolkitV3.cmd"
 
@@ -131,6 +205,8 @@ else {
 if (Test-Path $App) {
     try {
         $content = Get-Content $App -Raw
+        $packageContentParts = New-Object 'System.Collections.Generic.List[string]'
+        [void]$packageContentParts.Add($content)
 
         $errors = $null
         $null = [System.Management.Automation.PSParser]::Tokenize($content, [ref]$errors)
@@ -144,6 +220,36 @@ if (Test-Path $App) {
                 Add-Result "FALHA" "Linha $($err.Token.StartLine): $($err.Message)"
             }
         }
+
+        foreach ($moduleFile in $moduleFiles) {
+            if (-not (Test-Path $moduleFile.Path)) {
+                continue
+            }
+
+            $moduleContent = Get-Content $moduleFile.Path -Raw
+            $moduleErrors = $null
+            $null = [System.Management.Automation.PSParser]::Tokenize(
+                $moduleContent,
+                [ref]$moduleErrors
+            )
+
+            if ($moduleErrors.Count -eq 0) {
+                Add-Result "OK" "Sintaxe PowerShell OK: $($moduleFile.Name)"
+            }
+            else {
+                Add-Result "FALHA" "Erro de sintaxe: $($moduleFile.Name)"
+
+                foreach ($moduleError in $moduleErrors) {
+                    Add-Result `
+                        "FALHA" `
+                        "$($moduleFile.Name), linha $($moduleError.Token.StartLine): $($moduleError.Message)"
+                }
+            }
+
+            [void]$packageContentParts.Add($moduleContent)
+        }
+
+        $validationContent = $packageContentParts -join [Environment]::NewLine
 
         $bytes = [System.IO.File]::ReadAllBytes($App)
         $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
@@ -246,6 +352,9 @@ $markers = @(
     "TESTES DE CONECTIVIDADE",
     "ROTAS PRINCIPAIS",
     "Tipo de acao: Diagnostico sem correcao",
+    "function Get-ToolkitNetworkSnapshot",
+    "function Get-ToolkitNetworkAssessment",
+    "function Format-ToolkitNetworkReport",
     "function Get-V3InventoryLite",
     "INVENTARIO DA MAQUINA - PAINEL CONSOLIDADO",
     "IDENTIFICACAO",
@@ -256,6 +365,9 @@ $markers = @(
     "BIOS / SERIAL",
     "REDE RESUMIDA",
     "Tipo de acao: Coleta de inventario sem correcao",
+    "function Get-ToolkitInventorySnapshot",
+    "function Get-ToolkitInventoryAssessment",
+    "function Format-ToolkitInventoryReport",
     "function Invoke-V3PrintersPanel",
     "BtnV3Printers",
     "Invoke-V3PrintersPanel",
@@ -267,6 +379,9 @@ $markers = @(
     "IMPRESSORAS OFFLINE / COM ALERTA",
     "PORTAS UTILIZADAS",
     "DRIVERS PRINCIPAIS",
+    "function Get-ToolkitPrinterSnapshot",
+    "function Get-ToolkitPrinterAssessment",
+    "function Format-ToolkitPrinterReport",
     "ActionGridButton",
     "UniformGrid Columns",
     "function Invoke-V3WorkflowPrinter",
@@ -275,18 +390,23 @@ $markers = @(
     "return New-V3WorkflowResult @workflowParameters",
     "Reiniciar o Spooler somente quando houver indicio de falha no servico ou fila",
     "function Invoke-V3MachineHealthPanel",
+    "function Get-ToolkitMachineHealthSnapshot",
+    "function Get-ToolkitMachineHealthAssessment",
+    "function Format-ToolkitMachineHealthReport",
     "PAINEL DE SAUDE DA MAQUINA",
     "PONTUACAO GERAL",
     "Classificacao:",
     "INDICADORES",
-    "Reinicio pendente:",
+    "-Label ""Memoria RAM""",
+    "-Label ""Disco do Windows""",
+    "-Label ""Reinicio pendente""",
     "Tipo de acao: Diagnostico geral sem correcao",
     "BtnV3Health",
     "Invoke-V3MachineHealthPanel"
 )
 
         foreach ($marker in $markers) {
-            if ($content.Contains($marker)) {
+            if ($validationContent.Contains($marker)) {
                 Add-Result "OK" "Marcador encontrado: $marker"
             }
             else {
@@ -331,11 +451,15 @@ Write-Host "=========================" -ForegroundColor Cyan
 
 if ($failures -eq 0) {
     Write-Host "APROVADO - V3 validada sem falhas." -ForegroundColor Green
+    $exitCode = 0
 }
 else {
     Write-Host "REPROVADO - V3 possui $failures falha(s)." -ForegroundColor Red
+    $exitCode = 1
 }
 
 Write-Host ""
 Write-Host "Relatorio:" -ForegroundColor DarkCyan
 Write-Host $ReportTxt
+
+exit $exitCode

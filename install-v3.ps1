@@ -158,6 +158,24 @@ function Install-V3IntoPath {
         [string]$ReadmeText,
 
         [Parameter(Mandatory = $true)]
+        [string]$VersionText,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DiagnosticsModuleText,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HealthModuleText,
+
+        [Parameter(Mandatory = $true)]
+        [string]$InventoryModuleText,
+
+        [Parameter(Mandatory = $true)]
+        [string]$NetworkModuleText,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PrintersModuleText,
+
+        [Parameter(Mandatory = $true)]
         [string]$CmdText
     )
 
@@ -168,6 +186,22 @@ function Install-V3IntoPath {
     $cmdFile = Join-Path $installPath "ServiceDeskToolkitV3.cmd"
     $validatorFile = Join-Path $installPath "tools\Test-ToolkitV3.ps1"
     $readmeFile = Join-Path $installPath "docs\V3-README.md"
+    $versionFile = Join-Path $installPath "version-v3.json"
+    $diagnosticsModuleFile = Join-Path `
+        $installPath `
+        "src\ServiceDeskToolkit.Diagnostics\ServiceDeskToolkit.Diagnostics.psm1"
+    $healthModuleFile = Join-Path `
+        $installPath `
+        "src\ServiceDeskToolkit.Health\ServiceDeskToolkit.Health.psm1"
+    $inventoryModuleFile = Join-Path `
+        $installPath `
+        "src\ServiceDeskToolkit.Inventory\ServiceDeskToolkit.Inventory.psm1"
+    $networkModuleFile = Join-Path `
+        $installPath `
+        "src\ServiceDeskToolkit.Network\ServiceDeskToolkit.Network.psm1"
+    $printersModuleFile = Join-Path `
+        $installPath `
+        "src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1"
     $latestFile = Join-Path $RootPath "latest.txt"
 
     New-Item -Path $installPath -ItemType Directory -Force | Out-Null
@@ -176,6 +210,26 @@ function Install-V3IntoPath {
     New-Item -Path (Join-Path $installPath "reports") -ItemType Directory -Force | Out-Null
     New-Item -Path (Join-Path $installPath "logs") -ItemType Directory -Force | Out-Null
     New-Item -Path (Join-Path $installPath "backups") -ItemType Directory -Force | Out-Null
+    New-Item `
+        -Path (Split-Path $diagnosticsModuleFile -Parent) `
+        -ItemType Directory `
+        -Force | Out-Null
+    New-Item `
+        -Path (Split-Path $healthModuleFile -Parent) `
+        -ItemType Directory `
+        -Force | Out-Null
+    New-Item `
+        -Path (Split-Path $inventoryModuleFile -Parent) `
+        -ItemType Directory `
+        -Force | Out-Null
+    New-Item `
+        -Path (Split-Path $networkModuleFile -Parent) `
+        -ItemType Directory `
+        -Force | Out-Null
+    New-Item `
+        -Path (Split-Path $printersModuleFile -Parent) `
+        -ItemType Directory `
+        -Force | Out-Null
 
     $utf8Bom = New-Object System.Text.UTF8Encoding($true)
     $ascii = [System.Text.Encoding]::ASCII
@@ -183,11 +237,38 @@ function Install-V3IntoPath {
     Write-V3TextFile -Path $mainFile -Content $MainText -Encoding $utf8Bom
     Write-V3TextFile -Path $validatorFile -Content $ValidatorText -Encoding $utf8Bom
     Write-V3TextFile -Path $readmeFile -Content $ReadmeText -Encoding $utf8Bom
+    Write-V3TextFile -Path $versionFile -Content $VersionText -Encoding $utf8Bom
+    Write-V3TextFile `
+        -Path $diagnosticsModuleFile `
+        -Content $DiagnosticsModuleText `
+        -Encoding $utf8Bom
+    Write-V3TextFile `
+        -Path $healthModuleFile `
+        -Content $HealthModuleText `
+        -Encoding $utf8Bom
+    Write-V3TextFile `
+        -Path $inventoryModuleFile `
+        -Content $InventoryModuleText `
+        -Encoding $utf8Bom
+    Write-V3TextFile `
+        -Path $networkModuleFile `
+        -Content $NetworkModuleText `
+        -Encoding $utf8Bom
+    Write-V3TextFile `
+        -Path $printersModuleFile `
+        -Content $PrintersModuleText `
+        -Encoding $utf8Bom
     Write-V3TextFile -Path $cmdFile -Content $CmdText -Encoding $ascii
 
     Unblock-File $mainFile -ErrorAction SilentlyContinue
     Unblock-File $validatorFile -ErrorAction SilentlyContinue
     Unblock-File $readmeFile -ErrorAction SilentlyContinue
+    Unblock-File $versionFile -ErrorAction SilentlyContinue
+    Unblock-File $diagnosticsModuleFile -ErrorAction SilentlyContinue
+    Unblock-File $healthModuleFile -ErrorAction SilentlyContinue
+    Unblock-File $inventoryModuleFile -ErrorAction SilentlyContinue
+    Unblock-File $networkModuleFile -ErrorAction SilentlyContinue
+    Unblock-File $printersModuleFile -ErrorAction SilentlyContinue
     Unblock-File $cmdFile -ErrorAction SilentlyContinue
 
     $mainRead = Get-Content $mainFile -Raw
@@ -206,6 +287,12 @@ function Install-V3IntoPath {
         CmdFile = $cmdFile
         ValidatorFile = $validatorFile
         ReadmeFile = $readmeFile
+        VersionFile = $versionFile
+        DiagnosticsModuleFile = $diagnosticsModuleFile
+        HealthModuleFile = $healthModuleFile
+        InventoryModuleFile = $inventoryModuleFile
+        NetworkModuleFile = $networkModuleFile
+        PrintersModuleFile = $printersModuleFile
         LatestFile = $latestFile
     }
 }
@@ -238,6 +325,22 @@ Write-V3Step "1/5 - Baixando arquivos do GitHub..." "Cyan"
 $mainText = Get-V3RawText -Url "$baseUrl/ServiceDeskToolkit-CorporateV3.ps1" -Name "Script principal V3"
 $validatorText = Get-V3RawText -Url "$baseUrl/tools/Test-ToolkitV3.ps1" -Name "Validador V3"
 $readmeText = Get-V3RawText -Url "$baseUrl/docs/V3-README.md" -Name "README V3"
+$versionText = Get-V3RawText -Url "$baseUrl/version-v3.json" -Name "Metadados de versao V3"
+$diagnosticsModuleText = Get-V3RawText `
+    -Url "$baseUrl/src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1" `
+    -Name "Modulo de diagnosticos V3"
+$healthModuleText = Get-V3RawText `
+    -Url "$baseUrl/src/ServiceDeskToolkit.Health/ServiceDeskToolkit.Health.psm1" `
+    -Name "Modulo de avaliacao de saude V3"
+$inventoryModuleText = Get-V3RawText `
+    -Url "$baseUrl/src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1" `
+    -Name "Modulo de inventario V3"
+$networkModuleText = Get-V3RawText `
+    -Url "$baseUrl/src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1" `
+    -Name "Modulo de diagnostico de rede V3"
+$printersModuleText = Get-V3RawText `
+    -Url "$baseUrl/src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1" `
+    -Name "Modulo de diagnostico de impressoras V3"
 $cmdText = New-V3CmdText
 
 Write-V3Step "2/5 - Validando conteudo baixado..." "Cyan"
@@ -250,10 +353,16 @@ $requiredMarkers = @(
     "function Invoke-V3SafeFlushDns",
     "function Invoke-V3InternetDiagnosticSummary",
     "function Invoke-V3VpnDiagnosticSummary",
+    "Get-ToolkitInventorySnapshot",
+    "Get-ToolkitInventoryAssessment",
+    "Format-ToolkitInventoryReport",
     "INVENTARIO DA MAQUINA - PAINEL CONSOLIDADO",
     "Tipo de acao: Coleta de inventario sem correcao",
     "REDE RESUMIDA",
     "BIOS / SERIAL",
+    "Get-ToolkitNetworkSnapshot",
+    "Get-ToolkitNetworkAssessment",
+    "Format-ToolkitNetworkReport",
     "function Invoke-V3PrintersPanel",
     "BtnV3Printers",
     "Invoke-V3PrintersPanel",
@@ -265,6 +374,9 @@ $requiredMarkers = @(
     "IMPRESSORAS OFFLINE / COM ALERTA",
     "PORTAS UTILIZADAS",
     "DRIVERS PRINCIPAIS",
+    "Get-ToolkitPrinterSnapshot",
+    "Get-ToolkitPrinterAssessment",
+    "Format-ToolkitPrinterReport",
     "CONCLUSAO AUTOMATICA",
     "ActionGridButton",
     "UniformGrid Columns",
@@ -275,27 +387,69 @@ $requiredMarkers = @(
     "Set-V3Output (Invoke-V3WorkflowPrinter)",
     "Reiniciar o Spooler somente quando houver indicio de falha no servico ou fila",
     "function Invoke-V3MachineHealthPanel",
+    "Get-ToolkitMachineHealthSnapshot",
+    "Get-ToolkitMachineHealthAssessment",
+    "Format-ToolkitMachineHealthReport",
     "PAINEL DE SAUDE DA MAQUINA",
     "Tipo de acao: Diagnostico geral sem correcao",
     "PONTUACAO GERAL",
     "Pontuacao:",
     "Classificacao:",
     "INDICADORES",
-    "Memoria RAM:",
-    "Disco do Windows:",
-    "Reinicio pendente:",
+    "-Label ""Memoria RAM""",
+    "-Label ""Disco do Windows""",
+    "-Label ""Reinicio pendente""",
     "BtnV3Health",
     "Set-V3Output (Invoke-V3MachineHealthPanel)"
 )
 
+$validationText = @(
+    $mainText
+    $diagnosticsModuleText
+    $healthModuleText
+    $inventoryModuleText
+    $networkModuleText
+    $printersModuleText
+) -join [Environment]::NewLine
+
 foreach ($marker in $requiredMarkers) {
-    if (-not $mainText.Contains($marker)) {
-        throw "Marcador obrigatorio nao encontrado no script principal: $marker"
+    if (-not $validationText.Contains($marker)) {
+        throw "Marcador obrigatorio nao encontrado no pacote V3: $marker"
     }
 }
 
 Test-V3PowerShellSyntax -Text $mainText -Name "ServiceDeskToolkit-CorporateV3.ps1"
 Test-V3PowerShellSyntax -Text $validatorText -Name "tools\Test-ToolkitV3.ps1"
+Test-V3PowerShellSyntax `
+    -Text $diagnosticsModuleText `
+    -Name "ServiceDeskToolkit.Diagnostics.psm1"
+Test-V3PowerShellSyntax `
+    -Text $healthModuleText `
+    -Name "ServiceDeskToolkit.Health.psm1"
+Test-V3PowerShellSyntax `
+    -Text $inventoryModuleText `
+    -Name "ServiceDeskToolkit.Inventory.psm1"
+Test-V3PowerShellSyntax `
+    -Text $networkModuleText `
+    -Name "ServiceDeskToolkit.Network.psm1"
+Test-V3PowerShellSyntax `
+    -Text $printersModuleText `
+    -Name "ServiceDeskToolkit.Printers.psm1"
+
+try {
+    $versionInfo = $versionText | ConvertFrom-Json
+
+    if ([string]::IsNullOrWhiteSpace([string]$versionInfo.version)) {
+        throw "Campo version ausente."
+    }
+
+    if ([string]::IsNullOrWhiteSpace([string]$versionInfo.channel)) {
+        throw "Campo channel ausente."
+    }
+}
+catch {
+    throw "version-v3.json invalido: $($_.Exception.Message)"
+}
 
 Write-V3Step "3/5 - Instalando em pasta limpa..." "Cyan"
 
@@ -311,6 +465,12 @@ foreach ($root in $candidateRoots) {
             -MainText $mainText `
             -ValidatorText $validatorText `
             -ReadmeText $readmeText `
+            -VersionText $versionText `
+            -DiagnosticsModuleText $diagnosticsModuleText `
+            -HealthModuleText $healthModuleText `
+            -InventoryModuleText $inventoryModuleText `
+            -NetworkModuleText $networkModuleText `
+            -PrintersModuleText $printersModuleText `
             -CmdText $cmdText
 
         break
@@ -350,9 +510,14 @@ Write-V3Step "5/5 - Validando instalacao..." "Cyan"
 
 try {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $result.ValidatorFile
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Validador V3 finalizou com codigo $LASTEXITCODE."
+    }
 }
 catch {
-    Write-V3Step "Validador retornou erro: $($_.Exception.Message)" "Yellow"
+    Write-V3Step "Validador retornou erro: $($_.Exception.Message)" "Red"
+    throw
 }
 
 Write-Host ""

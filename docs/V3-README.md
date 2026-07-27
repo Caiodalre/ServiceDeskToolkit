@@ -6,6 +6,9 @@ A V3 é uma nova experiência visual do ServiceDesk Toolkit Corporate.
 
 Ela ainda está em fase de preview técnico e não substitui a versão estável v2.3.0.
 
+Desenvolvimento atual: `3.0.0-preview.5-dev`, na branch
+`v3-corporate-redesign`. A última preview publicada é `v3.0.0-preview.4`.
+
 ## Objetivo da V3
 
 Criar uma interface mais limpa, organizada e corporativa para uso em Service Desk, mantendo a base técnica do toolkit atual como motor.
@@ -32,6 +35,12 @@ Resultado esperado:
 
 - ServiceDeskToolkit-CorporateV3.ps1
 - ServiceDeskToolkitV3.cmd
+- version-v3.json
+- src\ServiceDeskToolkit.Diagnostics\ServiceDeskToolkit.Diagnostics.psm1
+- src\ServiceDeskToolkit.Health\ServiceDeskToolkit.Health.psm1
+- src\ServiceDeskToolkit.Inventory\ServiceDeskToolkit.Inventory.psm1
+- src\ServiceDeskToolkit.Network\ServiceDeskToolkit.Network.psm1
+- src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1
 - tools\Test-ToolkitV3.ps1
 - docs\V3-CORPORATE-REDESIGN-ESCOPO.md
 
@@ -45,6 +54,10 @@ Resultado esperado:
 - Links LinkedIn e GitHub com proteção contra abertura dupla
 - Launcher CMD
 - Validador técnico da V3
+- Metadados de versão exclusivos da V3
+- Pipeline de CI para Windows PowerShell 5.1 e PowerShell 7
+- Painel de Saúde com coleta e avaliação modularizadas
+- Inventário, Rede e Impressoras com coleta, avaliação e relatório modularizados
 
 ## Próximas etapas
 
