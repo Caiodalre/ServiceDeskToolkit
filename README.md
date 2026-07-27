@@ -17,8 +17,8 @@ e ação administrativa avançada.
 | Canal | Referência | Uso recomendado |
 | --- | --- | --- |
 | V2 estável | `v2.3.0` | Operação interna validada |
-| V3 preview publicada | `v3.0.0-preview.4` | Homologação da nova experiência |
-| V3 em desenvolvimento | `v3-corporate-redesign` | Desenvolvimento da preview 5 |
+| V3 preview publicada | `v3.0.0-preview.5` | Homologação interna da arquitetura modular |
+| V3 em desenvolvimento | `v3-corporate-redesign` | Próxima evolução após a preview 5 |
 
 A V3 ainda não substitui a versão estável. Ela evolui a experiência visual e o
 atendimento guiado sem interromper o fluxo operacional da V2.
@@ -62,7 +62,7 @@ A instalação padrão da V2 utiliza `C:\ServiceDeskToolkit`.
 ### V3 preview
 
 ```powershell
-$Version = "v3.0.0-preview.4"
+$Version = "v3.0.0-preview.5"
 $Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-install.ps1"
 $Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/install-v3.ps1"
 
