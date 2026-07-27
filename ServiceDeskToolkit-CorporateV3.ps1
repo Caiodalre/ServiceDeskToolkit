@@ -1118,6 +1118,267 @@ function Invoke-V3SafeTimeSync {
 
     return $sb.ToString()
 }
+function Invoke-V3PrintersPanel {
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine("PAINEL DE IMPRESSORAS - DIAGNOSTICO CONSOLIDADO")
+    [void]$sb.AppendLine("------------------------------------------------")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
+    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
+    [void]$sb.AppendLine("Tipo de acao: Diagnostico de impressoras sem correcao")
+    [void]$sb.AppendLine("")
+
+    try {
+        $spooler = Get-Service -Name "Spooler" -ErrorAction SilentlyContinue
+        $printers = @(Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue)
+        $jobs = @(Get-CimInstance Win32_PrintJob -ErrorAction SilentlyContinue)
+        $drivers = @(Get-CimInstance Win32_PrinterDriver -ErrorAction SilentlyContinue)
+
+        $ports = @()
+
+        if (Get-Command Get-PrinterPort -ErrorAction SilentlyContinue) {
+            try {
+                $ports = @(Get-PrinterPort -ErrorAction SilentlyContinue)
+            }
+            catch {
+                $ports = @()
+            }
+        }
+
+        $defaultPrinter = $printers | Where-Object { $_.Default -eq $true } | Select-Object -First 1
+        $offlinePrinters = @($printers | Where-Object { $_.WorkOffline -eq $true })
+        $errorPrinters = @($printers | Where-Object { $_.PrinterStatus -in @(4,5,6,7) })
+        $networkPrinters = @($printers | Where-Object { $_.Network -eq $true })
+        $localPrinters = @($printers | Where-Object { $_.Local -eq $true })
+
+        [void]$sb.AppendLine("SERVICO SPOOLER")
+        [void]$sb.AppendLine("---------------")
+
+        if ($null -eq $spooler) {
+            [void]$sb.AppendLine("Status: Servico Spooler nao encontrado")
+        }
+        else {
+            [void]$sb.AppendLine("Status: $($spooler.Status)")
+            [void]$sb.AppendLine("Nome: $($spooler.Name)")
+            [void]$sb.AppendLine("DisplayName: $($spooler.DisplayName)")
+        }
+
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("RESUMO")
+        [void]$sb.AppendLine("------")
+        [void]$sb.AppendLine("Total de impressoras: $($printers.Count)")
+        [void]$sb.AppendLine("Impressoras locais: $($localPrinters.Count)")
+        [void]$sb.AppendLine("Impressoras de rede: $($networkPrinters.Count)")
+        [void]$sb.AppendLine("Impressoras offline: $($offlinePrinters.Count)")
+        [void]$sb.AppendLine("Impressoras com possivel erro: $($errorPrinters.Count)")
+        [void]$sb.AppendLine("Jobs na fila: $($jobs.Count)")
+        [void]$sb.AppendLine("Impressora padrao: $(if ($defaultPrinter) { $defaultPrinter.Name } else { 'Nao encontrada' })")
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("IMPRESSORAS INSTALADAS")
+        [void]$sb.AppendLine("----------------------")
+
+        if ($printers.Count -eq 0) {
+            [void]$sb.AppendLine("Nenhuma impressora encontrada.")
+        }
+        else {
+            foreach ($printer in ($printers | Sort-Object Name)) {
+                $statusText = switch ($printer.PrinterStatus) {
+                    1 { "Outro" }
+                    2 { "Desconhecido" }
+                    3 { "Ociosa/Pronta" }
+                    4 { "Imprimindo" }
+                    5 { "Aquecendo" }
+                    6 { "Parada" }
+                    7 { "Offline" }
+                    default { "Status $($printer.PrinterStatus)" }
+                }
+
+                [void]$sb.AppendLine("Nome: $($printer.Name)")
+                [void]$sb.AppendLine("Padrao: $(if ($printer.Default) { 'Sim' } else { 'Nao' })")
+                [void]$sb.AppendLine("Local/Rede: $(if ($printer.Network) { 'Rede' } elseif ($printer.Local) { 'Local' } else { 'Nao identificado' })")
+                [void]$sb.AppendLine("Status: $statusText")
+                [void]$sb.AppendLine("Offline: $(if ($printer.WorkOffline) { 'Sim' } else { 'Nao' })")
+                [void]$sb.AppendLine("Porta: $(if ($printer.PortName) { $printer.PortName } else { 'Nao informada' })")
+                [void]$sb.AppendLine("Driver: $(if ($printer.DriverName) { $printer.DriverName } else { 'Nao informado' })")
+                [void]$sb.AppendLine("")
+            }
+        }
+
+        [void]$sb.AppendLine("FILA DE IMPRESSAO")
+        [void]$sb.AppendLine("-----------------")
+
+        if ($jobs.Count -eq 0) {
+            [void]$sb.AppendLine("Nenhum job de impressao encontrado.")
+        }
+        else {
+            foreach ($job in ($jobs | Sort-Object Name)) {
+                [void]$sb.AppendLine("Job: $($job.Name)")
+                [void]$sb.AppendLine("Documento: $(if ($job.Document) { $job.Document } else { 'Nao informado' })")
+                [void]$sb.AppendLine("Usuario: $(if ($job.Owner) { $job.Owner } else { 'Nao informado' })")
+                [void]$sb.AppendLine("Status: $(if ($job.Status) { $job.Status } else { 'Nao informado' })")
+                [void]$sb.AppendLine("Tamanho: $(if ($job.Size) { "$($job.Size) bytes" } else { 'Nao informado' })")
+                [void]$sb.AppendLine("Paginas: $(if ($job.TotalPages) { $job.TotalPages } else { 'Nao informado' })")
+                [void]$sb.AppendLine("")
+            }
+        }
+
+        [void]$sb.AppendLine("IMPRESSORAS OFFLINE / COM ALERTA")
+        [void]$sb.AppendLine("--------------------------------")
+
+        if ($offlinePrinters.Count -eq 0 -and $errorPrinters.Count -eq 0) {
+            [void]$sb.AppendLine("Nenhuma impressora offline ou com alerta evidente encontrada.")
+        }
+        else {
+            $alertPrinters = @($offlinePrinters + $errorPrinters | Sort-Object Name -Unique)
+
+            foreach ($printer in $alertPrinters) {
+                [void]$sb.AppendLine("- $($printer.Name) | Offline: $(if ($printer.WorkOffline) { 'Sim' } else { 'Nao' }) | Status: $($printer.PrinterStatus) | Porta: $($printer.PortName)")
+            }
+        }
+
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("PORTAS UTILIZADAS")
+        [void]$sb.AppendLine("-----------------")
+
+        if ($ports.Count -gt 0) {
+            foreach ($port in ($ports | Sort-Object Name | Select-Object -First 30)) {
+                $hostAddress = ""
+
+                if ($port.PSObject.Properties.Name -contains "PrinterHostAddress") {
+                    $hostAddress = $port.PrinterHostAddress
+                }
+
+                [void]$sb.AppendLine("Porta: $($port.Name) | Host/IP: $(if ($hostAddress) { $hostAddress } else { 'Nao informado' })")
+            }
+
+            if ($ports.Count -gt 30) {
+                [void]$sb.AppendLine("Observacao: exibindo as primeiras 30 portas de $($ports.Count).")
+            }
+        }
+        else {
+            $usedPorts = @($printers | Where-Object { $_.PortName } | Select-Object -ExpandProperty PortName -Unique | Sort-Object)
+
+            if ($usedPorts.Count -gt 0) {
+                foreach ($portName in $usedPorts) {
+                    [void]$sb.AppendLine("Porta em uso: $portName")
+                }
+            }
+            else {
+                [void]$sb.AppendLine("Nenhuma porta encontrada.")
+            }
+        }
+
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("DRIVERS PRINCIPAIS")
+        [void]$sb.AppendLine("------------------")
+
+        $usedDrivers = @($printers | Where-Object { $_.DriverName } | Select-Object -ExpandProperty DriverName -Unique | Sort-Object)
+
+        if ($usedDrivers.Count -eq 0) {
+            [void]$sb.AppendLine("Nenhum driver associado encontrado.")
+        }
+        else {
+            foreach ($driverName in $usedDrivers) {
+                $driverInfo = $drivers | Where-Object { $_.Name -like "*$driverName*" } | Select-Object -First 1
+
+                if ($driverInfo) {
+                    [void]$sb.AppendLine("Driver: $driverName | Versao: $(if ($driverInfo.DriverVersion) { $driverInfo.DriverVersion } else { 'Nao informada' })")
+                }
+                else {
+                    [void]$sb.AppendLine("Driver: $driverName")
+                }
+            }
+        }
+
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
+        [void]$sb.AppendLine("--------------------")
+
+        $observations = New-Object 'System.Collections.Generic.List[string]'
+
+        if ($null -eq $spooler) {
+            $observations.Add("Servico Spooler nao foi encontrado.")
+        }
+        elseif ($spooler.Status -ne "Running") {
+            $observations.Add("Servico Spooler nao esta em execucao.")
+        }
+
+        if ($printers.Count -eq 0) {
+            $observations.Add("Nenhuma impressora instalada foi encontrada.")
+        }
+
+        if ($null -eq $defaultPrinter -and $printers.Count -gt 0) {
+            $observations.Add("Ha impressoras instaladas, mas nenhuma impressora padrao foi encontrada.")
+        }
+
+        if ($offlinePrinters.Count -gt 0) {
+            $observations.Add("Existem $($offlinePrinters.Count) impressora(s) offline.")
+        }
+
+        if ($jobs.Count -gt 0) {
+            $observations.Add("Existem $($jobs.Count) job(s) na fila de impressao.")
+        }
+
+        if ($errorPrinters.Count -gt 0) {
+            $observations.Add("Existem $($errorPrinters.Count) impressora(s) com status de alerta.")
+        }
+
+        if ($observations.Count -eq 0) {
+            [void]$sb.AppendLine("Resultado: ambiente de impressao sem alerta evidente nos testes basicos.")
+            [void]$sb.AppendLine("Proxima acao recomendada: validar erro especifico do usuario, aplicativo de origem e impressora de destino.")
+        }
+        else {
+            [void]$sb.AppendLine("Resultado: foram encontrados pontos de atencao no ambiente de impressao.")
+            [void]$sb.AppendLine("")
+            [void]$sb.AppendLine("Observacoes:")
+            foreach ($item in $observations) {
+                [void]$sb.AppendLine("- $item")
+            }
+
+            [void]$sb.AppendLine("")
+            [void]$sb.AppendLine("Proxima acao recomendada:")
+
+            if ($null -eq $spooler -or $spooler.Status -ne "Running") {
+                [void]$sb.AppendLine("- Executar Reiniciar spooler como administrador.")
+            }
+            elseif ($jobs.Count -gt 0) {
+                [void]$sb.AppendLine("- Validar documentos travados na fila e considerar limpeza controlada da fila.")
+            }
+            elseif ($offlinePrinters.Count -gt 0) {
+                [void]$sb.AppendLine("- Validar conexao da impressora, porta, IP, cabo/rede e status fisico do equipamento.")
+            }
+            elseif ($null -eq $defaultPrinter -and $printers.Count -gt 0) {
+                [void]$sb.AppendLine("- Definir impressora padrao conforme unidade/setor.")
+            }
+            else {
+                [void]$sb.AppendLine("- Coletar erro exato, validar driver, porta e aplicativo de origem.")
+            }
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("OBSERVACOES PARA ATENDIMENTO")
+        [void]$sb.AppendLine("----------------------------")
+        [void]$sb.AppendLine("- Este painel nao executa nenhuma correcao.")
+        [void]$sb.AppendLine("- Use Reiniciar spooler apenas quando fizer sentido para o erro apresentado.")
+        [void]$sb.AppendLine("- Para limpeza de fila, validar impacto antes de remover jobs.")
+        [void]$sb.AppendLine("- Use Copiar resultado para anexar o diagnostico ao chamado.")
+    }
+    catch {
+        [void]$sb.AppendLine("Falha ao gerar painel de impressoras.")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+    }
+
+    return $sb.ToString()
+}
 function Invoke-V3SafeSpoolerRestart {
     $sb = New-Object System.Text.StringBuilder
 
@@ -1507,7 +1768,24 @@ $xaml = @"
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
 
-        <Style x:Key="SoftButton" TargetType="Button">
+    <Style x:Key="ActionGridButton" TargetType="Button">
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Margin" Value="4,4,4,4"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="Foreground" Value="#0F172A"/>
+        <Setter Property="BorderBrush" Value="#CBD5E1"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+
+    <Style x:Key="SoftButton" TargetType="Button">
             <Setter Property="Height" Value="38"/>
             <Setter Property="Margin" Value="0,6,8,0"/>
             <Setter Property="Padding" Value="14,0"/>
@@ -1614,17 +1892,19 @@ $xaml = @"
                     <TextBlock Text="Ações principais da V3" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
                     <TextBlock Text="Poucas ações visíveis. O restante fica protegido ou avançado." FontSize="12" Foreground="#64748B" Margin="0,2,0,10"/>
 
-                    <WrapPanel>
-                        <Button Name="BtnV3QuickInternet" Content="Sem internet" Style="{StaticResource PrimaryButton}"/>
-                        <Button Name="BtnV3QuickVpn" Content="VPN / Appgate" Style="{StaticResource SoftButton}"/>
-                        <Button Name="BtnV3Inventory" Content="Inventário" Style="{StaticResource SoftButton}"/>
-                        <Button Name="BtnV3Network" Content="Diagnóstico de rede" Style="{StaticResource SoftButton}"/>
-                        <Button Name="BtnV3FlushDns" Content="Limpar DNS" Style="{StaticResource SoftButton}"/>
-                        <Button Name="BtnV3TimeSync" Content="Sincronizar horário" Style="{StaticResource SoftButton}"/>
-                        <Button Name="BtnV3Spooler" Content="Reiniciar spooler" Style="{StaticResource SoftButton}"/>
-                        <Button Name="BtnV3AdvancedInfo" Content="Área avançada protegida" Style="{StaticResource DangerButton}"/>
-                        <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource SoftButton}"/>
-                    </WrapPanel>
+                    <UniformGrid Columns="5" Margin="0,14,0,0">
+    <Button Name="BtnV3QuickInternet" Content="Sem internet" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3QuickVpn" Content="VPN / Appgate" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3Inventory" Content="Inventário" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3Network" Content="Diagnóstico de rede" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3Printers" Content="Impressoras" Style="{StaticResource ActionGridButton}"/>
+
+    <Button Name="BtnV3FlushDns" Content="Limpar DNS" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3TimeSync" Content="Sincronizar horário" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3Spooler" Content="Reiniciar spooler" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3AdvancedInfo" Content="Área avançada protegida" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource ActionGridButton}"/>
+</UniformGrid>
                 </StackPanel>
             </Border>
 
@@ -1711,6 +1991,7 @@ $window.FindName("BtnV3Network").Add_Click({ Set-V3Output (Invoke-V3NetworkDiagn
 $window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3SafeFlushDns) })
 $window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3SafeTimeSync) })
 $window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3SafeSpoolerRestart) })
+$window.FindName("BtnV3Printers").Add_Click({ Set-V3Output (Invoke-V3PrintersPanel) })
 $window.FindName("BtnV3AdvancedInfo").Add_Click({ Set-V3Output "Área avançada protegida.`r`n`r`nNesta primeira V3, ações críticas não ficam expostas na tela principal.`r`nElas serão conectadas depois com confirmação, risco e log." })
 $window.FindName("BtnV3CopyOutput").Add_Click({ Copy-V3OutputToClipboard })
 $BtnV3LinkedIn = $window.FindName("BtnV3LinkedIn")
@@ -1731,6 +2012,7 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
+
 
 
 
