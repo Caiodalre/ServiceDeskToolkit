@@ -273,7 +273,19 @@ $requiredMarkers = @(
     "Impressora nao imprime",
     "return New-V3WorkflowResult @workflowParameters",
     "Set-V3Output (Invoke-V3WorkflowPrinter)",
-    "Reiniciar o Spooler somente quando houver indicio de falha no servico ou fila"
+    "Reiniciar o Spooler somente quando houver indicio de falha no servico ou fila",
+    "function Invoke-V3MachineHealthPanel",
+    "PAINEL DE SAUDE DA MAQUINA",
+    "Tipo de acao: Diagnostico geral sem correcao",
+    "PONTUACAO GERAL",
+    "Pontuacao:",
+    "Classificacao:",
+    "INDICADORES",
+    "Memoria RAM:",
+    "Disco do Windows:",
+    "Reinicio pendente:",
+    "BtnV3Health",
+    "Set-V3Output (Invoke-V3MachineHealthPanel)"
 )
 
 foreach ($marker in $requiredMarkers) {
