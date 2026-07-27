@@ -206,7 +206,6 @@ $markers = @(
     "BtnV3FlushDns",
     "BtnV3TimeSync",
     "BtnV3Spooler",
-    "BtnV3AdvancedInfo",
     "BtnV3CopyOutput",
     "BtnV3LinkedIn",
     "BtnV3GitHub",
@@ -274,7 +273,16 @@ $markers = @(
     "Atendimento Guiado - Impressora Nao Imprime",
     "Impressora nao imprime",
     "return New-V3WorkflowResult @workflowParameters",
-    "Reiniciar o Spooler somente quando houver indicio de falha no servico ou fila"
+    "Reiniciar o Spooler somente quando houver indicio de falha no servico ou fila",
+    "function Invoke-V3MachineHealthPanel",
+    "PAINEL DE SAUDE DA MAQUINA",
+    "PONTUACAO GERAL",
+    "Classificacao:",
+    "INDICADORES",
+    "Reinicio pendente:",
+    "Tipo de acao: Diagnostico geral sem correcao",
+    "BtnV3Health",
+    "Invoke-V3MachineHealthPanel"
 )
 
         foreach ($marker in $markers) {

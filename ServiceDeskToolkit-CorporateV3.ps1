@@ -1515,6 +1515,576 @@ function Invoke-V3SafeSpoolerRestart {
 
     return $sb.ToString()
 }
+function Invoke-V3MachineHealthPanel {
+    $sb = New-Object System.Text.StringBuilder
+
+    [void]$sb.AppendLine("PAINEL DE SAUDE DA MAQUINA")
+    [void]$sb.AppendLine("==========================")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
+    [void]$sb.AppendLine("Hostname: $env:COMPUTERNAME")
+    [void]$sb.AppendLine("Usuario: $env:USERDOMAIN\$env:USERNAME")
+    [void]$sb.AppendLine("Admin: $(if (Test-V3Admin) { 'Sim' } else { 'Nao' })")
+    [void]$sb.AppendLine("Tipo de acao: Diagnostico geral sem correcao")
+    [void]$sb.AppendLine("")
+
+    $score = 100
+
+    $issues = New-Object 'System.Collections.Generic.List[string]'
+    $actions = New-Object 'System.Collections.Generic.List[string]'
+
+    try {
+        $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+        $computer = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
+
+        # ====================================================
+        # SISTEMA
+        # ====================================================
+
+        $systemStatus = "OK"
+        $systemDetail = "Sistema operacional identificado"
+
+        if ($null -eq $os -or $null -eq $computer) {
+            $systemStatus = "CRITICO"
+            $systemDetail = "Nao foi possivel coletar informacoes basicas do sistema"
+            $score -= 20
+
+            [void]$issues.Add("Falha ao coletar informacoes basicas do Windows.")
+            [void]$actions.Add("Validar WMI/CIM, servicos do Windows e permissoes da ferramenta.")
+        }
+        else {
+            $systemDetail = "$($os.Caption) | Build $($os.BuildNumber) | $($os.OSArchitecture)"
+        }
+
+        # ====================================================
+        # MEMORIA RAM
+        # ====================================================
+
+        $memoryStatus = "OK"
+        $memoryDetail = "Dados de memoria indisponiveis"
+        $totalRamGb = 0
+        $memoryUsedPercent = 0
+
+        if ($null -ne $computer -and $computer.TotalPhysicalMemory) {
+            $totalRamGb = [Math]::Round(
+                ($computer.TotalPhysicalMemory / 1GB),
+                1
+            )
+        }
+
+        if ($null -ne $os -and $os.TotalVisibleMemorySize -gt 0) {
+            $usedMemoryKb = (
+                $os.TotalVisibleMemorySize -
+                $os.FreePhysicalMemory
+            )
+
+            $memoryUsedPercent = [Math]::Round(
+                (($usedMemoryKb / $os.TotalVisibleMemorySize) * 100),
+                1
+            )
+        }
+
+        if ($totalRamGb -gt 0) {
+            $memoryDetail = "$totalRamGb GB instalados | Uso atual: $memoryUsedPercent%"
+        }
+
+        if (
+            ($totalRamGb -gt 0 -and $totalRamGb -lt 8) -or
+            $memoryUsedPercent -ge 90
+        ) {
+            $memoryStatus = "CRITICO"
+            $score -= 20
+
+            [void]$issues.Add(
+                "Memoria RAM em estado critico: $memoryDetail."
+            )
+
+            [void]$actions.Add(
+                "Fechar aplicativos pesados, validar processos com consumo elevado e considerar aumento de memoria."
+            )
+        }
+        elseif (
+            ($totalRamGb -gt 0 -and $totalRamGb -lt 12) -or
+            $memoryUsedPercent -ge 80
+        ) {
+            $memoryStatus = "ATENCAO"
+            $score -= 10
+
+            [void]$issues.Add(
+                "Memoria RAM requer atencao: $memoryDetail."
+            )
+
+            [void]$actions.Add(
+                "Validar consumo no Gerenciador de Tarefas e reiniciar aplicativos com uso elevado."
+            )
+        }
+
+        # ====================================================
+        # DISCO DO WINDOWS
+        # ====================================================
+
+        $diskStatus = "OK"
+        $diskDetail = "Disco do Windows nao localizado"
+
+        $systemDrive = Get-CimInstance `
+            Win32_LogicalDisk `
+            -Filter "DriveType=3" `
+            -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.DeviceID -eq $env:SystemDrive
+            } |
+            Select-Object -First 1
+
+        if ($null -eq $systemDrive -or $systemDrive.Size -le 0) {
+            $diskStatus = "CRITICO"
+            $score -= 20
+
+            [void]$issues.Add(
+                "Nao foi possivel consultar o disco do Windows."
+            )
+
+            [void]$actions.Add(
+                "Validar armazenamento, WMI/CIM e integridade do sistema."
+            )
+        }
+        else {
+            $diskSizeGb = [Math]::Round(
+                ($systemDrive.Size / 1GB),
+                1
+            )
+
+            $diskFreeGb = [Math]::Round(
+                ($systemDrive.FreeSpace / 1GB),
+                1
+            )
+
+            $diskFreePercent = [Math]::Round(
+                (($systemDrive.FreeSpace / $systemDrive.Size) * 100),
+                1
+            )
+
+            $diskDetail = "$($systemDrive.DeviceID) $diskFreeGb GB livres de $diskSizeGb GB ($diskFreePercent%)"
+
+            if (
+                $diskFreeGb -lt 15 -or
+                $diskFreePercent -lt 10
+            ) {
+                $diskStatus = "CRITICO"
+                $score -= 30
+
+                [void]$issues.Add(
+                    "Disco do Windows com espaco livre critico: $diskDetail."
+                )
+
+                [void]$actions.Add(
+                    "Liberar espaco em disco antes de executar atualizacoes ou reparos."
+                )
+            }
+            elseif (
+                $diskFreeGb -lt 30 -or
+                $diskFreePercent -lt 20
+            ) {
+                $diskStatus = "ATENCAO"
+                $score -= 15
+
+                [void]$issues.Add(
+                    "Disco do Windows com pouco espaco livre: $diskDetail."
+                )
+
+                [void]$actions.Add(
+                    "Executar limpeza controlada de temporarios e revisar arquivos grandes."
+                )
+            }
+        }
+
+        # ====================================================
+        # UPTIME
+        # ====================================================
+
+        $uptimeStatus = "OK"
+        $uptimeDetail = "Uptime nao encontrado"
+
+        if ($null -ne $os -and $os.LastBootUpTime) {
+            $uptime = New-TimeSpan `
+                -Start $os.LastBootUpTime `
+                -End (Get-Date)
+
+            $uptimeDetail = "$($uptime.Days) dia(s), $($uptime.Hours) hora(s)"
+
+            if ($uptime.TotalDays -ge 30) {
+                $uptimeStatus = "CRITICO"
+                $score -= 10
+
+                [void]$issues.Add(
+                    "Maquina esta ligada ha mais de 30 dias."
+                )
+
+                [void]$actions.Add(
+                    "Agendar reinicio completo da maquina."
+                )
+            }
+            elseif ($uptime.TotalDays -ge 7) {
+                $uptimeStatus = "ATENCAO"
+                $score -= 5
+
+                [void]$issues.Add(
+                    "Maquina esta ligada ha mais de 7 dias."
+                )
+
+                [void]$actions.Add(
+                    "Recomendar reinicio para limpar estados temporarios."
+                )
+            }
+        }
+
+        # ====================================================
+        # REDE
+        # ====================================================
+
+        $networkStatus = "OK"
+        $networkDetail = "Nenhum adaptador ativo encontrado"
+        $ipv4List = @()
+        $gatewayList = @()
+
+        $adapters = @(
+            Get-CimInstance `
+                Win32_NetworkAdapterConfiguration `
+                -Filter "IPEnabled=True" `
+                -ErrorAction SilentlyContinue
+        )
+
+        $selectedAdapter = $null
+
+        foreach ($candidate in $adapters) {
+            $candidateIpv4 = @(
+                $candidate.IPAddress |
+                Where-Object {
+                    $_ -match '^\d{1,3}(\.\d{1,3}){3}$'
+                }
+            )
+
+            if ($candidateIpv4.Count -gt 0) {
+                $selectedAdapter = $candidate
+                $ipv4List = $candidateIpv4
+                break
+            }
+        }
+
+        if ($null -eq $selectedAdapter) {
+            $networkStatus = "CRITICO"
+            $score -= 25
+
+            [void]$issues.Add(
+                "Nenhum adaptador com endereco IPv4 valido foi encontrado."
+            )
+
+            [void]$actions.Add(
+                "Validar cabo, Wi-Fi, adaptador, driver e DHCP."
+            )
+        }
+        else {
+            $gatewayList = @(
+                $selectedAdapter.DefaultIPGateway |
+                Where-Object {
+                    -not [string]::IsNullOrWhiteSpace($_)
+                }
+            )
+
+            $networkDetail = "$($selectedAdapter.Description) | IP: $($ipv4List -join ', ')"
+
+            if (
+                @($ipv4List | Where-Object { $_ -like "169.254.*" }).Count -gt 0
+            ) {
+                $networkStatus = "CRITICO"
+                $score -= 25
+
+                [void]$issues.Add(
+                    "Adaptador recebeu endereco APIPA 169.254.x.x."
+                )
+
+                [void]$actions.Add(
+                    "Validar DHCP, cabo, Wi-Fi, switch ou VLAN."
+                )
+            }
+            elseif ($gatewayList.Count -eq 0) {
+                $networkStatus = "ATENCAO"
+                $score -= 15
+
+                [void]$issues.Add(
+                    "Adaptador possui IP, mas nao possui gateway."
+                )
+
+                [void]$actions.Add(
+                    "Validar configuracao de rede e escopo DHCP."
+                )
+            }
+            else {
+                $networkDetail += " | Gateway: $($gatewayList -join ', ')"
+            }
+        }
+
+        # ====================================================
+        # DNS
+        # ====================================================
+
+        $dnsStatus = "OK"
+        $dnsDetail = "Resolucao www.microsoft.com funcionando"
+
+        try {
+            $dnsResult = Resolve-DnsName `
+                -Name "www.microsoft.com" `
+                -Type A `
+                -ErrorAction Stop
+
+            if ($null -eq $dnsResult) {
+                throw "Nenhum endereco retornado."
+            }
+        }
+        catch {
+            $dnsStatus = "ATENCAO"
+            $dnsDetail = "Falha de resolucao DNS"
+            $score -= 10
+
+            [void]$issues.Add(
+                "Resolucao DNS falhou durante o diagnostico."
+            )
+
+            [void]$actions.Add(
+                "Executar Limpar DNS e validar servidores DNS configurados."
+            )
+        }
+
+        # ====================================================
+        # HORARIO
+        # ====================================================
+
+        $timeStatus = "OK"
+        $timeDetail = "Fonte de horario nao encontrada"
+
+        $timeService = Get-Service `
+            -Name "w32time" `
+            -ErrorAction SilentlyContinue
+
+        $timeSourceRaw = & w32tm /query /source 2>&1
+        $timeSource = ($timeSourceRaw | Out-String).Trim()
+
+        if (-not [string]::IsNullOrWhiteSpace($timeSource)) {
+            $timeDetail = "Servico: $(if ($timeService) { $timeService.Status } else { 'Nao encontrado' }) | Fonte: $timeSource"
+        }
+
+        if (
+            $null -eq $timeService -or
+            $timeService.Status -ne "Running" -or
+            $timeSource -match "CMOS|Free-running|nao sincronizado|not synchronized|erro|error"
+        ) {
+            $timeStatus = "ATENCAO"
+            $score -= 5
+
+            [void]$issues.Add(
+                "Sincronizacao de horario requer validacao."
+            )
+
+            [void]$actions.Add(
+                "Executar Sincronizar horario e validar dominio, NTP ou GPO."
+            )
+        }
+
+        # ====================================================
+        # SPOOLER
+        # ====================================================
+
+        $spoolerStatus = "OK"
+        $spoolerDetail = "Servico Spooler em execucao"
+
+        $spooler = Get-Service `
+            -Name "Spooler" `
+            -ErrorAction SilentlyContinue
+
+        if ($null -eq $spooler) {
+            $spoolerStatus = "ATENCAO"
+            $spoolerDetail = "Servico Spooler nao encontrado"
+            $score -= 5
+
+            [void]$issues.Add(
+                "Servico Spooler nao foi encontrado."
+            )
+
+            [void]$actions.Add(
+                "Validar recursos de impressao instalados no Windows."
+            )
+        }
+        elseif ($spooler.Status -ne "Running") {
+            $spoolerStatus = "ATENCAO"
+            $spoolerDetail = "Servico Spooler: $($spooler.Status)"
+            $score -= 5
+
+            [void]$issues.Add(
+                "Servico Spooler nao esta em execucao."
+            )
+
+            [void]$actions.Add(
+                "Executar Reiniciar spooler como administrador."
+            )
+        }
+
+        # ====================================================
+        # REINICIO PENDENTE
+        # ====================================================
+
+        $pendingReboot = $false
+        $rebootReasons = New-Object 'System.Collections.Generic.List[string]'
+
+        $cbsPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending"
+        $wuPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"
+        $sessionManagerPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager"
+
+        if (Test-Path $cbsPath) {
+            $pendingReboot = $true
+            [void]$rebootReasons.Add("Component Based Servicing")
+        }
+
+        if (Test-Path $wuPath) {
+            $pendingReboot = $true
+            [void]$rebootReasons.Add("Windows Update")
+        }
+
+        $sessionManager = Get-ItemProperty `
+            -Path $sessionManagerPath `
+            -Name "PendingFileRenameOperations" `
+            -ErrorAction SilentlyContinue
+
+        if (
+            $null -ne $sessionManager -and
+            $null -ne $sessionManager.PendingFileRenameOperations
+        ) {
+            $pendingReboot = $true
+            [void]$rebootReasons.Add("PendingFileRenameOperations")
+        }
+
+        $rebootStatus = if ($pendingReboot) {
+            "ATENCAO"
+        }
+        else {
+            "OK"
+        }
+
+        $rebootDetail = if ($pendingReboot) {
+            "Sim | Motivo(s): $($rebootReasons -join ', ')"
+        }
+        else {
+            "Nao"
+        }
+
+        if ($pendingReboot) {
+            $score -= 5
+
+            [void]$issues.Add(
+                "Windows possui reinicio pendente."
+            )
+
+            [void]$actions.Add(
+                "Agendar reinicio da maquina antes de novos reparos."
+            )
+        }
+
+        $score = [Math]::Max(0, $score)
+
+        $classification = if ($score -ge 85) {
+            "SAUDAVEL"
+        }
+        elseif ($score -ge 65) {
+            "ATENCAO"
+        }
+        else {
+            "CRITICO"
+        }
+
+        # ====================================================
+        # RESULTADO
+        # ====================================================
+
+        [void]$sb.AppendLine("PONTUACAO GERAL")
+        [void]$sb.AppendLine("---------------")
+        [void]$sb.AppendLine("Pontuacao: $score de 100")
+        [void]$sb.AppendLine("Classificacao: $classification")
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("INDICADORES")
+        [void]$sb.AppendLine("-----------")
+        [void]$sb.AppendLine("Sistema: $systemStatus | $systemDetail")
+        [void]$sb.AppendLine("Memoria RAM: $memoryStatus | $memoryDetail")
+        [void]$sb.AppendLine("Disco do Windows: $diskStatus | $diskDetail")
+        [void]$sb.AppendLine("Uptime: $uptimeStatus | $uptimeDetail")
+        [void]$sb.AppendLine("Rede: $networkStatus | $networkDetail")
+        [void]$sb.AppendLine("DNS: $dnsStatus | $dnsDetail")
+        [void]$sb.AppendLine("Horario: $timeStatus | $timeDetail")
+        [void]$sb.AppendLine("Spooler: $spoolerStatus | $spoolerDetail")
+        [void]$sb.AppendLine("Reinicio pendente: $rebootStatus | $rebootDetail")
+        [void]$sb.AppendLine("")
+
+        [void]$sb.AppendLine("CONCLUSAO AUTOMATICA")
+        [void]$sb.AppendLine("--------------------")
+
+        if ($issues.Count -eq 0) {
+            [void]$sb.AppendLine(
+                "Resultado: maquina saudavel nos indicadores basicos avaliados."
+            )
+
+            [void]$sb.AppendLine(
+                "Nao foi identificado alerta tecnico evidente."
+            )
+        }
+        else {
+            [void]$sb.AppendLine(
+                "Resultado: foram encontrados $($issues.Count) ponto(s) de atencao."
+            )
+
+            [void]$sb.AppendLine("")
+
+            foreach ($issue in $issues) {
+                [void]$sb.AppendLine("- $issue")
+            }
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("PROXIMAS ACOES")
+        [void]$sb.AppendLine("--------------")
+
+        $uniqueActions = @(
+            $actions |
+            Select-Object -Unique
+        )
+
+        if ($uniqueActions.Count -eq 0) {
+            [void]$sb.AppendLine(
+                "- Nenhuma correcao imediata recomendada."
+            )
+
+            [void]$sb.AppendLine(
+                "- Validar o sintoma especifico informado pelo usuario."
+            )
+        }
+        else {
+            foreach ($action in $uniqueActions) {
+                [void]$sb.AppendLine("- $action")
+            }
+        }
+
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("OBSERVACAO")
+        [void]$sb.AppendLine("----------")
+        [void]$sb.AppendLine(
+            "Este painel realiza somente diagnostico e nao executa correcoes automaticamente."
+        )
+    }
+    catch {
+        [void]$sb.AppendLine("Falha ao gerar o Painel de Saude da Maquina.")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
+    }
+
+    return $sb.ToString()
+}
 function New-V3WorkflowResult {
     param(
         [Parameter(Mandatory = $true)]
@@ -1935,7 +2505,7 @@ $xaml = @"
     <Button Name="BtnV3FlushDns" Content="Limpar DNS" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3TimeSync" Content="Sincronizar horário" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3Spooler" Content="Reiniciar spooler" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3AdvancedInfo" Content="Área avançada protegida" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3Health" Content="Saúde da máquina" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource ActionGridButton}"/>
 </UniformGrid>
                 </StackPanel>
@@ -2025,7 +2595,7 @@ $window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3SafeFlushDn
 $window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3SafeTimeSync) })
 $window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3SafeSpoolerRestart) })
 $window.FindName("BtnV3Printers").Add_Click({ Set-V3Output (Invoke-V3WorkflowPrinter) })
-$window.FindName("BtnV3AdvancedInfo").Add_Click({ Set-V3Output "Área avançada protegida.`r`n`r`nNesta primeira V3, ações críticas não ficam expostas na tela principal.`r`nElas serão conectadas depois com confirmação, risco e log." })
+$window.FindName("BtnV3Health").Add_Click({ Set-V3Output (Invoke-V3MachineHealthPanel) })
 $window.FindName("BtnV3CopyOutput").Add_Click({ Copy-V3OutputToClipboard })
 $BtnV3LinkedIn = $window.FindName("BtnV3LinkedIn")
 $BtnV3GitHub = $window.FindName("BtnV3GitHub")
