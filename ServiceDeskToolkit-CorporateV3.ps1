@@ -1615,6 +1615,7 @@ function Get-V3GuidedHomeText {
     [void]$sb.AppendLine("Fluxos disponiveis nesta etapa:")
     [void]$sb.AppendLine("- Sem internet")
     [void]$sb.AppendLine("- VPN / Appgate")
+    [void]$sb.AppendLine("- Impressora nao imprime")
     [void]$sb.AppendLine("")
     [void]$sb.AppendLine("Cada fluxo organiza:")
     [void]$sb.AppendLine("- Problema")
@@ -1673,6 +1674,38 @@ function Invoke-V3WorkflowVpn {
             "Escalar com evidencia se houver falha de certificado, politica ou servidor"
         ) `
         -RiskLevel "Baixo"
+}
+function Invoke-V3WorkflowPrinter {
+    $workflowParameters = @{
+        Title = "Atendimento Guiado - Impressora Nao Imprime"
+        Problem = "Usuario relata que a impressora nao imprime, aparece offline, acumula documentos na fila ou apresenta falha durante a impressao."
+        EvidenceScript = {
+            Invoke-V3PrintersPanel
+        }
+        LikelyCauses = @(
+            "Servico Spooler parado ou instavel",
+            "Documentos travados na fila de impressao",
+            "Impressora configurada como offline",
+            "Impressora padrao incorreta ou nao definida",
+            "Porta ou endereco IP incorreto",
+            "Equipamento desligado ou desconectado da rede",
+            "Falha ou incompatibilidade no driver",
+            "Problema especifico no aplicativo de origem"
+        )
+        NextActions = @(
+            "Confirmar qual impressora e qual documento apresentam falha",
+            "Validar o estado do Spooler e a quantidade de trabalhos na fila",
+            "Confirmar se a impressora correta esta definida como padrao",
+            "Validar se a impressora aparece offline ou com status de alerta",
+            "Para impressora de rede, validar porta, endereco IP e conectividade",
+            "Reiniciar o Spooler somente quando houver indicio de falha no servico ou fila",
+            "Nao limpar a fila sem confirmar o impacto com o usuario",
+            "Se os testes estiverem normais, validar driver, aplicativo de origem e equipamento fisico"
+        )
+        RiskLevel = "Baixo"
+    }
+
+    return New-V3WorkflowResult @workflowParameters
 }
 function Copy-V3OutputToClipboard {
     try {
@@ -1991,7 +2024,7 @@ $window.FindName("BtnV3Network").Add_Click({ Set-V3Output (Invoke-V3NetworkDiagn
 $window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3SafeFlushDns) })
 $window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3SafeTimeSync) })
 $window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3SafeSpoolerRestart) })
-$window.FindName("BtnV3Printers").Add_Click({ Set-V3Output (Invoke-V3PrintersPanel) })
+$window.FindName("BtnV3Printers").Add_Click({ Set-V3Output (Invoke-V3WorkflowPrinter) })
 $window.FindName("BtnV3AdvancedInfo").Add_Click({ Set-V3Output "Área avançada protegida.`r`n`r`nNesta primeira V3, ações críticas não ficam expostas na tela principal.`r`nElas serão conectadas depois com confirmação, risco e log." })
 $window.FindName("BtnV3CopyOutput").Add_Click({ Copy-V3OutputToClipboard })
 $BtnV3LinkedIn = $window.FindName("BtnV3LinkedIn")
