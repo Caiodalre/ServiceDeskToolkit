@@ -9,6 +9,12 @@ Ela ainda está em fase de preview técnico e não substitui a versão estável 
 Preview atual: `3.0.0-preview.5`, publicada a partir da branch
 `v3-corporate-redesign` para homologação interna.
 
+## Homologação interna
+
+A execução manual deve seguir o [Plano de homologação da V3 preview 5](V3-PREVIEW5-HOMOLOGACAO.md). O roteiro define ambientes, casos, evidências sanitizadas, severidades e critérios de decisão.
+
+Resultados públicos não devem conter usuários, domínio, endereços de rede, seriais, nomes de impressoras, credenciais ou pacotes de suporte.
+
 ## Objetivo da V3
 
 Criar uma interface mais limpa, organizada e corporativa para uso em Service Desk, mantendo a base técnica do toolkit atual como motor.
@@ -43,6 +49,7 @@ Resultado esperado:
 - src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1
 - tools\Test-ToolkitV3.ps1
 - docs\V3-CORPORATE-REDESIGN-ESCOPO.md
+- docs\V3-PREVIEW5-HOMOLOGACAO.md
 
 ## O que já funciona
 
