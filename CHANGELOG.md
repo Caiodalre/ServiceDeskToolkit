@@ -3,7 +3,7 @@
 Todas as mudanças relevantes do ServiceDesk Toolkit Corporate são registradas
 neste arquivo.
 
-## Em desenvolvimento — v3.0.0-preview.5-dev
+## v3.0.0-preview.5 — 2026-07-27
 
 ### Adicionado
 

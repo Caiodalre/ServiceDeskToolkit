@@ -6,8 +6,8 @@ A V3 é uma nova experiência visual do ServiceDesk Toolkit Corporate.
 
 Ela ainda está em fase de preview técnico e não substitui a versão estável v2.3.0.
 
-Desenvolvimento atual: `3.0.0-preview.5-dev`, na branch
-`v3-corporate-redesign`. A última preview publicada é `v3.0.0-preview.4`.
+Preview atual: `3.0.0-preview.5`, publicada a partir da branch
+`v3-corporate-redesign` para homologação interna.
 
 ## Objetivo da V3
 
