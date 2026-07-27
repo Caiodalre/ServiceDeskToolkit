@@ -283,12 +283,16 @@ Write-Host "============================================================" -Foreg
 
 if ($Failures -eq 0) {
     Write-Host "APROVADO - Release validada sem falhas." -ForegroundColor Green
+    $exitCode = 0
 }
 else {
     Write-Host "REPROVADO - Falhas encontradas: $Failures" -ForegroundColor Red
+    $exitCode = 1
 }
 
 Write-Host "Relatorio:" -ForegroundColor Cyan
 Write-Host $ReportPath -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
+
+exit $exitCode

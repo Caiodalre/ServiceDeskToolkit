@@ -1,0 +1,9 @@
+* @Caiodalre
+
+# Alterações de maior risco operacional
+/bootstrap.ps1 @Caiodalre
+/install*.ps1 @Caiodalre
+/update.ps1 @Caiodalre
+/rollback.ps1 @Caiodalre
+/ServiceDeskToolkit-Corporate*.ps1 @Caiodalre
+/.github/workflows/ @Caiodalre

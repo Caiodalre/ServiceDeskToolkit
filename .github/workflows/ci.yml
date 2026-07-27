@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - v2.3-functional
+      - v2.4-functional
+      - v3-corporate-redesign
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    name: PowerShell ${{ matrix.shell }}
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shell:
+          - powershell
+          - pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Pester
+        shell: ${{ matrix.shell }}
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Run repository tests
+        shell: ${{ matrix.shell }}
+        run: |
+          New-Item -Path "./reports" -ItemType Directory -Force | Out-Null
+          $configuration = New-PesterConfiguration
+          $configuration.Run.Path = "./tests"
+          $configuration.Run.Exit = $true
+          $configuration.Output.Verbosity = "Detailed"
+          $configuration.TestResult.Enabled = $true
+          $configuration.TestResult.OutputPath = "reports/pester-${{ matrix.shell }}.xml"
+          $configuration.TestResult.OutputFormat = "NUnitXml"
+          Invoke-Pester -Configuration $configuration
+
+      - name: Run V2 quality gate
+        shell: ${{ matrix.shell }}
+        run: ./tools/Test-ToolkitQuality.ps1
+
+      - name: Run release validator
+        shell: ${{ matrix.shell }}
+        run: ./tools/Test-ToolkitRelease.ps1
+
+      - name: Run V3 validator
+        shell: ${{ matrix.shell }}
+        run: ./tools/Test-ToolkitV3.ps1
+
+      - name: Upload validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-reports-${{ matrix.shell }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14
