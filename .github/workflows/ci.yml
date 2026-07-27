@@ -27,12 +27,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Pester
+      - name: Prepare Pester for Windows PowerShell
+        shell: pwsh
         run: |
-          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force | Out-Null
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module -Name Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          $modulePath = Join-Path $env:RUNNER_TEMP "PowerShellModules"
+          Save-Module -Name Pester -RequiredVersion 5.7.1 -Path $modulePath -Force
+          "PSModulePath=$modulePath;$env:PSModulePath" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run repository tests
         run: |
