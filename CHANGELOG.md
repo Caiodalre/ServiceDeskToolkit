@@ -3,6 +3,25 @@
 Todas as mudanças relevantes do ServiceDesk Toolkit Corporate são registradas
 neste arquivo.
 
+## v3.0.0-rc.1 — 2026-07-27
+
+### Alterado
+
+- Metadados da V3 promovidos para o canal `release-candidate`.
+- Instalador V3 passa a usar por padrão a referência fixa `v3.0.0-rc.1`.
+- Documentação atualizada com o resultado da homologação interna e o processo de promoção.
+
+### Validado
+
+- ENV-A aprovado em Windows 11, Windows PowerShell 5.1 e usuário padrão.
+- ENV-B aprovado em Windows 11, PowerShell 7.6.3 e sessão administrativa.
+- Interface, navegação, diagnósticos, correções seguras, evidências e coexistência com a V2 confirmados.
+- Nenhum bloqueador, defeito crítico ou regressão funcional relatado.
+
+### Observação
+
+- Não há mudanças funcionais em relação à `v3.0.0-preview.5`; esta versão congela a candidata homologada para validação final de release.
+
 ## v3.0.0-preview.5 — 2026-07-27
 
 ### Adicionado

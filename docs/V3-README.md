@@ -4,14 +4,17 @@
 
 A V3 é uma nova experiência visual do ServiceDesk Toolkit Corporate.
 
-Ela ainda está em fase de preview técnico e não substitui a versão estável v2.3.0.
+A preview `3.0.0-preview.5` foi aprovada na homologação interna obrigatória. A
+candidata atual é `3.0.0-rc.1`, preparada para validação final de release.
 
-Preview atual: `3.0.0-preview.5`, publicada a partir da branch
-`v3-corporate-redesign` para homologação interna.
+A V3 ainda não substitui a versão estável `v2.3.0` até a promoção formal para
+`v3.0.0`.
 
 ## Homologação interna
 
-A execução manual deve seguir o [Plano de homologação da V3 preview 5](V3-PREVIEW5-HOMOLOGACAO.md). O roteiro define ambientes, casos, evidências sanitizadas, severidades e critérios de decisão.
+A execução manual seguiu o [Plano de homologação da V3 preview 5](V3-PREVIEW5-HOMOLOGACAO.md). A rodada obrigatória foi concluída e aprovada em 27/07/2026 nos ambientes ENV-A e ENV-B.
+
+O resultado sanitizado está registrado na [Issue #5](https://github.com/Caiodalre/ServiceDeskToolkit/issues/5).
 
 Resultados públicos não devem conter usuários, domínio, endereços de rede, seriais, nomes de impressoras, credenciais ou pacotes de suporte.
 
@@ -68,14 +71,13 @@ Resultado esperado:
 
 ## Próximas etapas
 
-- Conectar funções reais da V2.4 no fluxo visual da V3
-- Melhorar atendimento guiado por problema
-- Criar tela de evidências
-- Criar confirmações para ações avançadas
-- Integrar a V3 no fluxo de validação e release
+- Validar instalação e reversão da `v3.0.0-rc.1`
+- Confirmar os artefatos gerados pela CI
+- Preservar o congelamento funcional durante a release candidate
+- Preparar a promoção controlada para `v3.0.0`
 
 ## Observação
 
 A versão estável oficial continua sendo a v2.3.0.
 
-A V3 deve evoluir em branch própria até estar madura para uma release futura.
+A V3 permanece em branch própria durante a release candidate e só será promovida após os critérios finais de release.

@@ -3,7 +3,7 @@
 [![CI](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml)
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-5391FE)
-![V3](https://img.shields.io/badge/V3-preview-orange)
+![V3](https://img.shields.io/badge/V3-rc.1-2563EB)
 
 Central de atendimento técnico em PowerShell para diagnóstico, evidências e
 correções controladas em estações Windows.
@@ -17,11 +17,11 @@ e ação administrativa avançada.
 | Canal | Referência | Uso recomendado |
 | --- | --- | --- |
 | V2 estável | `v2.3.0` | Operação interna validada |
-| V3 preview publicada | `v3.0.0-preview.5` | Homologação interna da arquitetura modular |
-| V3 em desenvolvimento | `v3-corporate-redesign` | Próxima evolução após a preview 5 |
+| V3 release candidate | `v3.0.0-rc.1` | Validação final antes da promoção estável |
+| V3 em desenvolvimento | `v3-corporate-redesign` | Evolução posterior à release candidate |
 
-A V3 ainda não substitui a versão estável. Ela evolui a experiência visual e o
-atendimento guiado sem interromper o fluxo operacional da V2.
+A V3 release candidate foi aprovada na homologação interna obrigatória, mas ainda
+não substitui a versão estável até a promoção formal para `v3.0.0`.
 
 ## Capacidades
 
@@ -59,10 +59,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
 
 A instalação padrão da V2 utiliza `C:\ServiceDeskToolkit`.
 
-### V3 preview
+### V3 release candidate
 
 ```powershell
-$Version = "v3.0.0-preview.5"
+$Version = "v3.0.0-rc.1"
 $Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-install.ps1"
 $Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/install-v3.ps1"
 
@@ -104,7 +104,7 @@ relatórios.
 
 ```text
 ServiceDeskToolkit-Corporate.ps1    Aplicação operacional V2
-ServiceDeskToolkit-CorporateV3.ps1  Aplicação preview V3
+ServiceDeskToolkit-CorporateV3.ps1  Aplicação release candidate V3
 data/knowledge-base.json            Base de conhecimento local
 src/                                Módulos de diagnóstico e regras de domínio
 tools/                              Diagnóstico e validadores
