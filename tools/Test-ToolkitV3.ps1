@@ -269,7 +269,12 @@ $markers = @(
     "PORTAS UTILIZADAS",
     "DRIVERS PRINCIPAIS",
     "ActionGridButton",
-    "UniformGrid Columns"
+    "UniformGrid Columns",
+    "function Invoke-V3WorkflowPrinter",
+    "Atendimento Guiado - Impressora Nao Imprime",
+    "Impressora nao imprime",
+    "return New-V3WorkflowResult @workflowParameters",
+    "Reiniciar o Spooler somente quando houver indicio de falha no servico ou fila"
 )
 
         foreach ($marker in $markers) {
