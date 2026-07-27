@@ -256,7 +256,20 @@ $markers = @(
     "DISCOS",
     "BIOS / SERIAL",
     "REDE RESUMIDA",
-    "Tipo de acao: Coleta de inventario sem correcao"
+    "Tipo de acao: Coleta de inventario sem correcao",
+    "function Invoke-V3PrintersPanel",
+    "BtnV3Printers",
+    "Invoke-V3PrintersPanel",
+    "PAINEL DE IMPRESSORAS - DIAGNOSTICO CONSOLIDADO",
+    "Tipo de acao: Diagnostico de impressoras sem correcao",
+    "SERVICO SPOOLER",
+    "IMPRESSORAS INSTALADAS",
+    "FILA DE IMPRESSAO",
+    "IMPRESSORAS OFFLINE / COM ALERTA",
+    "PORTAS UTILIZADAS",
+    "DRIVERS PRINCIPAIS",
+    "ActionGridButton",
+    "UniformGrid Columns"
 )
 
         foreach ($marker in $markers) {
