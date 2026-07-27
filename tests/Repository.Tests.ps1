@@ -1,4 +1,5 @@
-﻿$script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
+﻿BeforeAll {
+$script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 
 function Assert-RepositoryCondition {
     param(
@@ -12,6 +13,8 @@ function Assert-RepositoryCondition {
     if (-not $Condition) {
         throw $Message
     }
+}
+
 }
 
 Describe "PowerShell source integrity" {

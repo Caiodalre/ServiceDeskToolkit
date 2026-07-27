@@ -1,4 +1,5 @@
-﻿$script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
+﻿BeforeAll {
+$script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 
 foreach ($moduleName in @(
     "ServiceDeskToolkit.Inventory",
@@ -273,6 +274,8 @@ function New-PrinterSnapshot {
         }
         AlertPrinters = [object[]]$alerts
     }
+}
+
 }
 
 Describe "Network diagnostic assessment" {
