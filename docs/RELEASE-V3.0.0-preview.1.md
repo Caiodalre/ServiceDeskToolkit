@@ -6,9 +6,9 @@ Tag fixa: v3.0.0-preview.1
 
 ## Resumo
 
-Esta preview representa a primeira versão instalável e validável da V3 do ServiceDesk Toolkit Corporate.
+Esta preview representa a primeira versão instalável, validável e versionada da V3 do ServiceDesk Toolkit Corporate.
 
-A V3 tem foco em interface mais limpa, execução segura, saída técnica organizada e facilidade para copiar evidências para chamados.
+A V3 tem foco em interface limpa, execução segura, saída técnica organizada e facilidade para copiar evidências para chamados.
 
 ## Recursos validados
 
@@ -49,7 +49,7 @@ A V3 tem foco em interface mais limpa, execução segura, saída técnica organi
     cd $Latest.FullName
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\tools\Test-ToolkitV3.ps1"
 
-## Observações
+## Observações técnicas
 
 - A tag v3.0.0-preview.1 não deve ser movida.
 - Novas alterações devem continuar na branch v3-corporate-redesign.
