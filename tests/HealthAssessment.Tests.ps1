@@ -1,4 +1,5 @@
-﻿$script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
+﻿BeforeAll {
+$script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 $script:HealthModulePath = Join-Path `
     $script:RepositoryRoot `
     "src\ServiceDeskToolkit.Health\ServiceDeskToolkit.Health.psm1"
@@ -81,6 +82,8 @@ function Get-Indicator {
     )
 
     return @($Assessment.Indicators | Where-Object Name -eq $Name)[0]
+}
+
 }
 
 Describe "Machine health assessment" {
