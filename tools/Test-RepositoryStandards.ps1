@@ -346,7 +346,7 @@ try {
 
     if (-not $readme.Contains($expectedSourceRef)) {
         Add-StandardFailure (
-            "README.md não informa a candidata atual $expectedSourceRef."
+            "README.md não informa a versão V3 atual $expectedSourceRef."
         )
     }
 }
