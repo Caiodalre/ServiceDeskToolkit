@@ -1,4 +1,4 @@
-﻿BeforeAll {
+﻿$initializeRepositoryTests = {
 $script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 
 function Assert-RepositoryCondition {
@@ -15,6 +15,13 @@ function Assert-RepositoryCondition {
     }
 }
 
+}
+
+if ((Get-Module Pester).Version.Major -ge 5) {
+    BeforeAll $initializeRepositoryTests
+}
+else {
+    . $initializeRepositoryTests
 }
 
 Describe "PowerShell source integrity" {
@@ -127,6 +134,57 @@ Describe "V3 version contract" {
                 -Condition ($script:V3InstallerText -match $requiredModule) `
                 -Message "O instalador V3 nao inclui: $requiredModule"
         }
+    }
+
+    It "connects useful and protected SFC and DISM actions" {
+        $requiredRepairMarkers = @(
+            'function New-V3WindowsRepairWorker',
+            'function Invoke-V3WindowsRepair',
+            'function Start-V3WindowsRepairMonitor',
+            'function Get-V3WindowsRepairProgressText',
+            'BtnV3Sfc',
+            'BtnV3Dism',
+            'Invoke-V3WindowsRepair -Tool "SFC"',
+            'Invoke-V3WindowsRepair -Tool "DISM"',
+            'System32\sfc.exe',
+            'System32\dism.exe',
+            '-Verb RunAs',
+            'StandardOutputEncoding',
+            'OEMCodePage',
+            'ReadToEndAsync',
+            'System.Windows.Threading.DispatcherTimer',
+            'REPARO DO WINDOWS - CONCLUÍDO',
+            'REPARO DO WINDOWS - INTERROMPIDO',
+            'REPARO DO WINDOWS - FALHA AO INICIAR',
+            'windows-repair-audit.jsonl',
+            'Resumo final:'
+        )
+
+        foreach ($repairMarker in $requiredRepairMarkers) {
+            Assert-RepositoryCondition `
+                -Condition ($script:V3AppText.Contains($repairMarker)) `
+                -Message "Acao de reparo V3 incompleta. Marcador ausente: $repairMarker"
+        }
+
+        $sfcHandlers = (
+            [regex]::Matches(
+                $script:V3AppText,
+                'BtnV3Sfc"\)\.Add_Click'
+            )
+        ).Count
+        $dismHandlers = (
+            [regex]::Matches(
+                $script:V3AppText,
+                'BtnV3Dism"\)\.Add_Click'
+            )
+        ).Count
+
+        Assert-RepositoryCondition `
+            -Condition ($sfcHandlers -eq 1) `
+            -Message "Esperado um handler SFC, encontrado: $sfcHandlers"
+        Assert-RepositoryCondition `
+            -Condition ($dismHandlers -eq 1) `
+            -Message "Esperado um handler DISM, encontrado: $dismHandlers"
     }
 }
 
