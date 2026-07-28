@@ -3,7 +3,7 @@
 [![CI](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml)
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-5391FE)
-![V3](https://img.shields.io/badge/V3-release%20candidate-orange)
+![V3](https://img.shields.io/badge/V3-3.0.0%20stable-2ea44f)
 
 Central de atendimento técnico em PowerShell para diagnóstico, evidências e
 correções controladas em estações Windows.
@@ -16,12 +16,12 @@ e ação administrativa avançada.
 
 | Canal | Referência | Uso recomendado |
 | --- | --- | --- |
-| V2 estável | `v2.3.0` | Operação interna validada |
-| V3 candidata atual | `v3.0.0-rc.3` | Validação final antes da promoção estável |
-| V3 em desenvolvimento | `v3-corporate-redesign` | Evolução controlada da candidata |
+| V3 estável | `v3.0.0` | Operação interna homologada |
+| V2 legado | `v2.3.0` | Fallback para instalações anteriores |
+| Desenvolvimento | `v3-corporate-redesign` | Evolução controlada da V3 |
 
-A V3 ainda não substitui a versão estável. Ela evolui a experiência visual e o
-atendimento guiado sem interromper o fluxo operacional da V2.
+A V3 substitui a V2 como canal estável após homologação funcional em máquinas
+diferentes. A tag `v2.3.0` permanece imutável como fallback legado.
 
 ## Capacidades
 
@@ -44,9 +44,24 @@ atendimento guiado sem interromper o fluxo operacional da V2.
 
 ## Instalação
 
-### V2 estável
+### V3 estável
 
-O instalador é baixado para um arquivo temporário antes da execução:
+Abra o PowerShell como administrador. O instalador é baixado para um arquivo
+temporário antes da execução:
+
+```powershell
+$Version = "v3.0.0"
+$Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-stable.ps1"
+$Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/install-stable.ps1"
+
+Invoke-WebRequest -Uri $Url -OutFile $Installer -UseBasicParsing
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
+```
+
+A instalação padrão utiliza builds isoladas dentro de
+`%LOCALAPPDATA%\ServiceDeskToolkitV3`.
+
+### V2.3.0 — fallback legado
 
 ```powershell
 $Version = "v2.3.0"
@@ -56,22 +71,6 @@ $Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/
 Invoke-WebRequest -Uri $Url -OutFile $Installer -UseBasicParsing
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
 ```
-
-A instalação padrão da V2 utiliza `C:\ServiceDeskToolkit`.
-
-### V3 release candidate
-
-```powershell
-$Version = "v3.0.0-rc.3"
-$Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-install.ps1"
-$Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/install-v3.ps1"
-
-Invoke-WebRequest -Uri $Url -OutFile $Installer -UseBasicParsing
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer -Branch $Version
-```
-
-A V3 é instalada em builds isoladas dentro de
-`%LOCALAPPDATA%\ServiceDeskToolkitV3`.
 
 > Revise o script baixado antes da execução e prefira sempre referências
 > versionadas. Branches de desenvolvimento são mutáveis e não devem ser usadas
@@ -104,7 +103,7 @@ relatórios.
 
 ```text
 ServiceDeskToolkit-Corporate.ps1    Aplicação operacional V2
-ServiceDeskToolkit-CorporateV3.ps1  Aplicação release candidate V3
+ServiceDeskToolkit-CorporateV3.ps1  Aplicação estável V3
 data/knowledge-base.json            Base de conhecimento local
 src/                                Módulos de diagnóstico e regras de domínio
 tools/                              Diagnóstico e validadores

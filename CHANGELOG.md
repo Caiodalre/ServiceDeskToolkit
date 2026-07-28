@@ -3,6 +3,23 @@
 Todas as mudanças relevantes do ServiceDesk Toolkit Corporate são registradas
 neste arquivo.
 
+## v3.0.0 — 2026-07-28
+
+### Estável
+
+- V3 promovida após homologação funcional da RC3 em máquinas diferentes.
+- Instalação remota, interface, diagnósticos, logs, SFC e DISM aprovados.
+- CI aprovada em Windows PowerShell 5.1 e PowerShell 7.
+- Canal estável e instaladores fixados na tag imutável `v3.0.0`.
+- V2.3.0 preservada como fallback legado.
+
+### Distribuição
+
+- `install-stable.ps1` passa a instalar a V3 pelo canal estável.
+- Metadados, README, runbook e política de segurança alinhados à V3.
+- Execução remota continua baseada em download para arquivo, sem pipe para
+  `Invoke-Expression`.
+
 ## v3.0.0-rc.3 — 2026-07-28
 
 ### Adicionado

@@ -4,8 +4,9 @@
 
 | Linha | Situação |
 | --- | --- |
-| `v2.3.0` | Estável para operação interna |
-| `v3.0.0-rc.*` | Release candidate para homologação final |
+| `v3.0.0` | Estável para operação interna |
+| `v2.3.0` | Fallback legado com suporte crítico |
+| `v3.0.0-rc.*` | Histórico de homologação, sem novas correções |
 | `v3.0.0-preview.*` | Histórico, sem novas correções |
 | Branches de desenvolvimento | Sem suporte para produção |
 
