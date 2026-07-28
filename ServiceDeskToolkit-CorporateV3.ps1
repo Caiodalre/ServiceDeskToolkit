@@ -7,6 +7,11 @@ $script:RootPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:TxtV3Output = $null
 $script:V3HealthModulesAvailable = $false
 $script:V3HealthModuleError = $null
+$script:V3RepairMonitor = $null
+$script:V3RepairJob = $null
+$script:V3RepairProcessId = $null
+$script:V3RepairStartedAt = $null
+$script:V3RepairProcessExitObservedAt = $null
 
 try {
     $diagnosticsModulePath = Join-Path `
@@ -146,6 +151,659 @@ function Set-V3Output {
     if ($null -ne $script:TxtV3Output) {
         $script:TxtV3Output.Text = $Text
     }
+}
+
+function Get-V3WindowsRepairDirectory {
+    $repairDirectory = Join-Path $script:RootPath "logs\windows-repair"
+
+    if (-not (Test-Path $repairDirectory)) {
+        New-Item -Path $repairDirectory -ItemType Directory -Force | Out-Null
+    }
+
+    return $repairDirectory
+}
+
+function Write-V3WindowsRepairAudit {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("SFC", "DISM")]
+        [string]$Tool,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Status,
+
+        [string]$Message
+    )
+
+    try {
+        $repairDirectory = Get-V3WindowsRepairDirectory
+        $auditPath = Join-Path $repairDirectory "windows-repair-audit.jsonl"
+        $entry = [ordered]@{
+            timestamp = (Get-Date).ToString("o")
+            computer = $env:COMPUTERNAME
+            user = "$env:USERDOMAIN\$env:USERNAME"
+            tool = $Tool
+            status = $Status
+            message = $Message
+        }
+
+        Add-Content `
+            -Path $auditPath `
+            -Value ($entry | ConvertTo-Json -Compress) `
+            -Encoding UTF8
+    }
+    catch {
+        # O log de auditoria não deve impedir a execução da ferramenta.
+    }
+}
+
+function New-V3WindowsRepairWorker {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("SFC", "DISM")]
+        [string]$Tool
+    )
+
+    $repairDirectory = Get-V3WindowsRepairDirectory
+    $stamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+
+    if ($Tool -eq "SFC") {
+        $displayName = "SFC /scannow"
+        $commandPath = Join-Path $env:SystemRoot "System32\sfc.exe"
+        $commandArguments = @("/scannow")
+    }
+    else {
+        $displayName = "DISM RestoreHealth"
+        $commandPath = Join-Path $env:SystemRoot "System32\dism.exe"
+        $commandArguments = @(
+            "/Online",
+            "/Cleanup-Image",
+            "/RestoreHealth"
+        )
+    }
+
+    if (-not (Test-Path $commandPath)) {
+        throw "Executável do $Tool não encontrado: $commandPath"
+    }
+
+    $workerPath = Join-Path $repairDirectory "$($Tool.ToLowerInvariant())-$stamp.ps1"
+    $logPath = Join-Path $repairDirectory "$($Tool.ToLowerInvariant())-$stamp.log"
+    $summaryPath = Join-Path $repairDirectory "$($Tool.ToLowerInvariant())-$stamp-summary.txt"
+    $auditPath = Join-Path $repairDirectory "windows-repair-audit.jsonl"
+
+    $escapeLiteral = {
+        param([string]$Value)
+        return "'" + $Value.Replace("'", "''") + "'"
+    }
+
+    $argumentLiterals = @(
+        $commandArguments | ForEach-Object {
+            & $escapeLiteral ([string]$_)
+        }
+    ) -join ", "
+
+    $workerTemplate = @'
+$ErrorActionPreference = "Continue"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+$toolName = __TOOL_NAME__
+$displayName = __DISPLAY_NAME__
+$commandPath = __COMMAND_PATH__
+$commandArguments = @(__COMMAND_ARGUMENTS__)
+$logPath = __LOG_PATH__
+$summaryPath = __SUMMARY_PATH__
+$auditPath = __AUDIT_PATH__
+
+try {
+    $Host.UI.RawUI.WindowTitle = "ServiceDesk Toolkit - $displayName"
+}
+catch {
+}
+
+Clear-Host
+Write-Host "ServiceDesk Toolkit Corporate V3" -ForegroundColor Cyan
+Write-Host "Reparo protegido do Windows" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor DarkCyan
+Write-Host ""
+Write-Host "Ferramenta: $displayName" -ForegroundColor White
+Write-Host "Início: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')" -ForegroundColor Gray
+Write-Host "Log: $logPath" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Não feche esta janela durante a execução." -ForegroundColor Yellow
+Write-Host "O progresso abaixo é fornecido pelo próprio Windows." -ForegroundColor Yellow
+Write-Host ""
+
+$startedAt = Get-Date
+$header = @(
+    "ServiceDesk Toolkit Corporate V3"
+    "Ferramenta: $displayName"
+    "Computador: $env:COMPUTERNAME"
+    "Usuário: $env:USERDOMAIN\$env:USERNAME"
+    "Início: $($startedAt.ToString('o'))"
+    "Comando: $commandPath $($commandArguments -join ' ')"
+    "========================================"
+)
+$header | Set-Content -Path $logPath -Encoding UTF8
+
+$processInfo = New-Object System.Diagnostics.ProcessStartInfo
+$processInfo.FileName = $commandPath
+$processInfo.Arguments = $commandArguments -join " "
+$processInfo.UseShellExecute = $false
+$processInfo.CreateNoWindow = $true
+$processInfo.RedirectStandardOutput = $true
+$processInfo.RedirectStandardError = $true
+$nativeEncoding = [System.Text.Encoding]::GetEncoding(
+    (Get-Culture).TextInfo.OEMCodePage
+)
+$processInfo.StandardOutputEncoding = $nativeEncoding
+$processInfo.StandardErrorEncoding = $nativeEncoding
+
+$nativeProcess = New-Object System.Diagnostics.Process
+$nativeProcess.StartInfo = $processInfo
+
+if (-not $nativeProcess.Start()) {
+    throw "O processo $displayName não pôde ser iniciado."
+}
+
+$standardOutputTask = $nativeProcess.StandardOutput.ReadToEndAsync()
+$standardErrorTask = $nativeProcess.StandardError.ReadToEndAsync()
+$nativeProcess.WaitForExit()
+
+$standardOutput = $standardOutputTask.Result
+$standardError = $standardErrorTask.Result
+$exitCode = $nativeProcess.ExitCode
+$nativeOutput = @(
+    $standardOutput
+    $standardError
+) | Where-Object {
+    -not [string]::IsNullOrWhiteSpace([string]$_)
+}
+
+$outputText = $nativeOutput -join [Environment]::NewLine
+
+if (-not [string]::IsNullOrWhiteSpace($outputText)) {
+    $outputText | Add-Content -Path $logPath -Encoding UTF8
+    Write-Host $outputText
+}
+
+$completedAt = Get-Date
+$status = "Concluído; revise o resultado técnico."
+$nextAction = "Guardar o log e validar se o sintoma original foi resolvido."
+
+if ($toolName -eq "SFC") {
+    if ($outputText -match "não encontrou nenhuma violação de integridade|did not find any integrity violations") {
+        $status = "Íntegro: nenhuma violação de integridade foi encontrada."
+        $nextAction = "Nenhum reparo adicional é necessário pelo SFC."
+    }
+    elseif ($outputText -match "encontrou arquivos corrompidos e os reparou com êxito|found corrupt files and successfully repaired them") {
+        $status = "Reparado: o SFC encontrou e corrigiu arquivos corrompidos."
+        $nextAction = "Reiniciar o computador e executar o SFC novamente para confirmação."
+    }
+    elseif ($outputText -match "encontrou arquivos corrompidos, mas não pôde corrigir alguns deles|found corrupt files but was unable to fix some of them") {
+        $status = "Atenção: há arquivos que o SFC não conseguiu reparar."
+        $nextAction = "Executar DISM RestoreHealth e depois repetir o SFC."
+    }
+    elseif ($outputText -match "não pôde executar a operação solicitada|could not perform the requested operation") {
+        $status = "Falha: o SFC não conseguiu executar a verificação."
+        $nextAction = "Reiniciar o Windows e tentar novamente; se persistir, verificar o CBS.log."
+    }
+}
+elseif ($toolName -eq "DISM") {
+    if ($outputText -match "operação de restauração foi concluída com êxito|restore operation completed successfully|component store corruption was repaired") {
+        $status = "Reparado: a imagem do Windows foi restaurada com êxito."
+        $nextAction = "Executar o SFC /scannow para validar e reparar os arquivos do sistema."
+    }
+    elseif ($exitCode -eq 3010) {
+        $status = "Concluído: o DISM solicita reinicialização."
+        $nextAction = "Reiniciar o computador e depois executar o SFC /scannow."
+    }
+}
+
+if ($exitCode -ne 0 -and $exitCode -ne 3010) {
+    $status = "Falha ou conclusão com alerta. Código de saída: $exitCode."
+
+    if ($toolName -eq "DISM") {
+        $nextAction = "Verificar internet, Windows Update e o log do DISM; depois repetir o reparo."
+    }
+    else {
+        $nextAction = "Verificar o log e o CBS.log antes de repetir a operação."
+    }
+}
+
+$summary = @"
+RESULTADO DO REPARO
+===================
+
+Ferramenta: $displayName
+Início: $($startedAt.ToString('dd/MM/yyyy HH:mm:ss'))
+Fim: $($completedAt.ToString('dd/MM/yyyy HH:mm:ss'))
+Duração: $([math]::Round(($completedAt - $startedAt).TotalMinutes, 2)) minuto(s)
+Código de saída: $exitCode
+
+Conclusão:
+$status
+
+Próxima ação:
+$nextAction
+
+Log completo:
+$logPath
+"@
+
+$summary | Set-Content -Path $summaryPath -Encoding UTF8
+$summary | Add-Content -Path $logPath -Encoding UTF8
+
+try {
+    $auditEntry = [ordered]@{
+        timestamp = (Get-Date).ToString("o")
+        computer = $env:COMPUTERNAME
+        user = "$env:USERDOMAIN\$env:USERNAME"
+        tool = $toolName
+        status = "Completed"
+        exitCode = $exitCode
+        conclusion = $status
+        logPath = $logPath
+        summaryPath = $summaryPath
+    }
+
+    Add-Content `
+        -Path $auditPath `
+        -Value ($auditEntry | ConvertTo-Json -Compress) `
+        -Encoding UTF8
+}
+catch {
+}
+
+Write-Host ""
+Write-Host $summary -ForegroundColor Green
+Write-Host ""
+Write-Host "Resumo salvo em: $summaryPath" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "A conclusão também foi enviada à tela principal." -ForegroundColor Cyan
+Write-Host "Esta janela será fechada automaticamente." -ForegroundColor Gray
+Start-Sleep -Seconds 8
+'@
+
+    $workerText = $workerTemplate
+    $workerText = $workerText.Replace("__TOOL_NAME__", (& $escapeLiteral $Tool))
+    $workerText = $workerText.Replace("__DISPLAY_NAME__", (& $escapeLiteral $displayName))
+    $workerText = $workerText.Replace("__COMMAND_PATH__", (& $escapeLiteral $commandPath))
+    $workerText = $workerText.Replace("__COMMAND_ARGUMENTS__", $argumentLiterals)
+    $workerText = $workerText.Replace("__LOG_PATH__", (& $escapeLiteral $logPath))
+    $workerText = $workerText.Replace("__SUMMARY_PATH__", (& $escapeLiteral $summaryPath))
+    $workerText = $workerText.Replace("__AUDIT_PATH__", (& $escapeLiteral $auditPath))
+
+    [System.IO.File]::WriteAllText(
+        $workerPath,
+        $workerText,
+        (New-Object System.Text.UTF8Encoding($true))
+    )
+
+    return [pscustomobject]@{
+        Tool = $Tool
+        DisplayName = $displayName
+        WorkerPath = $workerPath
+        LogPath = $logPath
+        SummaryPath = $summaryPath
+        AuditPath = $auditPath
+    }
+}
+
+function Invoke-V3WindowsRepair {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("SFC", "DISM")]
+        [string]$Tool
+    )
+
+    try {
+        if ($null -ne $script:V3RepairProcessId) {
+            $activeRepairProcess = Get-Process `
+                -Id $script:V3RepairProcessId `
+                -ErrorAction SilentlyContinue
+
+            if ($null -ne $activeRepairProcess) {
+                return @"
+JÁ EXISTE UM REPARO EM ANDAMENTO
+================================
+
+Aguarde a conclusão da ação atual antes de iniciar outro SFC ou DISM.
+
+Processo: $script:V3RepairProcessId
+Início: $($script:V3RepairStartedAt.ToString('dd/MM/yyyy HH:mm:ss'))
+"@
+            }
+        }
+
+        $job = New-V3WindowsRepairWorker -Tool $Tool
+        $powerShellPath = Join-Path $PSHOME "powershell.exe"
+
+        if (-not (Test-Path $powerShellPath)) {
+            $powerShellCommand = Get-Command "powershell.exe" -ErrorAction Stop
+            $powerShellPath = $powerShellCommand.Source
+        }
+
+        Write-V3WindowsRepairAudit `
+            -Tool $Tool `
+            -Status "Requested" `
+            -Message "Execução elevada solicitada."
+
+        $argumentList = "-NoProfile -ExecutionPolicy Bypass -File `"$($job.WorkerPath)`""
+
+        $repairProcess = Start-Process `
+            -FilePath $powerShellPath `
+            -ArgumentList $argumentList `
+            -WorkingDirectory $script:RootPath `
+            -Verb RunAs `
+            -PassThru `
+            -ErrorAction Stop
+
+        $repairProcess = Get-Process `
+            -Id $repairProcess.Id `
+            -ErrorAction SilentlyContinue
+
+        if ($null -eq $repairProcess) {
+            throw "O processo administrativo foi solicitado, mas não pôde ser monitorado."
+        }
+
+        Start-V3WindowsRepairMonitor `
+            -Job $job `
+            -ProcessId $repairProcess.Id
+
+        Write-V3WindowsRepairAudit `
+            -Tool $Tool `
+            -Status "Started" `
+            -Message "Processo elevado iniciado. Log: $($job.LogPath)"
+
+        return @"
+REPARO DO WINDOWS INICIADO
+==========================
+
+Ferramenta: $($job.DisplayName)
+Execução: janela administrativa separada
+
+O que fazer agora:
+1. Aceite a confirmação do Windows, se for exibida.
+2. Acompanhe o progresso na nova janela.
+3. Não desligue o computador durante o processo.
+4. Ao final, leia a conclusão e a próxima ação recomendada.
+
+Log completo:
+$($job.LogPath)
+
+Resumo final:
+$($job.SummaryPath)
+"@
+    }
+    catch {
+        $message = $_.Exception.Message
+
+        Write-V3WindowsRepairAudit `
+            -Tool $Tool `
+            -Status "FailedToStart" `
+            -Message $message
+
+        return @"
+NÃO FOI POSSÍVEL INICIAR O REPARO
+=================================
+
+Ferramenta: $Tool
+Motivo: $message
+
+Se a janela de permissão administrativa foi cancelada, clique novamente e aceite a solicitação do Windows.
+"@
+    }
+}
+
+function Stop-V3WindowsRepairMonitor {
+    if ($null -ne $script:V3RepairMonitor) {
+        try {
+            $script:V3RepairMonitor.Stop()
+        }
+        catch {
+        }
+    }
+
+    $script:V3RepairMonitor = $null
+}
+
+function Get-V3WindowsRepairProgressText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Job,
+
+        [Parameter(Mandatory = $true)]
+        [datetime]$StartedAt,
+
+        [bool]$ProcessIsRunning
+    )
+
+    $elapsed = New-TimeSpan -Start $StartedAt -End (Get-Date)
+    $elapsedText = if ($elapsed.TotalMinutes -ge 1) {
+        "{0:N1} minuto(s)" -f $elapsed.TotalMinutes
+    }
+    else {
+        "{0:N0} segundo(s)" -f $elapsed.TotalSeconds
+    }
+
+    $logAvailable = Test-Path $Job.LogPath
+
+    $statusText = if ($ProcessIsRunning -and $logAvailable) {
+        "EM ANDAMENTO"
+    }
+    elseif ($ProcessIsRunning) {
+        "AGUARDANDO INICIALIZAÇÃO"
+    }
+    else {
+        "FINALIZANDO"
+    }
+
+    $latestLines = @()
+
+    if ($logAvailable) {
+        try {
+            $latestLines = @(
+                Get-Content `
+                    -Path $Job.LogPath `
+                    -Tail 12 `
+                    -ErrorAction Stop
+            ) | Where-Object {
+                -not [string]::IsNullOrWhiteSpace([string]$_)
+            }
+        }
+        catch {
+            $latestLines = @()
+        }
+    }
+
+    $latestText = if ($latestLines.Count -gt 0) {
+        $latestLines -join [Environment]::NewLine
+    }
+    else {
+        "Aguardando a primeira mensagem do Windows."
+    }
+
+    return @"
+REPARO DO WINDOWS - $statusText
+===============================
+
+Ferramenta: $($Job.DisplayName)
+Início: $($StartedAt.ToString('dd/MM/yyyy HH:mm:ss'))
+Tempo decorrido: $elapsedText
+
+O processo pode permanecer alguns minutos sem alterar o percentual.
+Não feche a janela administrativa enquanto esta tela indicar EM ANDAMENTO.
+Se estiver aguardando inicialização, confira a solicitação administrativa do Windows.
+
+Últimas mensagens:
+------------------
+$latestText
+
+Log:
+$($Job.LogPath)
+"@
+}
+
+function Start-V3WindowsRepairMonitor {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Job,
+
+        [Parameter(Mandatory = $true)]
+        [int]$ProcessId
+    )
+
+    Stop-V3WindowsRepairMonitor
+
+    $script:V3RepairJob = $Job
+    $script:V3RepairProcessId = $ProcessId
+    $script:V3RepairStartedAt = Get-Date
+    $script:V3RepairProcessExitObservedAt = $null
+
+    $timer = New-Object System.Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromSeconds(2)
+    $timer.Add_Tick({
+        try {
+            $job = $script:V3RepairJob
+
+            if ($null -eq $job) {
+                Stop-V3WindowsRepairMonitor
+                return
+            }
+
+            if (Test-Path $job.SummaryPath) {
+                $summaryText = Get-Content `
+                    -Path $job.SummaryPath `
+                    -Raw `
+                    -ErrorAction Stop
+
+                Set-V3Output @"
+REPARO DO WINDOWS - CONCLUÍDO
+============================
+
+$summaryText
+
+O resultado acima foi registrado automaticamente pelo toolkit.
+"@
+
+                Stop-V3WindowsRepairMonitor
+                $script:V3RepairProcessId = $null
+                $script:V3RepairJob = $null
+                return
+            }
+
+            $repairProcess = Get-Process `
+                -Id $script:V3RepairProcessId `
+                -ErrorAction SilentlyContinue
+            $processIsRunning = $null -ne $repairProcess
+
+            if ($processIsRunning) {
+                $script:V3RepairProcessExitObservedAt = $null
+
+                $initializationElapsed = New-TimeSpan `
+                    -Start $script:V3RepairStartedAt `
+                    -End (Get-Date)
+
+                if (
+                    -not (Test-Path $job.LogPath) -and
+                    $initializationElapsed.TotalSeconds -ge 30
+                ) {
+                    Set-V3Output @"
+REPARO DO WINDOWS - FALHA AO INICIAR
+====================================
+
+Ferramenta: $($job.DisplayName)
+
+O toolkit abriu o processo administrativo, mas o worker não começou em até 30 segundos.
+Nenhum diagnóstico foi considerado concluído.
+
+Próxima ação:
+1. Feche qualquer janela administrativa que tenha ficado aberta.
+2. Execute novamente.
+3. Aceite a solicitação de administrador do Windows.
+"@
+
+                    Write-V3WindowsRepairAudit `
+                        -Tool $job.Tool `
+                        -Status "FailedToInitialize" `
+                        -Message "Worker não criou o log em até 30 segundos."
+
+                    Stop-V3WindowsRepairMonitor
+                    $script:V3RepairProcessId = $null
+                    $script:V3RepairJob = $null
+                    return
+                }
+
+                Set-V3Output (
+                    Get-V3WindowsRepairProgressText `
+                        -Job $job `
+                        -StartedAt $script:V3RepairStartedAt `
+                        -ProcessIsRunning $true
+                )
+                return
+            }
+
+            if ($null -eq $script:V3RepairProcessExitObservedAt) {
+                $script:V3RepairProcessExitObservedAt = Get-Date
+                Set-V3Output (
+                    Get-V3WindowsRepairProgressText `
+                        -Job $job `
+                        -StartedAt $script:V3RepairStartedAt `
+                        -ProcessIsRunning $false
+                )
+                return
+            }
+
+            $exitWait = New-TimeSpan `
+                -Start $script:V3RepairProcessExitObservedAt `
+                -End (Get-Date)
+
+            if ($exitWait.TotalSeconds -lt 6) {
+                return
+            }
+
+            Set-V3Output @"
+REPARO DO WINDOWS - INTERROMPIDO
+===============================
+
+Ferramenta: $($job.DisplayName)
+
+A janela administrativa foi encerrada antes que o toolkit recebesse uma conclusão.
+Não é possível afirmar que o diagnóstico ou reparo resolveu o problema.
+
+Próxima ação:
+Execute novamente e mantenha a janela administrativa aberta até aparecer o resumo final.
+
+Log parcial:
+$($job.LogPath)
+"@
+
+            Write-V3WindowsRepairAudit `
+                -Tool $job.Tool `
+                -Status "Interrupted" `
+                -Message "Processo encerrado sem resumo final."
+
+            Stop-V3WindowsRepairMonitor
+            $script:V3RepairProcessId = $null
+            $script:V3RepairJob = $null
+        }
+        catch {
+            Set-V3Output @"
+FALHA AO MONITORAR O REPARO
+===========================
+
+O comando pode ainda estar em execução na janela administrativa.
+
+Detalhe:
+$($_.Exception.Message)
+"@
+
+            Stop-V3WindowsRepairMonitor
+        }
+    })
+
+    $script:V3RepairMonitor = $timer
+    $script:V3RepairMonitor.Start()
 }
 
 function Get-V3HomeText {
@@ -1467,7 +2125,7 @@ $xaml = @"
                     <TextBlock Text="Ações principais da V3" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
                     <TextBlock Text="Poucas ações visíveis. O restante fica protegido ou avançado." FontSize="12" Foreground="#64748B" Margin="0,2,0,10"/>
 
-                    <UniformGrid Columns="5" Margin="0,14,0,0">
+                    <UniformGrid Columns="4" Margin="0,14,0,0">
     <Button Name="BtnV3QuickInternet" Content="Sem internet" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3QuickVpn" Content="VPN / Appgate" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3Inventory" Content="Inventário" Style="{StaticResource ActionGridButton}"/>
@@ -1479,6 +2137,8 @@ $xaml = @"
     <Button Name="BtnV3Spooler" Content="Reiniciar spooler" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3Health" Content="Saúde da máquina" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3Sfc" Content="SFC: verificar arquivos" Style="{StaticResource ActionGridButton}" ToolTip="Verifica e tenta reparar arquivos protegidos do Windows. Exige permissão administrativa."/>
+    <Button Name="BtnV3Dism" Content="DISM: reparar imagem" Style="{StaticResource ActionGridButton}" ToolTip="Repara a imagem de componentes do Windows. Exige permissão administrativa e pode depender do Windows Update."/>
 </UniformGrid>
                 </StackPanel>
             </Border>
@@ -1490,7 +2150,7 @@ $xaml = @"
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="Resultado" FontSize="16" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10"/>
+                    <TextBlock Text="Resultado e andamento" FontSize="16" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10"/>
 
                     <TextBox Name="TxtV3Output"
                              Grid.Row="1"
@@ -1556,7 +2216,7 @@ $window.FindName("BtnV3NavHome").Add_Click({ Set-V3Output (Get-V3HomeText) })
 $window.FindName("BtnV3NavGuided").Add_Click({ Set-V3Output (Get-V3GuidedHomeText) })
 $window.FindName("BtnV3NavEvidence").Add_Click({ Set-V3Output "Evidências:`r`n- Inventário`r`n- Diagnóstico de rede`r`n- Relatório`r`n- Pacote de suporte`r`n- Copiar resultado" })
 $window.FindName("BtnV3NavSafeFix").Add_Click({ Set-V3Output "Correções Seguras:`r`n- Limpar DNS`r`n- Renovar IP`r`n- Sincronizar horário`r`n- Reiniciar spooler`r`n- Limpar temporários" })
-$window.FindName("BtnV3NavAdvanced").Add_Click({ Set-V3Output "Área avançada:`r`nAções críticas ficarão protegidas por confirmação, mensagem de risco e log.`r`n`r`nExemplos:`r`n- SFC`r`n- DISM`r`n- Reset Winsock`r`n- Reset TCP/IP`r`n- Correções Appgate/TPM" })
+$window.FindName("BtnV3NavAdvanced").Add_Click({ Set-V3Output "Área avançada:`r`nAções críticas protegidas por confirmação, elevação administrativa e log.`r`n`r`nDisponíveis agora:`r`n- SFC /scannow: verifica e repara arquivos protegidos do Windows.`r`n- DISM RestoreHealth: repara a imagem de componentes do Windows.`r`n`r`nOrdem recomendada quando o SFC não consegue reparar:`r`n1. Execute o DISM.`r`n2. Reinicie se solicitado.`r`n3. Execute o SFC novamente." })
 $window.FindName("BtnV3NavToolkit").Add_Click({ Set-V3Output "Toolkit:`r`n- Status`r`n- Atualização`r`n- Rollback`r`n- Logs`r`n- Validação`r`n`r`nEssas funções serão conectadas ao motor atual em etapas futuras." })
 
 $window.FindName("BtnV3QuickInternet").Add_Click({ Set-V3Output (Invoke-V3WorkflowNoInternet) })
@@ -1569,6 +2229,36 @@ $window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3SafeSpoolerR
 $window.FindName("BtnV3Printers").Add_Click({ Set-V3Output (Invoke-V3WorkflowPrinter) })
 $window.FindName("BtnV3Health").Add_Click({ Set-V3Output (Invoke-V3MachineHealthPanel) })
 $window.FindName("BtnV3CopyOutput").Add_Click({ Copy-V3OutputToClipboard })
+$window.FindName("BtnV3Sfc").Add_Click({
+    $confirmation = [System.Windows.MessageBox]::Show(
+        "O SFC verificará e poderá reparar arquivos protegidos do Windows.`r`n`r`nA execução pode demorar e abrirá uma janela administrativa com progresso e log.`r`n`r`nDeseja continuar?",
+        "SFC - Verificar arquivos do Windows",
+        [System.Windows.MessageBoxButton]::YesNo,
+        [System.Windows.MessageBoxImage]::Warning
+    )
+
+    if ($confirmation -eq [System.Windows.MessageBoxResult]::Yes) {
+        Set-V3Output (Invoke-V3WindowsRepair -Tool "SFC")
+    }
+    else {
+        Set-V3Output "SFC cancelado pelo usuário. Nenhuma alteração foi aplicada."
+    }
+})
+$window.FindName("BtnV3Dism").Add_Click({
+    $confirmation = [System.Windows.MessageBox]::Show(
+        "O DISM tentará reparar a imagem de componentes do Windows.`r`n`r`nA execução pode demorar, consumir recursos e depender do Windows Update. Uma janela administrativa exibirá o progresso e salvará o log.`r`n`r`nDeseja continuar?",
+        "DISM - Reparar imagem do Windows",
+        [System.Windows.MessageBoxButton]::YesNo,
+        [System.Windows.MessageBoxImage]::Warning
+    )
+
+    if ($confirmation -eq [System.Windows.MessageBoxResult]::Yes) {
+        Set-V3Output (Invoke-V3WindowsRepair -Tool "DISM")
+    }
+    else {
+        Set-V3Output "DISM cancelado pelo usuário. Nenhuma alteração foi aplicada."
+    }
+})
 $BtnV3LinkedIn = $window.FindName("BtnV3LinkedIn")
 $BtnV3GitHub = $window.FindName("BtnV3GitHub")
 
