@@ -2,25 +2,91 @@
 
 ## Objetivo
 
-Orientar o uso operacional do ServiceDesk Toolkit Corporate em ambiente de suporte técnico.
+Orientar a instalação e o uso seguro do ServiceDesk Toolkit Corporate V3 em
+ambiente de suporte técnico.
 
-## Caminho padrao
+## Versões suportadas
 
-C:\ServiceDeskToolkit
+| Referência | Situação |
+| --- | --- |
+| `v3.0.0` | Versão estável atual |
+| `v2.3.0` | Fallback legado |
+| `v3-corporate-redesign` | Desenvolvimento, não usar em produção |
 
-## Arquivos principais
+## Instalação estável
 
-- ServiceDeskToolkit-Corporate.ps1
-- ServiceDeskToolkit.cmd
-- install.ps1
-- update.ps1
-- rollback.ps1
-- version.json
-- data\knowledge-base.json
-- tools\Get-ToolkitDiagnostic.ps1
-- tools\Test-ToolkitQuality.ps1
+Abra o PowerShell como administrador:
 
-## Instalação da versão estável
+```powershell
+$Version = "v3.0.0"
+$Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-stable.ps1"
+$Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/install-stable.ps1"
+
+Invoke-WebRequest -Uri $Url -OutFile $Installer -UseBasicParsing
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
+```
+
+O instalador baixa o script oficial para arquivo, valida sua sintaxe e confirma
+os marcadores do produto antes da execução.
+
+## Caminho padrão
+
+```text
+%LOCALAPPDATA%\ServiceDeskToolkitV3
+```
+
+Cada instalação cria um build isolado. O arquivo `latest.txt` aponta para o
+build ativo.
+
+## Abrir o Toolkit
+
+Use o atalho **ServiceDesk Toolkit V3** criado na Área de Trabalho.
+
+Para abrir manualmente:
+
+```powershell
+$Root = Join-Path $env:LOCALAPPDATA "ServiceDeskToolkitV3"
+$Build = Get-Content (Join-Path $Root "latest.txt") -Raw
+& (Join-Path $Build "ServiceDeskToolkitV3.cmd")
+```
+
+## Diagnósticos
+
+Os painéis de Saúde, Inventário, Rede e Impressoras são somente leitura. Preserve
+o resultado antes de executar qualquer correção.
+
+Os relatórios e logs ficam dentro do build ativo:
+
+```text
+reports\
+logs\
+logs\windows-repair\
+```
+
+## SFC e DISM
+
+- **SFC: verificar arquivos** executa `sfc.exe /scannow`.
+- **DISM: reparar imagem** executa
+  `dism.exe /Online /Cleanup-Image /RestoreHealth`.
+
+Essas ações exigem confirmação e elevação administrativa. Não feche a janela
+elevada durante a execução. Ao terminar, guarde o resumo e valide o sintoma
+original.
+
+Quando o SFC não conseguir reparar todos os arquivos:
+
+1. Execute o DISM.
+2. Reinicie o computador, se solicitado.
+3. Execute o SFC novamente.
+
+## Reinstalação e atualização
+
+Execute novamente o instalador estável. Um novo build isolado será criado e o
+`latest.txt` será atualizado somente após a validação do pacote.
+
+## Fallback para V2.3.0
+
+Use apenas quando uma regressão da V3 impedir o atendimento:
 
 ```powershell
 $Version = "v2.3.0"
@@ -31,72 +97,13 @@ Invoke-WebRequest -Uri $Url -OutFile $Installer -UseBasicParsing
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
 ```
 
-Para desenvolvimento, altere `$Version` somente para uma branch conhecida e
-nunca reutilize esse comando como procedimento de produção.
-
-## Abrir Toolkit
-
-cd C:\ServiceDeskToolkit
-powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File .\ServiceDeskToolkit-Corporate.ps1
-
-## Diagnostico
-
-Pela interface: GERAR DIAGNOSTICO DO TOOLKIT
-
-Pelo PowerShell:
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\ServiceDeskToolkit\tools\Get-ToolkitDiagnostic.ps1 -ToolkitRoot C:\ServiceDeskToolkit -OpenReport
-
-Saida:
-- C:\ServiceDeskToolkit\reports\diagnostic-*.txt
-- C:\ServiceDeskToolkit\reports\diagnostic-*.json
-
-## Quality Gate
-
-cd C:\ServiceDeskToolkit
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-ToolkitQuality.ps1
-
-## Update seguro
-
-Pela interface: ATUALIZAR TOOLKIT
-
-Pelo PowerShell:
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\ServiceDeskToolkit\update.ps1
-
-O update executa staging, validacao, backup e aplicacao controlada.
-
-## Rollback dry-run
-
-Pela interface: TESTAR ROLLBACK DRY-RUN
-
-Pelo PowerShell:
-Remove-Item Env:\SDTK_ROLLBACK_CONFIRM -ErrorAction SilentlyContinue
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\ServiceDeskToolkit\rollback.ps1
-
-## Rollback real
-
-Executar apenas em falha real:
-$env:SDTK_ROLLBACK_CONFIRM = "YES"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\ServiceDeskToolkit\rollback.ps1
-Remove-Item Env:\SDTK_ROLLBACK_CONFIRM
-
-## Logs
-
-- C:\ServiceDeskToolkit\logs\runtime-YYYY-MM.jsonl
-- C:\ServiceDeskToolkit\logs\actions-YYYY-MM.jsonl
-- C:\ServiceDeskToolkit\logs\errors-YYYY-MM.jsonl
-- C:\ServiceDeskToolkit\logs\update-*.log
-- C:\ServiceDeskToolkit\logs\rollback-*.log
+A V2 utiliza `C:\ServiceDeskToolkit` e mantém seu próprio fluxo de atualização
+e rollback.
 
 ## Regra operacional
 
-Nao executar update ou rollback via Invoke-Expression.
-Usar sempre powershell.exe -File.
-
-## Bootstrap seguro
-
-O bootstrap usa UTF-8 sem BOM por compatibilidade com hosts Windows legados.
-Ele baixa `install.ps1` para um arquivo temporário, valida a sintaxe e executa
-o instalador com `powershell.exe -File`.
-
-Não execute scripts remotos por pipe. Baixar para arquivo permite revisar a
-origem, preservar evidência e interromper a execução se a validação falhar.
+- Não execute scripts remotos por pipe.
+- Use sempre uma tag fixa.
+- Baixe para arquivo e revise a origem antes da execução.
+- Não publique logs com dados pessoais, corporativos ou credenciais.
+- Registre versão, horário, ação executada e resultado da correção.

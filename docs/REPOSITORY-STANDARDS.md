@@ -48,7 +48,7 @@ documentação mantida no repositório.
 - Metadados, instalador, README, changelog e nota de release devem concordar.
 - Tags publicadas são imutáveis.
 - Alteração funcional após uma candidata aprovada exige nova RC.
-- A V2 estável permanece como fallback até a promoção formal da V3.
+- A V2.3.0 permanece disponível como fallback legado após a promoção da V3.
 
 ## Validação obrigatória
 
