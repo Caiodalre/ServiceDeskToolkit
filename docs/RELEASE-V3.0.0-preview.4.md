@@ -1,4 +1,4 @@
-﻿# ServiceDesk Toolkit Corporate V3.0.0-preview.4
+# ServiceDesk Toolkit Corporate V3.0.0-preview.4
 
 Status: Preview interna validada  
 Branch de desenvolvimento: v3-corporate-redesign  

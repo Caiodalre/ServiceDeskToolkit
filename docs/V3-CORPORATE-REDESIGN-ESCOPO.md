@@ -189,4 +189,3 @@ A V3 será considerada promissora quando:
 Não continuar empilhando botões na v2.4.
 
 A partir deste ponto, novas melhorias visuais devem ser desenhadas primeiro para a V3 Corporate Redesign.
-

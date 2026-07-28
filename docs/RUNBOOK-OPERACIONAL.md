@@ -1,4 +1,4 @@
-﻿# ServiceDesk Toolkit Corporate - Runbook Operacional
+# ServiceDesk Toolkit Corporate - Runbook Operacional
 
 ## Objetivo
 
@@ -20,9 +20,19 @@ C:\ServiceDeskToolkit
 - tools\Get-ToolkitDiagnostic.ps1
 - tools\Test-ToolkitQuality.ps1
 
-## Instalacao development
+## Instalação da versão estável
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.1-hardening/bootstrap.ps1' | iex"
+```powershell
+$Version = "v2.3.0"
+$Installer = Join-Path $env:TEMP "ServiceDeskToolkit-bootstrap.ps1"
+$Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/bootstrap.ps1"
+
+Invoke-WebRequest -Uri $Url -OutFile $Installer -UseBasicParsing
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
+```
+
+Para desenvolvimento, altere `$Version` somente para uma branch conhecida e
+nunca reutilize esse comando como procedimento de produção.
 
 ## Abrir Toolkit
 
@@ -84,8 +94,9 @@ Usar sempre powershell.exe -File.
 
 ## Bootstrap seguro
 
-Comando oficial para instalacao remota:
+O bootstrap usa UTF-8 sem BOM por compatibilidade com hosts Windows legados.
+Ele baixa `install.ps1` para um arquivo temporário, valida a sintaxe e executa
+o instalador com `powershell.exe -File`.
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.1-hardening/bootstrap.ps1' | iex"
-
-O bootstrap nao possui BOM e baixa o install.ps1 para arquivo temporario antes de executar com powershell.exe -File.
+Não execute scripts remotos por pipe. Baixar para arquivo permite revisar a
+origem, preservar evidência e interromper a execução se a validação falhar.

@@ -1,4 +1,4 @@
-﻿# Checklist de release
+# Checklist de release
 
 ## Identidade da versão
 
@@ -13,6 +13,7 @@
 - [ ] CI aprovada em Windows PowerShell 5.1.
 - [ ] CI aprovada em PowerShell 7.
 - [ ] Testes Pester aprovados.
+- [ ] `Test-RepositoryStandards.ps1` aprovado.
 - [ ] `Test-ToolkitQuality.ps1` aprovado.
 - [ ] `Test-ToolkitRelease.ps1` aprovado.
 - [ ] `Test-ToolkitV3.ps1` aprovado quando a release incluir a V3.
@@ -51,6 +52,7 @@
 
 ```powershell
 git status --short --branch
+powershell.exe -NoProfile -File .\tools\Test-RepositoryStandards.ps1
 Invoke-Pester -Path .\tests -Output Detailed
 powershell.exe -NoProfile -File .\tools\Test-ToolkitQuality.ps1
 powershell.exe -NoProfile -File .\tools\Test-ToolkitRelease.ps1
