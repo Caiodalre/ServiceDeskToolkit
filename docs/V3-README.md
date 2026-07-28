@@ -2,14 +2,14 @@
 
 ## Status
 
-A V3 é uma nova experiência visual do ServiceDesk Toolkit Corporate.
+A V3 é a experiência estável atual do ServiceDesk Toolkit Corporate.
 
-Ela está em fase de release candidate e ainda não substitui a versão estável
-`v2.3.0`.
+Versão estável atual: `3.0.0`, promovida a partir da candidata homologada
+`3.0.0-rc.3`.
 
-Release candidate atual: `3.0.0-rc.3`, preparada a partir da branch
-`v3-corporate-redesign`. Esta RC preserva o reparo operacional do Windows com
-SFC e DISM e adiciona uma camada transversal de padrões de engenharia.
+A versão preserva o reparo operacional do Windows com SFC e DISM, os painéis
+modulares e a camada transversal de padrões de engenharia. A tag `v2.3.0`
+permanece disponível como fallback legado.
 
 ## Homologação interna
 
@@ -21,6 +21,10 @@ ENV-B, conforme o
 Na rodada complementar da RC2, o SFC concluiu sem violações de integridade e o
 DISM RestoreHealth concluiu com êxito. Os dois testes geraram log, resumo e
 trilha de auditoria pelo toolkit.
+
+A RC3 foi instalada e validada em máquinas diferentes. A instalação remota,
+a interface, os diagnósticos, as ações administrativas e a geração de logs
+foram aprovados antes da promoção para `3.0.0`.
 
 Resultados públicos não devem conter usuários, domínio, endereços de rede,
 seriais, nomes de impressoras, credenciais ou pacotes de suporte.
@@ -110,15 +114,12 @@ recomendada é:
 
 ## Próximas etapas
 
-- Validar a CI da `v3.0.0-rc.3` em Windows PowerShell 5.1 e PowerShell 7
-- Confirmar os artefatos gerados pela CI
-- Validar instalação e reversão usando a tag fixa
-- Preservar o congelamento funcional durante a release candidate
-- Preparar a promoção controlada para `v3.0.0`
+- Monitorar a adoção interna da `v3.0.0`
+- Registrar incidentes e regressões com evidências sanitizadas
+- Implementar checksums e avaliar assinatura Authenticode
+- Evoluir módulos e testes somente em nova versão controlada
 
 ## Observação
 
-A versão estável oficial continua sendo a v2.3.0.
-
-A V3 permanece em branch própria durante a release candidate e só será
-promovida após os critérios finais de release.
+A versão estável oficial é a `v3.0.0`. A V2.3.0 permanece imutável como
+fallback para instalações anteriores.

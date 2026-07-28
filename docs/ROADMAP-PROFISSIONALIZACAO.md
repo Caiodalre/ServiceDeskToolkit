@@ -16,8 +16,8 @@
 - [ ] Validar checksums antes da instalação e atualização.
 - [ ] Avaliar assinatura Authenticode dos scripts.
 - [ ] Documentar rotação e revogação de certificados.
-- [ ] Remover recomendações de execução remota por pipe.
-- [ ] Criar teste de instalação usando somente uma tag fixa.
+- [x] Remover recomendações de execução remota por pipe.
+- [x] Criar teste de instalação usando somente uma tag fixa.
 
 ## Fase 3 — Modularização
 
@@ -39,7 +39,7 @@
 - [ ] Cobrir coletores do Windows com mocks.
 - [ ] Testar decisões do atendimento guiado com cenários determinísticos.
 - [ ] Testar instalação, atualização e rollback em máquina virtual.
-- [ ] Validar ações administrativas com estado antes/depois.
+- [x] Validar ações administrativas com estado antes/depois.
 - [ ] Criar suíte de regressão para Windows 10 e Windows 11.
 
 ## Fase 5 — Operação corporativa
@@ -49,4 +49,4 @@
 - [ ] Sanitizar automaticamente pacotes de suporte.
 - [ ] Criar documentação para N1, N2 e administradores.
 - [ ] Definir canal de incidentes e vulnerabilidades.
-- [ ] Publicar release estável da V3 após homologação.
+- [x] Publicar release estável da V3 após homologação.
