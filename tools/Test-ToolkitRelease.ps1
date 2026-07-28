@@ -172,6 +172,7 @@ $requiredFiles = @(
     "CHANGELOG.md",
     "data\knowledge-base.json",
     "tools\Get-ToolkitDiagnostic.ps1",
+    "tools\Test-RepositoryStandards.ps1",
     "tools\Test-ToolkitQuality.ps1",
     "tools\Test-ToolkitRelease.ps1",
     "tools\Export-ToolkitSupportPackage.ps1",
@@ -189,6 +190,7 @@ $psFiles = @(
     "update.ps1",
     "rollback.ps1",
     "tools\Get-ToolkitDiagnostic.ps1",
+    "tools\Test-RepositoryStandards.ps1",
     "tools\Test-ToolkitQuality.ps1",
     "tools\Test-ToolkitRelease.ps1"
 )
@@ -239,6 +241,35 @@ try {
 catch {
     Add-Result "FAIL" ("Falha ao validar bootstrap: " + $_.Exception.Message)
 }
+try {
+    $standardsGate = Join-Path $Root "tools\Test-RepositoryStandards.ps1"
+
+    if (Test-Path $standardsGate) {
+        $output = powershell.exe `
+            -NoProfile `
+            -ExecutionPolicy Bypass `
+            -File $standardsGate 2>&1 |
+            Out-String
+
+        if ($output -match "APROVADO") {
+            Add-Result "OK" "Padrões de repositório aprovados"
+        }
+        else {
+            Add-Result "FAIL" "Padrões de repositório reprovados"
+            [void]$Results.Add($output)
+        }
+    }
+    else {
+        Add-Result "FAIL" "Validador de padrões ausente"
+    }
+}
+catch {
+    Add-Result "FAIL" (
+        "Falha ao executar padrões de repositório: " +
+        $_.Exception.Message
+    )
+}
+
 try {
     $qualityGate = Join-Path $Root "tools\Test-ToolkitQuality.ps1"
 
