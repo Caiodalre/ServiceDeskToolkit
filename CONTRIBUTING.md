@@ -23,10 +23,13 @@ Mudanças não devem ser enviadas diretamente para `main`.
 - Ações destrutivas ou administrativas exigem confirmação explícita.
 - Não use `Invoke-Expression` para executar conteúdo baixado.
 - Não registre senhas, tokens, cookies ou conteúdo corporativo sensível.
+- Siga o contrato documentado em
+  [Padrões de engenharia](docs/REPOSITORY-STANDARDS.md).
 
 ## Validação
 
 ```powershell
+powershell.exe -NoProfile -File .\tools\Test-RepositoryStandards.ps1
 Invoke-Pester -Path .\tests -Output Detailed
 powershell.exe -NoProfile -File .\tools\Test-ToolkitQuality.ps1
 powershell.exe -NoProfile -File .\tools\Test-ToolkitRelease.ps1

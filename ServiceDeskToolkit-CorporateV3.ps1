@@ -561,6 +561,10 @@ function Stop-V3WindowsRepairMonitor {
             $script:V3RepairMonitor.Stop()
         }
         catch {
+            Write-Verbose (
+                "Falha ao interromper monitor anterior: " +
+                $_.Exception.Message
+            )
         }
     }
 
@@ -1001,9 +1005,6 @@ function Invoke-V3RestartSpooler {
         return "Erro ao reiniciar spooler:`r`n$($_.Exception.Message)"
     }
 }
-
-$script:V3LastExternalLinkUrl = ""
-$script:V3LastExternalLinkAt = Get-Date "2000-01-01"
 
 $script:V3LastExternalLinkUrl = ""
 $script:V3LastExternalLinkAt = Get-Date "2000-01-01"
@@ -2277,15 +2278,3 @@ if ($null -ne $BtnV3GitHub) {
 Set-V3Output (Get-V3HomeText)
 
 [void]$window.ShowDialog()
-
-
-
-
-
-
-
-
-
-
-
-

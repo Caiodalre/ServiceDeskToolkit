@@ -1,26 +1,44 @@
-﻿# Changelog
+# Changelog
 
 Todas as mudanças relevantes do ServiceDesk Toolkit Corporate são registradas
 neste arquivo.
 
-## v3.0.0-rc.1 — 2026-07-27
+## v3.0.0-rc.3 — 2026-07-28
+
+### Adicionado
+
+- Contrato de engenharia em `docs/REPOSITORY-STANDARDS.md`.
+- Validador transversal `tools/Test-RepositoryStandards.ps1`.
+- Quality gate de padrões executado em Windows PowerShell 5.1 e PowerShell 7.
 
 ### Alterado
 
-- Metadados da V3 promovidos para o canal `release-candidate`.
-- Instalador V3 passa a usar por padrão a referência fixa `v3.0.0-rc.1`.
-- Documentação atualizada com o resultado da homologação interna e o processo de promoção.
+- Metadados, instaladores, documentação e templates alinhados à candidata atual.
+- Funções internas passam a usar verbos aprovados pelo PowerShell.
+- Encoding, finais de linha e nova linha final seguem `.editorconfig` e
+  `.gitattributes`.
+- Comandos de instalação documentados passam a baixar o bootstrap para arquivo
+  antes da execução.
 
-### Validado
+### Corrigido
 
-- ENV-A aprovado em Windows 11, Windows PowerShell 5.1 e usuário padrão.
-- ENV-B aprovado em Windows 11, PowerShell 7.6.3 e sessão administrativa.
-- Interface, navegação, diagnósticos, correções seguras, evidências e coexistência com a V2 confirmados.
-- Nenhum bloqueador, defeito crítico ou regressão funcional relatado.
+- Instalador estável deixa de apontar para a versão legada `v2.0.2-compat`.
+- Inicialização duplicada da proteção de links externos removida da V3.
+- Referências inseguras a execução remota por `Invoke-Expression` removidas dos
+  metadados e do runbook.
 
-### Observação
+## v3.0.0-rc.2 — 2026-07-28
 
-- Não há mudanças funcionais em relação à `v3.0.0-preview.5`; esta versão congela a candidata homologada para validação final de release.
+- SFC e DISM operacionais com confirmação e elevação administrativa.
+- Acompanhamento de progresso, tempo decorrido e mensagens do Windows.
+- Logs técnicos, resumo final, auditoria e orientação de próxima ação.
+- Homologação prática aprovada para SFC e DISM RestoreHealth.
+
+## v3.0.0-rc.1 — 2026-07-27
+
+- Primeira release candidate após a homologação dos ambientes ENV-A e ENV-B.
+- Metadados e instalador fixados em uma referência imutável.
+- Congelamento funcional e critérios de promoção formalizados.
 
 ## v3.0.0-preview.5 — 2026-07-27
 

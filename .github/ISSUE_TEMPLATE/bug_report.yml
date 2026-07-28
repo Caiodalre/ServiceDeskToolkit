@@ -13,7 +13,7 @@ body:
     attributes:
       label: Versão
       description: Informe a tag, versão exibida ou commit.
-      placeholder: v3.0.0-preview.4
+      placeholder: v3.0.0-rc.3
     validations:
       required: true
   - type: dropdown

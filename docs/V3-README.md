@@ -1,4 +1,4 @@
-﻿# ServiceDesk Toolkit Corporate V3
+# ServiceDesk Toolkit Corporate V3
 
 ## Status
 
@@ -7,9 +7,9 @@ A V3 é uma nova experiência visual do ServiceDesk Toolkit Corporate.
 Ela está em fase de release candidate e ainda não substitui a versão estável
 `v2.3.0`.
 
-Release candidate atual: `3.0.0-rc.2`, preparada a partir da branch
-`v3-corporate-redesign`. Esta RC incorpora o reparo operacional do Windows com
-SFC e DISM e deve passar pela validação final antes da promoção estável.
+Release candidate atual: `3.0.0-rc.3`, preparada a partir da branch
+`v3-corporate-redesign`. Esta RC preserva o reparo operacional do Windows com
+SFC e DISM e adiciona uma camada transversal de padrões de engenharia.
 
 ## Homologação interna
 
@@ -77,6 +77,8 @@ Resultado esperado:
 - Inventário, Rede e Impressoras com coleta, avaliação e relatório modularizados
 - SFC e DISM operacionais, com confirmação, elevação administrativa, progresso,
   log técnico, resumo final e próxima ação recomendada
+- Validação transversal de sintaxe, encoding, finais de linha, JSON, verbos
+  PowerShell, distribuição segura e consistência de versão
 
 ## Reparo do Windows com SFC e DISM
 
@@ -108,7 +110,7 @@ recomendada é:
 
 ## Próximas etapas
 
-- Validar a CI da `v3.0.0-rc.2` em Windows PowerShell 5.1 e PowerShell 7
+- Validar a CI da `v3.0.0-rc.3` em Windows PowerShell 5.1 e PowerShell 7
 - Confirmar os artefatos gerados pela CI
 - Validar instalação e reversão usando a tag fixa
 - Preservar o congelamento funcional durante a release candidate

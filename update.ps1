@@ -1,6 +1,6 @@
 ﻿# ============================================================
 # ServiceDesk Toolkit Corporate - Update
-# Execucao suportada: irm <url> | iex
+# Execucao suportada: powershell.exe -File update.ps1
 # Compatibilidade: Windows PowerShell 5.1 e PowerShell 7+
 # ============================================================
 
@@ -9,7 +9,9 @@ $ErrorActionPreference = "Stop"
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 }
-catch {}
+catch {
+    Write-Verbose "Nao foi possivel forcar TLS 1.2: $($_.Exception.Message)"
+}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"
@@ -33,7 +35,12 @@ if ([string]::IsNullOrWhiteSpace($Ref) -and (Test-Path $SourceRefPath)) {
             $Ref = [string]$sourceRefInfo.ref
         }
     }
-    catch {}
+    catch {
+        Write-Verbose (
+            "Nao foi possivel ler source-ref.json: " +
+            $_.Exception.Message
+        )
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($Ref)) {
@@ -50,7 +57,7 @@ $CurrentBackupPath = Join-Path $UpdateRoot "current"
 $StagingPath = Join-Path $UpdateRoot "staging"
 $UpdateLogPath = Join-Path $LogsPath "update-$Timestamp.log"
 
-function Ensure-Folder {
+function Initialize-ToolkitFolder {
     param([string]$Path)
 
     if (!(Test-Path $Path)) {
@@ -175,7 +182,7 @@ function Write-ToolkitUpdateSummaryV2 {
     )
 
     try {
-        Ensure-Folder $ReportsPath
+        Initialize-ToolkitFolder $ReportsPath
 
         $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
         $summaryTxtPath = Join-Path $ReportsPath "update-summary-$timestamp.txt"
@@ -262,7 +269,12 @@ function Write-ToolkitUpdateSummaryV2 {
         try {
             Write-UpdateLog "Falha ao gerar resumo final do update V2: $($_.Exception.Message)" "WARN"
         }
-        catch {}
+        catch {
+            Write-Verbose (
+                "Falha ao registrar erro do resumo: " +
+                $_.Exception.Message
+            )
+        }
     }
 }
 
@@ -277,7 +289,9 @@ function Write-UpdateLog {
     try {
         Add-Content -Path $UpdateLogPath -Value $line -Encoding UTF8
     }
-    catch {}
+    catch {
+        Write-Verbose "Falha ao gravar log de update: $($_.Exception.Message)"
+    }
 
     if ($Level -eq "ERROR") {
         Write-Host $Message -ForegroundColor Red
@@ -336,7 +350,7 @@ function Test-Syntax {
     throw "$Name possui erro de sintaxe."
 }
 
-function Download-File {
+function Save-ToolkitFile {
     param(
         [string]$Url,
         [string]$Destination,
@@ -346,7 +360,7 @@ function Download-File {
 
     try {
         $folder = Split-Path $Destination -Parent
-        Ensure-Folder $folder
+        Initialize-ToolkitFolder $folder
 
         Write-UpdateLog "Baixando $Name..."
         Write-UpdateLog $Url
@@ -377,13 +391,13 @@ function Backup-CurrentFile {
     }
 
     $destination = Join-Path $CurrentBackupPath $RelativePath
-    Ensure-Folder (Split-Path $destination -Parent)
+    Initialize-ToolkitFolder (Split-Path $destination -Parent)
 
     Copy-Item $source $destination -Force
     Write-UpdateLog "Backup criado: $RelativePath" "OK"
 }
 
-function Apply-StagedFile {
+function Install-StagedFile {
     param([string]$RelativePath)
 
     $source = Join-Path $StagingPath $RelativePath
@@ -393,7 +407,7 @@ function Apply-StagedFile {
         throw "Arquivo staged nao encontrado: $source"
     }
 
-    Ensure-Folder (Split-Path $destination -Parent)
+    Initialize-ToolkitFolder (Split-Path $destination -Parent)
 
     Copy-Item $source $destination -Force
     Write-UpdateLog "Atualizado: $RelativePath" "OK"
@@ -492,15 +506,15 @@ $Files = @(
 )
 
 try {
-    Ensure-Folder $InstallPath
-    Ensure-Folder $DataPath
-    Ensure-Folder $ToolsPath
-    Ensure-Folder $LogsPath
-    Ensure-Folder $ReportsPath
-    Ensure-Folder $BackupsPath
-    Ensure-Folder $UpdateRoot
-    Ensure-Folder $CurrentBackupPath
-    Ensure-Folder $StagingPath
+    Initialize-ToolkitFolder $InstallPath
+    Initialize-ToolkitFolder $DataPath
+    Initialize-ToolkitFolder $ToolsPath
+    Initialize-ToolkitFolder $LogsPath
+    Initialize-ToolkitFolder $ReportsPath
+    Initialize-ToolkitFolder $BackupsPath
+    Initialize-ToolkitFolder $UpdateRoot
+    Initialize-ToolkitFolder $CurrentBackupPath
+    Initialize-ToolkitFolder $StagingPath
 
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Cyan
@@ -518,7 +532,7 @@ try {
         $relativePath = [string]$file["RelativePath"]
         $destination = Join-Path $StagingPath $relativePath
 
-        $downloaded = Download-File `
+        $downloaded = Save-ToolkitFile `
             -Url ([string]$file["Url"]) `
             -Destination $destination `
             -Name ([string]$file["Name"]) `
@@ -557,11 +571,11 @@ try {
         $staged = Join-Path $StagingPath $relativePath
 
         if (Test-Path $staged) {
-            Apply-StagedFile -RelativePath $relativePath
+            Install-StagedFile -RelativePath $relativePath
         }
     }
 
-    
+
 try {
     if (!(Test-Path $ConfigPath)) {
         New-Item -Path $ConfigPath -ItemType Directory -Force | Out-Null
@@ -597,7 +611,12 @@ try {
     $successLine = "{0} [OK] Update concluido com sucesso." -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
     Add-Content -Path $UpdateLogPath -Value $successLine -Encoding UTF8
 }
-catch {}
+catch {
+    Write-Verbose (
+        "Falha ao registrar linha final do update: " +
+        $_.Exception.Message
+    )
+}
 
     Write-Host ""
     Write-Host "Update concluido com sucesso." -ForegroundColor Green

@@ -9,7 +9,9 @@ $ErrorActionPreference = "Stop"
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 }
-catch {}
+catch {
+    Write-Verbose "Nao foi possivel forcar TLS 1.2: $($_.Exception.Message)"
+}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"
@@ -78,7 +80,7 @@ catch {
 }
 
 
-function Download-ToolkitFile {
+function Save-ToolkitFile {
     param(
         [Parameter(Mandatory=$true)][string]$Url,
         [Parameter(Mandatory=$true)][string]$Destination,
@@ -160,42 +162,42 @@ catch {
     Write-Host "Aviso: não foi possível iniciar log de instalação." -ForegroundColor Yellow
     Write-Host $_.Exception.Message -ForegroundColor Yellow
 }
-Download-ToolkitFile -Url $MainScriptUrl -Destination $MainScriptPath -Name "Script principal"
+Save-ToolkitFile -Url $MainScriptUrl -Destination $MainScriptPath -Name "Script principal"
 Convert-ToolkitFileToUtf8Bom -Path $MainScriptPath -Name "Script principal"
 
-Download-ToolkitFile -Url $CmdUrl -Destination $CmdPath -Name "Launcher CMD"
+Save-ToolkitFile -Url $CmdUrl -Destination $CmdPath -Name "Launcher CMD"
 
-Download-ToolkitFile -Url $KnowledgeUrl -Destination $KnowledgePath -Name "Base de Conhecimento"
+Save-ToolkitFile -Url $KnowledgeUrl -Destination $KnowledgePath -Name "Base de Conhecimento"
 Convert-ToolkitFileToUtf8Bom -Path $KnowledgePath -Name "Base de Conhecimento"
 
-Download-ToolkitFile -Url $VersionUrl -Destination $VersionPath -Name "Controle de Versao"
+Save-ToolkitFile -Url $VersionUrl -Destination $VersionPath -Name "Controle de Versao"
 Convert-ToolkitFileToUtf8Bom -Path $VersionPath -Name "Controle de Versao"
 
-Download-ToolkitFile -Url $DiagnosticToolUrl -Destination $DiagnosticToolPath -Name "Diagnostico do Toolkit"
+Save-ToolkitFile -Url $DiagnosticToolUrl -Destination $DiagnosticToolPath -Name "Diagnostico do Toolkit"
 Convert-ToolkitFileToUtf8Bom -Path $DiagnosticToolPath -Name "Diagnostico do Toolkit"
 
-Download-ToolkitFile -Url $QualityGateToolUrl -Destination $QualityGateToolPath -Name "Quality Gate"
+Save-ToolkitFile -Url $QualityGateToolUrl -Destination $QualityGateToolPath -Name "Quality Gate"
 Convert-ToolkitFileToUtf8Bom -Path $QualityGateToolPath -Name "Quality Gate"
 
-Download-ToolkitFile -Url $ReleaseValidatorToolUrl -Destination $ReleaseValidatorToolPath -Name "Validador de Release"
+Save-ToolkitFile -Url $ReleaseValidatorToolUrl -Destination $ReleaseValidatorToolPath -Name "Validador de Release"
 Convert-ToolkitFileToUtf8Bom -Path $ReleaseValidatorToolPath -Name "Validador de Release"
 
-Download-ToolkitFile -Url $InstalledValidatorToolUrl -Destination $InstalledValidatorToolPath -Name "Validador de Instalacao"
+Save-ToolkitFile -Url $InstalledValidatorToolUrl -Destination $InstalledValidatorToolPath -Name "Validador de Instalacao"
 Convert-ToolkitFileToUtf8Bom -Path $InstalledValidatorToolPath -Name "Validador de Instalacao"
 $SupportPackageToolPath = Join-Path $ToolsPath "Export-ToolkitSupportPackage.ps1"
 
-Download-ToolkitFile -Url "$BaseUrl/tools/Export-ToolkitSupportPackage.ps1" -Destination $SupportPackageToolPath -Name "Exportador de Pacote de Suporte"
+Save-ToolkitFile -Url "$BaseUrl/tools/Export-ToolkitSupportPackage.ps1" -Destination $SupportPackageToolPath -Name "Exportador de Pacote de Suporte"
 Convert-ToolkitFileToUtf8Bom -Path $SupportPackageToolPath -Name "Exportador de Pacote de Suporte"
 
 
-Download-ToolkitFile -Url $UpdateUrl -Destination $UpdatePath -Name "Atualizador"
+Save-ToolkitFile -Url $UpdateUrl -Destination $UpdatePath -Name "Atualizador"
 Convert-ToolkitFileToUtf8Bom -Path $UpdatePath -Name "Atualizador"
 
-Download-ToolkitFile -Url $RollbackUrl -Destination $RollbackPath -Name "Rollback"
+Save-ToolkitFile -Url $RollbackUrl -Destination $RollbackPath -Name "Rollback"
 Convert-ToolkitFileToUtf8Bom -Path $RollbackPath -Name "Rollback"
 
 try {
-    Download-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
+    Save-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
 }
 catch {
     Write-Host "Aviso: README nao encontrado. Continuando instalacao." -ForegroundColor Yellow

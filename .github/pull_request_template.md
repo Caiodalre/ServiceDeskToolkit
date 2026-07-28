@@ -16,6 +16,7 @@ Descreva o problema e o resultado esperado.
 
 ## Validação
 
+- [ ] Padrões do repositório aprovados
 - [ ] Testes Pester aprovados
 - [ ] Quality Gate aprovado
 - [ ] Validador de release aprovado

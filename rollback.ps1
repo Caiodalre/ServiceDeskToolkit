@@ -21,7 +21,7 @@ if ($env:SDTK_ROLLBACK_CONFIRM -eq "YES") {
 
 $RequestedBackup = $env:SDTK_ROLLBACK_BACKUP
 
-function Ensure-Folder {
+function Initialize-ToolkitFolder {
     param([string]$Path)
 
     if (!(Test-Path $Path)) {
@@ -40,7 +40,9 @@ function Write-RollbackLog {
     try {
         Add-Content -Path $RollbackLogPath -Value $line -Encoding UTF8
     }
-    catch {}
+    catch {
+        Write-Verbose "Falha ao gravar log de rollback: $($_.Exception.Message)"
+    }
 
     if ($Level -eq "ERROR") {
         Write-Host $Message -ForegroundColor Red
@@ -120,14 +122,14 @@ function Restore-BackupFile {
         return
     }
 
-    Ensure-Folder $destinationFolder
+    Initialize-ToolkitFolder $destinationFolder
     Copy-Item $SourcePath $destinationPath -Force
 
     Write-RollbackLog "Restaurado: $relativePath" "OK"
 }
 
 try {
-    Ensure-Folder $LogsPath
+    Initialize-ToolkitFolder $LogsPath
 
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Cyan

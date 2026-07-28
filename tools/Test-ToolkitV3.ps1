@@ -146,7 +146,7 @@ foreach ($moduleFile in $moduleFiles) {
 if (Test-Path $Cmd) {
     Add-Result "OK" "Arquivo existe: ServiceDeskToolkitV3.cmd"
 
-    
+
 if (Test-Path $Readme) {
     Add-Result "OK" "Arquivo existe: docs\V3-README.md"
 

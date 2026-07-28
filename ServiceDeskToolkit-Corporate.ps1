@@ -19,18 +19,18 @@ function Get-InventoryObj {
   }catch{"Erro ao coletar inventário: $($_.Exception.Message)"}
 }
 function Get-InventoryText { $i=Get-InventoryObj; if($i -is [string]){return $i}; return ($i|Format-List|Out-String) }
-function Test-NetworkBasic { try{ $o=@(); $o+='Diagnóstico de rede'; $o+=''; $o+='Ping 8.8.8.8: '+$(if(Test-Connection 8.8.8.8 -Count 2 -Quiet -ErrorAction SilentlyContinue){'OK'}else{'Falha'}); $o+='Ping google.com: '+$(if(Test-Connection google.com -Count 2 -Quiet -ErrorAction SilentlyContinue){'OK'}else{'Falha'}); try{Resolve-DnsName google.com -ErrorAction Stop|Out-Null;$o+='DNS: OK'}catch{$o+='DNS: Falha'}; $o+=''; $o+='Adaptadores ativos:'; $o+=(Get-NetAdapter|Where Status -eq Up|Select Name,InterfaceDescription,MacAddress,LinkSpeed,Status|Format-Table -AutoSize|Out-String); $o -join "`n" }catch{"Erro na rede: $($_.Exception.Message)"} }
+function Test-NetworkBasic { try{ $o=@(); $o+='Diagnóstico de rede'; $o+=''; $o+='Ping 8.8.8.8: '+$(if(Test-Connection 8.8.8.8 -Count 2 -Quiet -ErrorAction SilentlyContinue){'OK'}else{'Falha'}); $o+='Ping google.com: '+$(if(Test-Connection google.com -Count 2 -Quiet -ErrorAction SilentlyContinue){'OK'}else{'Falha'}); try{Resolve-DnsName google.com -ErrorAction Stop|Out-Null;$o+='DNS: OK'}catch{$o+='DNS: Falha'}; $o+=''; $o+='Adaptadores ativos:'; $o+=(Get-NetAdapter|Where-Object Status -eq Up|Select-Object Name,InterfaceDescription,MacAddress,LinkSpeed,Status|Format-Table -AutoSize|Out-String); $o -join "`n" }catch{"Erro na rede: $($_.Exception.Message)"} }
 function Invoke-FlushDns { try{ipconfig /flushdns|Out-Null;'Cache DNS limpo com sucesso.'}catch{"Erro: $($_.Exception.Message)"} }
 function Invoke-RenewIp { try{ipconfig /release|Out-Null;Start-Sleep 2;ipconfig /renew|Out-Null;'IP renovado. Verifique a conexão.'}catch{"Erro: $($_.Exception.Message)"} }
 function Invoke-TimeSync { try{Start-Service w32time -ErrorAction SilentlyContinue; w32tm /resync 2>&1|Out-String}catch{"Erro: $($_.Exception.Message)"} }
 function Invoke-SpoolerRestart { try{Restart-Service Spooler -Force;'Spooler reiniciado.'}catch{"Erro: $($_.Exception.Message)"} }
 function Get-TpmBasic { try{ if(Get-Command Get-Tpm -ErrorAction SilentlyContinue){Get-Tpm|Format-List|Out-String}else{'Get-Tpm indisponível.'}}catch{"Erro TPM: $($_.Exception.Message)"} }
 function Get-BitlockerBasic { try{manage-bde -status 2>&1|Out-String}catch{"Erro BitLocker: $($_.Exception.Message)"} }
-function Get-DefenderBasic { try{ if(Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue){Get-MpComputerStatus|Select AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AntivirusSignatureLastUpdated|Format-List|Out-String}else{'Get-MpComputerStatus indisponível.'}}catch{"Erro Defender: $($_.Exception.Message)"} }
-function Get-UacBasic { try{Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'|Select EnableLUA,ConsentPromptBehaviorAdmin,PromptOnSecureDesktop|Format-List|Out-String}catch{"Erro UAC: $($_.Exception.Message)"} }
-function Get-AdminsBasic { try{Get-LocalGroupMember -Group Administradores|Select Name,ObjectClass,PrincipalSource|Format-Table -AutoSize|Out-String}catch{net localgroup Administradores 2>&1|Out-String} }
-function Get-StoppedAutoServices { try{Get-CimInstance Win32_Service|Where {$_.StartMode -eq 'Auto' -and $_.State -ne 'Running'}|Select Name,DisplayName,State|Sort DisplayName|Format-Table -AutoSize|Out-String}catch{"Erro: $($_.Exception.Message)"} }
-function Get-CriticalEvents { try{$e=Get-WinEvent -FilterHashtable @{LogName='System';Level=1,2;StartTime=(Get-Date).AddHours(-24)} -MaxEvents 30 -ErrorAction SilentlyContinue|Select TimeCreated,ProviderName,Id,LevelDisplayName,Message; if($e){$e|Format-List|Out-String}else{'Nenhum evento crítico/erro nas últimas 24h.'}}catch{"Erro eventos: $($_.Exception.Message)"} }
+function Get-DefenderBasic { try{ if(Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue){Get-MpComputerStatus|Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AntivirusSignatureLastUpdated|Format-List|Out-String}else{'Get-MpComputerStatus indisponível.'}}catch{"Erro Defender: $($_.Exception.Message)"} }
+function Get-UacBasic { try{Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'|Select-Object EnableLUA,ConsentPromptBehaviorAdmin,PromptOnSecureDesktop|Format-List|Out-String}catch{"Erro UAC: $($_.Exception.Message)"} }
+function Get-AdminsBasic { try{Get-LocalGroupMember -Group Administradores|Select-Object Name,ObjectClass,PrincipalSource|Format-Table -AutoSize|Out-String}catch{net localgroup Administradores 2>&1|Out-String} }
+function Get-StoppedAutoServices { try{Get-CimInstance Win32_Service|Where-Object {$_.StartMode -eq 'Auto' -and $_.State -ne 'Running'}|Select-Object Name,DisplayName,State|Sort-Object DisplayName|Format-Table -AutoSize|Out-String}catch{"Erro: $($_.Exception.Message)"} }
+function Get-CriticalEvents { try{$e=Get-WinEvent -FilterHashtable @{LogName='System';Level=1,2;StartTime=(Get-Date).AddHours(-24)} -MaxEvents 30 -ErrorAction SilentlyContinue|Select-Object TimeCreated,ProviderName,Id,LevelDisplayName,Message; if($e){$e|Format-List|Out-String}else{'Nenhum evento crítico/erro nas últimas 24h.'}}catch{"Erro eventos: $($_.Exception.Message)"} }
 function Invoke-GpUpdate { try{gpupdate /force 2>&1|Out-String}catch{"Erro: $($_.Exception.Message)"} }
 function Invoke-GpResult { try{$f=New-ReportName 'GPResult' 'html'; gpresult /h $f /f 2>&1|Out-Null; Start-Process $f; "GPResult gerado:`n$f"}catch{"Erro: $($_.Exception.Message)"} }
 function Test-TcpPort($hostName,[int]$port){ try{Test-NetConnection -ComputerName $hostName -Port $port -InformationLevel Detailed|Format-List|Out-String}catch{"Erro TCP: $($_.Exception.Message)"} }
@@ -221,8 +221,8 @@ pre {
 
 # VPN / Appgate
 function Invoke-AppgateFix { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $cfg='C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config'; if(!(Test-Path $cfg)){return "Arquivo não encontrado:`n$cfg"}; $b=Join-Path $Backups ("Appgate SDP Service.dll.config.backup-$(Get-Date -Format yyyy-MM-dd_HH-mm-ss)"); Copy-Item $cfg $b -Force; $xml=New-Object System.Xml.XmlDocument; $xml.PreserveWhitespace=$true; $xml.Load($cfg); $n=$xml.SelectSingleNode("//applicationSettings/Cryptzone.Stratus.WindowsClient.Properties.Application/setting[@name='RunScriptTimeout']/value"); if(!$n){return "RunScriptTimeout não encontrado. Backup: $b"}; $old=$n.InnerText; $n.InnerText='300000'; $xml.Save($cfg); Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name ConsentPromptBehaviorAdmin -Value 5 -Type DWord; "Correção Appgate concluída.`nRunScriptTimeout: $old -> 300000`nUAC ConsentPromptBehaviorAdmin = 5`nBackup: $b" }catch{"ERRO Appgate: $($_.Exception.Message)"} }
-function Restart-Appgate { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $o=New-Object Text.StringBuilder; foreach($p in 'Appgate SDP Service','appgate-driver'){ $ps=Get-Process -Name $p -ErrorAction SilentlyContinue; if($ps){$ps|%{[void]$o.AppendLine("Finalizando $($_.ProcessName) PID $($_.Id)"); Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue}}else{[void]$o.AppendLine("Processo não encontrado: $p")}}; Start-Sleep 3; foreach($s in 'appgatedriver','AppgateUpdateService'){ if(Get-Service $s -ErrorAction SilentlyContinue){[void]$o.AppendLine("Reiniciando serviço: $s"); Restart-Service $s -Force -ErrorAction SilentlyContinue; Start-Sleep 2}}; $exe='C:\Program Files\Appgate SDP\service\Appgate SDP Service.exe'; if(Test-Path $exe){Start-Process $exe; [void]$o.AppendLine("Iniciado: $exe")}; [void]$o.AppendLine('Concluído.'); $o.ToString()}catch{"ERRO ao reiniciar Appgate: $($_.Exception.Message)"} }
-function Get-AppgateStatus { try{ $o=New-Object Text.StringBuilder; $cfg='C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config'; [void]$o.AppendLine('Status VPN / Appgate'); [void]$o.AppendLine(''); if(Test-Path $cfg){[void]$o.AppendLine("Config OK: $cfg"); try{$xml=New-Object Xml.XmlDocument; $xml.Load($cfg); $n=$xml.SelectSingleNode("//applicationSettings/Cryptzone.Stratus.WindowsClient.Properties.Application/setting[@name='RunScriptTimeout']/value"); [void]$o.AppendLine("RunScriptTimeout: $($n.InnerText)")}catch{[void]$o.AppendLine("Erro XML: $($_.Exception.Message)")}}else{[void]$o.AppendLine("Config não encontrado: $cfg")}; $u=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System').ConsentPromptBehaviorAdmin; [void]$o.AppendLine("UAC ConsentPromptBehaviorAdmin: $u"); [void]$o.AppendLine(''); [void]$o.AppendLine('Serviços:'); [void]$o.AppendLine((Get-Service|Where {$_.Name -eq 'appgatedriver' -or $_.Name -eq 'AppgateUpdateService' -or $_.DisplayName -like '*Appgate*'}|Select Name,DisplayName,Status|Format-Table -AutoSize|Out-String)); [void]$o.AppendLine('Processos:'); [void]$o.AppendLine((Get-Process|Where {$_.ProcessName -like '*appgate*' -or $_.ProcessName -like '*sdp*'}|Select ProcessName,Id,Path|Format-Table -AutoSize|Out-String)); $o.ToString() }catch{"ERRO status Appgate: $($_.Exception.Message)"} }
+function Restart-Appgate { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $o=New-Object Text.StringBuilder; foreach($p in 'Appgate SDP Service','appgate-driver'){ $ps=Get-Process -Name $p -ErrorAction SilentlyContinue; if($ps){$ps|ForEach-Object{[void]$o.AppendLine("Finalizando $($_.ProcessName) PID $($_.Id)"); Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue}}else{[void]$o.AppendLine("Processo não encontrado: $p")}}; Start-Sleep 3; foreach($s in 'appgatedriver','AppgateUpdateService'){ if(Get-Service $s -ErrorAction SilentlyContinue){[void]$o.AppendLine("Reiniciando serviço: $s"); Restart-Service $s -Force -ErrorAction SilentlyContinue; Start-Sleep 2}}; $exe='C:\Program Files\Appgate SDP\service\Appgate SDP Service.exe'; if(Test-Path $exe){Start-Process $exe; [void]$o.AppendLine("Iniciado: $exe")}; [void]$o.AppendLine('Concluído.'); $o.ToString()}catch{"ERRO ao reiniciar Appgate: $($_.Exception.Message)"} }
+function Get-AppgateStatus { try{ $o=New-Object Text.StringBuilder; $cfg='C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config'; [void]$o.AppendLine('Status VPN / Appgate'); [void]$o.AppendLine(''); if(Test-Path $cfg){[void]$o.AppendLine("Config OK: $cfg"); try{$xml=New-Object Xml.XmlDocument; $xml.Load($cfg); $n=$xml.SelectSingleNode("//applicationSettings/Cryptzone.Stratus.WindowsClient.Properties.Application/setting[@name='RunScriptTimeout']/value"); [void]$o.AppendLine("RunScriptTimeout: $($n.InnerText)")}catch{[void]$o.AppendLine("Erro XML: $($_.Exception.Message)")}}else{[void]$o.AppendLine("Config não encontrado: $cfg")}; $u=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System').ConsentPromptBehaviorAdmin; [void]$o.AppendLine("UAC ConsentPromptBehaviorAdmin: $u"); [void]$o.AppendLine(''); [void]$o.AppendLine('Serviços:'); [void]$o.AppendLine((Get-Service|Where-Object {$_.Name -eq 'appgatedriver' -or $_.Name -eq 'AppgateUpdateService' -or $_.DisplayName -like '*Appgate*'}|Select-Object Name,DisplayName,Status|Format-Table -AutoSize|Out-String)); [void]$o.AppendLine('Processos:'); [void]$o.AppendLine((Get-Process|Where-Object {$_.ProcessName -like '*appgate*' -or $_.ProcessName -like '*sdp*'}|Select-Object ProcessName,Id,Path|Format-Table -AutoSize|Out-String)); $o.ToString() }catch{"ERRO status Appgate: $($_.Exception.Message)"} }
 
 # TPM / Office
 function Invoke-TpmOfficeFix { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $p='HKLM:\Software\Microsoft\Cryptography\Protect\Providers\df9d8cd0-1501-11d1-8c7a-00c04fc297eb'; $o='HKCU:\Software\Microsoft\Office\16.0\Common\Identity'; if(!(Test-Path $p)){New-Item $p -Force|Out-Null}; New-ItemProperty -Path $p -Name ProtectionPolicy -Value 1 -PropertyType DWord -Force|Out-Null; if(!(Test-Path $o)){New-Item $o -Force|Out-Null}; New-ItemProperty -Path $o -Name EnableADAL -Value 0 -PropertyType DWord -Force|Out-Null; "Ajuste TPM 2 aplicado.`nProtectionPolicy=1`nEnableADAL=0`nReinicie o computador."}catch{"ERRO TPM 2: $($_.Exception.Message)"} }
@@ -231,10 +231,10 @@ function Start-DismSfc { try{ if(!(Test-Admin)){return 'ERRO: execute como admin
 function Get-TpmOfficeStatus { try{ $o=New-Object Text.StringBuilder; [void]$o.AppendLine('Status TPM / Office'); [void]$o.AppendLine(''); [void]$o.AppendLine((Get-TpmBasic)); $p='HKLM:\Software\Microsoft\Cryptography\Protect\Providers\df9d8cd0-1501-11d1-8c7a-00c04fc297eb'; $id='HKCU:\Software\Microsoft\Office\16.0\Common\Identity'; if(Test-Path $p){try{[void]$o.AppendLine("ProtectionPolicy: $((Get-ItemProperty $p).ProtectionPolicy)")}catch{[void]$o.AppendLine('ProtectionPolicy não encontrado')}}else{[void]$o.AppendLine('Chave ProtectionPolicy não encontrada')}; if(Test-Path $id){try{[void]$o.AppendLine("EnableADAL: $((Get-ItemProperty $id).EnableADAL)")}catch{[void]$o.AppendLine('EnableADAL não encontrado')}}else{[void]$o.AppendLine('Chave Office Identity não encontrada')}; $o.ToString()}catch{"ERRO status TPM/Office: $($_.Exception.Message)"} }
 
 # Windows / Reparo
-function Get-WindowsRepairStatus { try{ $os=Get-CimInstance Win32_OperatingSystem; $d=Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"; $o=@(); $o+='Status Windows / Reparo'; $o+=''; $o+="Windows: $($os.Caption) $($os.Version) Build $($os.BuildNumber)"; $o+="Disco C: $([math]::Round($d.FreeSpace/1GB,2)) GB livres de $([math]::Round($d.Size/1GB,2)) GB"; $o+=''; $o+='Serviços WU:'; $o+=(Get-Service wuauserv,bits,cryptsvc,msiserver -ErrorAction SilentlyContinue|Select Name,DisplayName,Status|Format-Table -AutoSize|Out-String); $o+='Eventos 24h:'; $o+=(Get-CriticalEvents); $o -join "`n"}catch{"ERRO status Windows: $($_.Exception.Message)"} }
+function Get-WindowsRepairStatus { try{ $os=Get-CimInstance Win32_OperatingSystem; $d=Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"; $o=@(); $o+='Status Windows / Reparo'; $o+=''; $o+="Windows: $($os.Caption) $($os.Version) Build $($os.BuildNumber)"; $o+="Disco C: $([math]::Round($d.FreeSpace/1GB,2)) GB livres de $([math]::Round($d.Size/1GB,2)) GB"; $o+=''; $o+='Serviços WU:'; $o+=(Get-Service wuauserv,bits,cryptsvc,msiserver -ErrorAction SilentlyContinue|Select-Object Name,DisplayName,Status|Format-Table -AutoSize|Out-String); $o+='Eventos 24h:'; $o+=(Get-CriticalEvents); $o -join "`n"}catch{"ERRO status Windows: $($_.Exception.Message)"} }
 function Restart-WUServices { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $o=@(); foreach($s in 'wuauserv','bits','cryptsvc','msiserver'){ if(Get-Service $s -ErrorAction SilentlyContinue){Restart-Service $s -Force -ErrorAction SilentlyContinue; $o+="Reiniciado: $s"}else{$o+="Não encontrado: $s"}}; $o -join "`n"}catch{"ERRO WU: $($_.Exception.Message)"} }
 function Clear-WUCache { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; foreach($s in 'wuauserv','bits','cryptsvc'){Stop-Service $s -Force -ErrorAction SilentlyContinue}; Start-Sleep 2; $d=Get-Date -Format yyyy-MM-dd_HH-mm-ss; if(Test-Path 'C:\Windows\SoftwareDistribution'){Rename-Item 'C:\Windows\SoftwareDistribution' "SoftwareDistribution.old-$d" -Force}; if(Test-Path 'C:\Windows\System32\catroot2'){Rename-Item 'C:\Windows\System32\catroot2' "catroot2.old-$d" -Force}; foreach($s in 'wuauserv','bits','cryptsvc'){Start-Service $s -ErrorAction SilentlyContinue}; 'Cache Windows Update limpo. Teste o Windows Update novamente.'}catch{"ERRO cache WU: $($_.Exception.Message)"} }
-function Clear-UserTemp { try{$c=0; foreach($p in @($env:TEMP,"$env:LOCALAPPDATA\Temp")|Select -Unique){if(Test-Path $p){Get-ChildItem $p -Force -ErrorAction SilentlyContinue|%{Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue;$c++}}}; "Temporários processados: $c"}catch{"ERRO temp: $($_.Exception.Message)"} }
+function Clear-UserTemp { try{$c=0; foreach($p in @($env:TEMP,"$env:LOCALAPPDATA\Temp")|Select-Object -Unique){if(Test-Path $p){Get-ChildItem $p -Force -ErrorAction SilentlyContinue|ForEach-Object{Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue;$c++}}}; "Temporários processados: $c"}catch{"ERRO temp: $($_.Exception.Message)"} }
 function Start-DismOnly { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $d=Get-Date -Format yyyy-MM-dd_HH-mm-ss; $sp=Join-Path $Logs "Executar-DISM-$d.ps1"; $lp=Join-Path $Logs "DISM-$d.log"; "Dism /Online /Cleanup-Image /RestoreHealth 2>&1 | Tee-Object -FilePath '$lp' -Append`nPause"|Set-Content $sp -Encoding UTF8; Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$sp`"" -Verb RunAs; "DISM iniciado.`nLog: $lp"}catch{"ERRO DISM: $($_.Exception.Message)"} }
 function Start-SfcOnly { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $d=Get-Date -Format yyyy-MM-dd_HH-mm-ss; $sp=Join-Path $Logs "Executar-SFC-$d.ps1"; $lp=Join-Path $Logs "SFC-$d.log"; "sfc /scannow 2>&1 | Tee-Object -FilePath '$lp' -Append`nPause"|Set-Content $sp -Encoding UTF8; Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$sp`"" -Verb RunAs; "SFC iniciado.`nLog: $lp"}catch{"ERRO SFC: $($_.Exception.Message)"} }
 
@@ -3127,8 +3127,8 @@ function Write-ToolkitErrorLog {
 </Grid>
 <TabControl Name="MainTabs" Grid.Row="2" Background="Transparent" BorderBrush="Transparent">
 
-                
-                
+
+
                 <TabItem Header="Base de Conhecimento">
                     <Border Background="White" CornerRadius="18" Padding="18">
                         <Grid>
@@ -5492,54 +5492,3 @@ catch {
 }
 
 $window.ShowDialog()|Out-Null
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

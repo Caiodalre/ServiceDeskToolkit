@@ -3,7 +3,9 @@ $ErrorActionPreference = "Stop"
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 }
-catch {}
+catch {
+    Write-Verbose "Não foi possível forçar TLS 1.2: $($_.Exception.Message)"
+}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"

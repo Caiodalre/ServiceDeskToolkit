@@ -12,6 +12,11 @@ end_of_line = crlf
 indent_style = space
 indent_size = 4
 
+[bootstrap.ps1]
+# Bootstrap stays without BOM for legacy Windows download compatibility.
+charset = utf-8
+end_of_line = crlf
+
 [*.cmd]
 end_of_line = crlf
 

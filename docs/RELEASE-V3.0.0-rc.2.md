@@ -1,9 +1,13 @@
-﻿# ServiceDesk Toolkit Corporate V3.0.0-rc.2
+# ServiceDesk Toolkit Corporate V3.0.0-rc.2
 
-Status: Release candidate em validação final  
+Status: Candidata interna substituída antes da publicação da tag  
 Base anterior: `v3.0.0-rc.1`  
 Branch de desenvolvimento: `v3-corporate-redesign`  
 Tag planejada: `v3.0.0-rc.2`
+
+> A candidata foi integrada e validada, mas a tag pública não foi criada. Uma
+> revisão transversal do repositório originou a `v3.0.0-rc.3`, que passa a ser
+> a candidata oficial para publicação.
 
 ## Resumo
 

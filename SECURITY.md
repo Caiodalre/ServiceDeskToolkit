@@ -5,7 +5,8 @@
 | Linha | Situação |
 | --- | --- |
 | `v2.3.0` | Estável para operação interna |
-| `v3.0.0-preview.*` | Preview para homologação |
+| `v3.0.0-rc.*` | Release candidate para homologação final |
+| `v3.0.0-preview.*` | Histórico, sem novas correções |
 | Branches de desenvolvimento | Sem suporte para produção |
 
 ## Como relatar uma vulnerabilidade
