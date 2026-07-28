@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "ServiceDesk Toolkit Corporate",
   "version": "2.4.0-dev",
   "channel": "development",
@@ -9,8 +9,8 @@
     "Windows PowerShell 5.1",
     "PowerShell 7+"
   ],
-  "installCommandDev": "$env:SDTK_REF = \"v2.4-functional\"; powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.4-functional/bootstrap.ps1' | iex\"; Remove-Item Env:\\SDTK_REF -ErrorAction SilentlyContinue",
-  "installCommandStable": "$env:SDTK_REF = \"v2.3.0\"; powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.3.0/bootstrap.ps1' | iex\"; Remove-Item Env:\\SDTK_REF -ErrorAction SilentlyContinue",
+  "installCommandDev": "$env:SDTK_REF = \"v2.4-functional\"; $Installer = Join-Path $env:TEMP \"ServiceDeskToolkit-bootstrap.ps1\"; Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.4-functional/bootstrap.ps1' -OutFile $Installer -UseBasicParsing; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer; Remove-Item Env:\\SDTK_REF -ErrorAction SilentlyContinue",
+  "installCommandStable": "$env:SDTK_REF = \"v2.3.0\"; $Installer = Join-Path $env:TEMP \"ServiceDeskToolkit-bootstrap.ps1\"; Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/v2.3.0/bootstrap.ps1' -OutFile $Installer -UseBasicParsing; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer; Remove-Item Env:\\SDTK_REF -ErrorAction SilentlyContinue",
   "repository": "https://github.com/Caiodalre/ServiceDeskToolkit",
   "buildDate": "2026-06-29 22:57:33",
   "updateModel": "source-ref",

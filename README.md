@@ -3,7 +3,7 @@
 [![CI](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml)
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-5391FE)
-![V3](https://img.shields.io/badge/V3-rc.1-2563EB)
+![V3](https://img.shields.io/badge/V3-release%20candidate-orange)
 
 Central de atendimento técnico em PowerShell para diagnóstico, evidências e
 correções controladas em estações Windows.
@@ -17,11 +17,11 @@ e ação administrativa avançada.
 | Canal | Referência | Uso recomendado |
 | --- | --- | --- |
 | V2 estável | `v2.3.0` | Operação interna validada |
-| V3 release candidate | `v3.0.0-rc.1` | Validação final antes da promoção estável |
-| V3 em desenvolvimento | `v3-corporate-redesign` | Evolução posterior à release candidate |
+| V3 candidata atual | `v3.0.0-rc.3` | Validação final antes da promoção estável |
+| V3 em desenvolvimento | `v3-corporate-redesign` | Evolução controlada da candidata |
 
-A V3 release candidate foi aprovada na homologação interna obrigatória, mas ainda
-não substitui a versão estável até a promoção formal para `v3.0.0`.
+A V3 ainda não substitui a versão estável. Ela evolui a experiência visual e o
+atendimento guiado sem interromper o fluxo operacional da V2.
 
 ## Capacidades
 
@@ -62,7 +62,7 @@ A instalação padrão da V2 utiliza `C:\ServiceDeskToolkit`.
 ### V3 release candidate
 
 ```powershell
-$Version = "v3.0.0-rc.1"
+$Version = "v3.0.0-rc.3"
 $Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-install.ps1"
 $Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/install-v3.ps1"
 
@@ -115,7 +115,8 @@ docs/                               Runbooks, arquitetura e releases
 
 Consulte [Arquitetura](docs/ARCHITECTURE.md),
 [Roadmap](docs/ROADMAP-PROFISSIONALIZACAO.md) e
-[Como contribuir](CONTRIBUTING.md).
+[Como contribuir](CONTRIBUTING.md). O contrato técnico está em
+[Padrões de engenharia](docs/REPOSITORY-STANDARDS.md).
 
 ## Segurança
 

@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # ServiceDesk Toolkit Corporate - Instalador via GitHub
 # Repositorio: github.com/Caiodalre/ServiceDeskToolkit
 # Compatibilidade: Windows PowerShell 5.1 e PowerShell 7+
@@ -9,11 +9,13 @@ $ErrorActionPreference = "Stop"
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 }
-catch {}
+catch {
+    Write-Verbose "Nao foi possivel forcar TLS 1.2: $($_.Exception.Message)"
+}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"
-$Branch = "v2.0.2-compat"
+$Branch = "v2.3.0"
 
 $BaseUrl = "https://raw.githubusercontent.com/$GitHubUser/$RepoName/$Branch"
 
@@ -30,7 +32,7 @@ $CmdPath = Join-Path $InstallPath "ServiceDeskToolkit.cmd"
 $KnowledgePath = Join-Path $DataPath "knowledge-base.json"
 $ReadmePath = Join-Path $InstallPath "README.md"
 
-function Download-ToolkitFile {
+function Save-ToolkitFile {
     param(
         [Parameter(Mandatory=$true)][string]$Url,
         [Parameter(Mandatory=$true)][string]$Destination,
@@ -99,16 +101,16 @@ foreach ($folder in $folders) {
     }
 }
 
-Download-ToolkitFile -Url $MainScriptUrl -Destination $MainScriptPath -Name "Script principal"
+Save-ToolkitFile -Url $MainScriptUrl -Destination $MainScriptPath -Name "Script principal"
 Convert-ToolkitFileToUtf8Bom -Path $MainScriptPath -Name "Script principal"
 
-Download-ToolkitFile -Url $CmdUrl -Destination $CmdPath -Name "Launcher CMD"
+Save-ToolkitFile -Url $CmdUrl -Destination $CmdPath -Name "Launcher CMD"
 
-Download-ToolkitFile -Url $KnowledgeUrl -Destination $KnowledgePath -Name "Base de Conhecimento"
+Save-ToolkitFile -Url $KnowledgeUrl -Destination $KnowledgePath -Name "Base de Conhecimento"
 Convert-ToolkitFileToUtf8Bom -Path $KnowledgePath -Name "Base de Conhecimento"
 
 try {
-    Download-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
+    Save-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
 }
 catch {
     Write-Host "Aviso: README nao encontrado. Continuando instalacao." -ForegroundColor Yellow
@@ -213,4 +215,3 @@ catch {
     Write-Host "Abra manualmente pelo atalho ou execute:" -ForegroundColor Yellow
     Write-Host $CmdPath -ForegroundColor Cyan
 }
-
