@@ -4,8 +4,9 @@
 
 | Linha | Situação |
 | --- | --- |
-| `v3.0.0` | Estável para operação interna |
-| `v3.0.1-rc.1` | Candidata para homologação da integridade SHA-256 |
+| `v3.0.1` | Estável para operação interna |
+| `v3.0.0` | Versão anterior, suporte de transição |
+| `v3.0.1-rc.1` | Histórico de homologação, sem novas correções |
 | `v2.3.0` | Fallback legado com suporte crítico |
 | `v3.0.0-rc.*` | Histórico de homologação, sem novas correções |
 | `v3.0.0-preview.*` | Histórico, sem novas correções |

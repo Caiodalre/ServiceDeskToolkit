@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Branch = "v3.0.0"
+$Branch = "v3.0.1"
 $Repo = "Caiodalre/ServiceDeskToolkit"
 $installerPath = Join-Path $env:TEMP "ServiceDeskToolkitV3-install.ps1"
 $installerUrl = "https://raw.githubusercontent.com/$Repo/$Branch/install-v3.ps1"

@@ -3,7 +3,7 @@
 [![CI](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml)
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-5391FE)
-![V3](https://img.shields.io/badge/V3-3.0.0%20stable-2ea44f)
+![V3](https://img.shields.io/badge/V3-3.0.1%20stable-2ea44f)
 
 Central de atendimento técnico em PowerShell para diagnóstico, evidências e
 correções controladas em estações Windows.
@@ -16,13 +16,14 @@ e ação administrativa avançada.
 
 | Canal | Referência | Uso recomendado |
 | --- | --- | --- |
-| V3 estável | `v3.0.0` | Operação interna homologada em mais de 10 máquinas |
-| Candidata | `v3.0.1-rc.1` | Homologação da integridade SHA-256 |
+| V3 estável | `v3.0.1` | SHA-256 homologado em Windows 10 e 11 |
+| V3 anterior | `v3.0.0` | Fallback temporário da linha V3 |
 | V2 legado | `v2.3.0` | Fallback para instalações anteriores |
 | Desenvolvimento | `v3-corporate-redesign` | Evolução controlada da V3 |
 
-A V3 substitui a V2 como canal estável após homologação funcional sem erros em
-mais de 10 máquinas. A tag `v2.3.0` permanece imutável como fallback legado.
+A `v3.0.1` é o canal estável após homologação funcional em mais de 10
+máquinas e validação da distribuição SHA-256 em Windows 10 e 11. A tag
+`v2.3.0` permanece imutável como fallback legado.
 
 ## Capacidades
 
@@ -47,29 +48,12 @@ mais de 10 máquinas. A tag `v2.3.0` permanece imutável como fallback legado.
 
 ### V3 estável
 
-Abra o PowerShell como administrador. O instalador é baixado para um arquivo
-temporário antes da execução:
+Abra o PowerShell como administrador. O instalador e o manifesto são baixados
+para arquivos temporários. O instalador só é executado após a conferência do
+seu SHA-256:
 
 ```powershell
-$Version = "v3.0.0"
-$Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-stable.ps1"
-$Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/install-stable.ps1"
-
-Invoke-WebRequest -Uri $Url -OutFile $Installer -UseBasicParsing
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
-```
-
-A instalação padrão utiliza builds isoladas dentro de
-`%LOCALAPPDATA%\ServiceDeskToolkitV3`.
-
-### V3.0.1-rc.1 — candidata com integridade SHA-256
-
-A candidata deve ser usada somente na rodada de homologação. O exemplo baixa o
-instalador e o manifesto para arquivos, verifica o SHA-256 do instalador e só
-então inicia o processo:
-
-```powershell
-$Version = "v3.0.1-rc.1"
+$Version = "v3.0.1"
 $BaseUrl = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version"
 $Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-$Version.ps1"
 $ManifestFile = Join-Path $env:TEMP "ServiceDeskToolkitV3-$Version-checksums.json"
@@ -78,19 +62,28 @@ Invoke-WebRequest -Uri "$BaseUrl/install-v3.ps1" -OutFile $Installer -UseBasicPa
 Invoke-WebRequest -Uri "$BaseUrl/checksums-v3.json" -OutFile $ManifestFile -UseBasicParsing
 
 $Manifest = Get-Content $ManifestFile -Raw | ConvertFrom-Json
-$Expected = $Manifest.files |
-    Where-Object { $_.path -eq "install-v3.ps1" } |
-    Select-Object -ExpandProperty sha256
-$Actual = (Get-FileHash $Installer -Algorithm SHA256).Hash
+$Expected = @($Manifest.files | Where-Object { $_.path -eq "install-v3.ps1" })
 
-if ($Actual -ne $Expected) {
+if ($Expected.Count -ne 1) {
+    throw "Manifesto inválido para install-v3.ps1."
+}
+
+$ActualHash = (Get-FileHash $Installer -Algorithm SHA256).Hash
+if ($ActualHash -ne $Expected[0].sha256) {
     throw "Falha de integridade no instalador V3."
 }
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
 ```
 
-O instalador valida novamente todos os componentes do pacote antes de gravá-los.
+A instalação padrão utiliza builds isoladas dentro de
+`%LOCALAPPDATA%\ServiceDeskToolkitV3`. O instalador valida novamente todos
+os componentes antes de gravá-los.
+
+### Histórico da candidata
+
+A `v3.0.1-rc.1` foi aprovada em Windows 10 e Windows 11 e promovida sem
+alterações funcionais para `v3.0.1`.
 
 ### V2.3.0 — fallback legado
 

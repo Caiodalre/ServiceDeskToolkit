@@ -4,8 +4,8 @@
 
 A V3 é a experiência estável atual do ServiceDesk Toolkit Corporate.
 
-Versão estável atual: `3.0.0`, promovida a partir da candidata homologada
-`3.0.0-rc.3`.
+Versão estável atual: `3.0.1`, promovida a partir da candidata de segurança
+`3.0.1-rc.1`.
 
 A versão preserva o reparo operacional do Windows com SFC e DISM, os painéis
 modulares e a camada transversal de padrões de engenharia. A tag `v2.3.0`
@@ -25,6 +25,10 @@ trilha de auditoria pelo toolkit.
 A RC3 foi instalada e validada em mais de 10 máquinas, sem erros relatados.
 A instalação remota, a interface, os diagnósticos, as ações administrativas e
 a geração de logs foram aprovados antes e depois da promoção para `3.0.0`.
+
+A `3.0.1-rc.1` acrescentou integridade SHA-256 sem alterar as funções do
+toolkit. A instalação e a regressão básica foram aprovadas em Windows 10 e
+Windows 11 antes da promoção para `3.0.1`.
 
 Resultados públicos não devem conter usuários, domínio, endereços de rede,
 seriais, nomes de impressoras, credenciais ou pacotes de suporte.
@@ -115,13 +119,13 @@ recomendada é:
 
 ## Próximas etapas
 
-- Monitorar a adoção interna da `v3.0.0`
+- Monitorar a adoção interna da `v3.0.1`
 - Registrar incidentes e regressões com evidências sanitizadas
-- Homologar a verificação SHA-256 da `v3.0.1-rc.1`
 - Avaliar assinatura Authenticode quando houver certificado corporativo
+- Atualizar as actions do CI para versões nativas de Node.js 24
 - Evoluir módulos e testes somente em nova versão controlada
 
 ## Observação
 
-A versão estável oficial é a `v3.0.0`. A V2.3.0 permanece imutável como
-fallback para instalações anteriores.
+A versão estável oficial é a `v3.0.1`. A `v3.0.0` permanece como
+fallback temporário da linha V3 e a V2.3.0 como fallback legado.

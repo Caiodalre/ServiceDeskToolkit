@@ -18,6 +18,8 @@
 - [ ] Documentar rotação e revogação de certificados.
 - [x] Remover recomendações de execução remota por pipe.
 - [x] Criar teste de instalação usando somente uma tag fixa.
+- [x] Homologar a distribuição SHA-256 em Windows 10 e Windows 11.
+- [x] Promover a candidata homologada para `v3.0.1` estável.
 
 ## Fase 3 — Modularização
 
