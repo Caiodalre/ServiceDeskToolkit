@@ -9,25 +9,19 @@ ambiente de suporte técnico.
 
 | Referência | Situação |
 | --- | --- |
-| `v3.0.0` | Versão estável atual |
+| `v3.0.1` | Versão estável atual |
+| `v3.0.0` | Fallback temporário da linha V3 |
 | `v2.3.0` | Fallback legado |
 | `v3-corporate-redesign` | Desenvolvimento, não usar em produção |
 
 ## Instalação estável
 
-Abra o PowerShell como administrador:
+Abra o PowerShell como administrador e use o procedimento com verificação
+SHA-256 publicado na seção
+[Instalação da V3 estável](../README.md#v3-estável).
 
-```powershell
-$Version = "v3.0.0"
-$Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-stable.ps1"
-$Url = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version/install-stable.ps1"
-
-Invoke-WebRequest -Uri $Url -OutFile $Installer -UseBasicParsing
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
-```
-
-O instalador baixa o script oficial para arquivo, valida sua sintaxe e confirma
-os marcadores do produto antes da execução.
+O instalador deve exibir `SHA-256 confirmado` para cada componente antes da
+gravação. Não execute conteúdo remoto por pipe.
 
 ## Caminho padrão
 

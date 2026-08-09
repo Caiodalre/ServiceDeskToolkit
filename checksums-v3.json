@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "product": "ServiceDesk Toolkit Corporate V3",
-  "version": "3.0.1-rc.1",
-  "sourceRef": "v3.0.1-rc.1",
+  "version": "3.0.1",
+  "sourceRef": "v3.0.1",
   "algorithm": "SHA256",
   "files": [
     {
       "path": "docs/V3-README.md",
-      "sha256": "0636030d1cfc9a0f931958f9a247ee0391e871219f2351d621361f4ec925753b"
+      "sha256": "53323a86c3eeac8f10ac57fdba6c3bc5881ba8559fadb3a5bba0ae9b4841c69b"
     },
     {
       "path": "install-v3.ps1",
-      "sha256": "4ee729354ca7ccebca00bf31ed6663e16db17e59753892ffbed21ffb090b5ace"
+      "sha256": "54616e017e7ba4c56229b59ca511eb4f7cd3ff06ec95c8264ffbe35cea9c01c9"
     },
     {
       "path": "ServiceDeskToolkit-CorporateV3.ps1",
@@ -43,7 +43,7 @@
     },
     {
       "path": "version-v3.json",
-      "sha256": "8ca51d42bd2e46ea2da10836ad4af69b610a229e14ee490d7ed8f9ee69652539"
+      "sha256": "45708ff12b83741d32d36d1996ac9c8ad47af163648614a9457852d1897bd324"
     }
   ]
 }

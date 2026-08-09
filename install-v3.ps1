@@ -1,5 +1,5 @@
 ﻿param(
-    [string]$Branch = "v3.0.1-rc.1",
+    [string]$Branch = "v3.0.1",
     [string]$Repo = "Caiodalre/ServiceDeskToolkit",
     [string]$InstallRoot,
     [switch]$NoShortcut,

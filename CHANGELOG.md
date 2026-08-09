@@ -3,6 +3,16 @@
 Todas as mudanças relevantes do ServiceDesk Toolkit Corporate são registradas
 neste arquivo.
 
+## v3.0.1 — 2026-08-09
+
+### Estável
+
+- Integridade SHA-256 promovida após homologação da RC1 em Windows 10 e 11.
+- Nenhuma alteração funcional aplicada após a candidata aprovada.
+- Instalador e metadados fixados na tag imutável `v3.0.1`.
+- `v3.0.0` preservada como fallback temporário da linha V3.
+- CI e instalação pública pela tag exigidos antes do encerramento da promoção.
+
 ## v3.0.1-rc.1 — 2026-08-09
 
 ### Segurança da distribuição
