@@ -5,6 +5,7 @@ $App = Join-Path $Root "ServiceDeskToolkit-CorporateV3.ps1"
 $Cmd = Join-Path $Root "ServiceDeskToolkitV3.cmd"
 $Readme = Join-Path $Root "docs\V3-README.md"
 $VersionFile = Join-Path $Root "version-v3.json"
+$ChecksumManifest = Join-Path $Root "checksums-v3.json"
 $DiagnosticsModule = Join-Path `
     $Root `
     "src\ServiceDeskToolkit.Diagnostics\ServiceDeskToolkit.Diagnostics.psm1"
@@ -109,6 +110,52 @@ if (Test-Path $VersionFile) {
 }
 else {
     Add-Result "FALHA" "Arquivo nao encontrado: version-v3.json"
+}
+
+if (Test-Path $ChecksumManifest) {
+    try {
+        $manifestInfo = Get-Content $ChecksumManifest -Raw | ConvertFrom-Json
+        $manifestPaths = @($manifestInfo.files | ForEach-Object {
+            [string]$_.path
+        })
+
+        if ([string]$manifestInfo.algorithm -eq "SHA256") {
+            Add-Result "OK" "Manifesto usa SHA-256"
+        }
+        else {
+            Add-Result "FALHA" "Manifesto nao usa SHA-256"
+        }
+
+        if (
+            $null -ne $versionInfo -and
+            [string]$manifestInfo.sourceRef -eq [string]$versionInfo.sourceRef
+        ) {
+            Add-Result "OK" "Manifesto corresponde a referencia da versao"
+        }
+        else {
+            Add-Result "FALHA" "Manifesto diverge da referencia da versao"
+        }
+
+        foreach ($requiredManifestPath in @(
+            "install-v3.ps1",
+            "ServiceDeskToolkit-CorporateV3.ps1",
+            "tools/Test-ToolkitV3.ps1",
+            "version-v3.json"
+        )) {
+            if ($manifestPaths -contains $requiredManifestPath) {
+                Add-Result "OK" "Manifesto inclui: $requiredManifestPath"
+            }
+            else {
+                Add-Result "FALHA" "Manifesto nao inclui: $requiredManifestPath"
+            }
+        }
+    }
+    catch {
+        Add-Result "FALHA" "Manifesto SHA-256 invalido: $($_.Exception.Message)"
+    }
+}
+else {
+    Add-Result "FALHA" "Arquivo nao encontrado: checksums-v3.json"
 }
 
 $moduleFiles = @(

@@ -69,6 +69,8 @@ Describe "V3 version contract" {
     BeforeAll {
         $script:V3VersionPath = Join-Path $script:RepositoryRoot "version-v3.json"
         $script:V3Version = Get-Content $script:V3VersionPath -Raw | ConvertFrom-Json
+        $script:V3ManifestPath = Join-Path $script:RepositoryRoot "checksums-v3.json"
+        $script:V3Manifest = Get-Content $script:V3ManifestPath -Raw | ConvertFrom-Json
         $script:V3AppText = Get-Content (
             Join-Path $script:RepositoryRoot "ServiceDeskToolkit-CorporateV3.ps1"
         ) -Raw
@@ -111,6 +113,37 @@ Describe "V3 version contract" {
         Assert-RepositoryCondition `
             -Condition ($script:V3InstallerText -match 'VersionText') `
             -Message "O instalador V3 nao grava os metadados de versao."
+    }
+
+    It "requires SHA-256 integrity before installing V3 payloads" {
+        $manifestPaths = @($script:V3Manifest.files | ForEach-Object {
+            [string]$_.path
+        })
+
+        Assert-RepositoryCondition `
+            -Condition (Test-Path $script:V3ManifestPath) `
+            -Message "checksums-v3.json nao foi encontrado."
+        Assert-RepositoryCondition `
+            -Condition ([string]$script:V3Manifest.algorithm -eq "SHA256") `
+            -Message "O manifesto V3 nao usa SHA256."
+        Assert-RepositoryCondition `
+            -Condition (
+                [string]$script:V3Manifest.sourceRef -eq
+                [string]$script:V3Version.sourceRef
+            ) `
+            -Message "O manifesto V3 diverge da referencia da versao."
+        Assert-RepositoryCondition `
+            -Condition ($manifestPaths -contains "install-v3.ps1") `
+            -Message "O manifesto V3 nao protege o instalador."
+        Assert-RepositoryCondition `
+            -Condition ($script:V3InstallerText -match 'Get-FileHash') `
+            -Message "O instalador V3 nao calcula SHA-256."
+        Assert-RepositoryCondition `
+            -Condition ($script:V3InstallerText -match 'Falha de integridade') `
+            -Message "O instalador V3 nao bloqueia hash divergente."
+        Assert-RepositoryCondition `
+            -Condition ($script:V3InstallerText -match 'ExpectedSourceRef') `
+            -Message "O instalador V3 nao valida a referencia do manifesto."
     }
 
     It "ships the modular health panel through the V3 installer" {
@@ -269,5 +302,37 @@ Describe "Automation contracts" {
         Assert-RepositoryCondition `
             -Condition ($installer -notmatch "(?im)^\s*(iex|Invoke-Expression)\b") `
             -Message "O instalador V3 executa conteudo baixado via Invoke-Expression."
+    }
+
+    It "rejects a payload changed after the checksum manifest was generated" {
+        $tamperedRoot = Join-Path $TestDrive "tampered-package"
+        New-Item -Path $tamperedRoot -ItemType Directory -Force | Out-Null
+
+        foreach ($entry in @($script:V3Manifest.files)) {
+            $relativePath = [string]$entry.path
+            $sourcePath = Join-Path $script:RepositoryRoot $relativePath
+            $targetPath = Join-Path $tamperedRoot $relativePath
+            $targetFolder = Split-Path $targetPath -Parent
+            New-Item -Path $targetFolder -ItemType Directory -Force |
+                Out-Null
+            Copy-Item -LiteralPath $sourcePath -Destination $targetPath
+        }
+
+        Copy-Item `
+            -LiteralPath $script:V3ManifestPath `
+            -Destination (Join-Path $tamperedRoot "checksums-v3.json")
+        $tamperedApp = Join-Path `
+            $tamperedRoot `
+            "ServiceDeskToolkit-CorporateV3.ps1"
+        [System.IO.File]::AppendAllText(
+            $tamperedApp,
+            "# alteracao simulada"
+        )
+        $checksumTool = Join-Path `
+            $script:RepositoryRoot `
+            "tools\New-ToolkitChecksumManifest.ps1"
+
+        { & $checksumTool -Root $tamperedRoot -Check } |
+            Should -Throw "*Checksum divergente*"
     }
 }

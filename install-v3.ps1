@@ -1,5 +1,5 @@
 ﻿param(
-    [string]$Branch = "v3.0.0",
+    [string]$Branch = "v3.0.1-rc.1",
     [string]$Repo = "Caiodalre/ServiceDeskToolkit",
     [string]$InstallRoot,
     [switch]$NoShortcut,
@@ -23,19 +23,53 @@ function Test-V3Admin {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-function Get-V3RawText {
+function Get-V3DownloadedText {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Url,
 
         [Parameter(Mandatory = $true)]
-        [string]$Name
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationPath,
+
+        [string]$ExpectedSha256
     )
 
     Write-V3Step "Baixando: $Name" "Yellow"
 
-    $response = Invoke-WebRequest -Uri $Url -UseBasicParsing
-    $content = [string]$response.Content
+    Invoke-WebRequest `
+        -Uri $Url `
+        -OutFile $DestinationPath `
+        -UseBasicParsing
+
+    $fileInfo = Get-Item -LiteralPath $DestinationPath
+
+    if ($fileInfo.Length -eq 0) {
+        throw "Falha: conteudo vazio ao baixar $Name. URL: $Url"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedSha256)) {
+        $actualSha256 = (
+            Get-FileHash -LiteralPath $DestinationPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        $normalizedExpected = $ExpectedSha256.ToLowerInvariant()
+
+        if ($actualSha256 -ne $normalizedExpected) {
+            throw (
+                "Falha de integridade em {0}. Esperado: {1}. Obtido: {2}." -f
+                    $Name,
+                    $normalizedExpected,
+                    $actualSha256
+            )
+        }
+
+        Write-V3Step "SHA-256 confirmado: $Name" "Green"
+    }
+
+    $strictUtf8 = New-Object System.Text.UTF8Encoding($false, $true)
+    $content = [System.IO.File]::ReadAllText($DestinationPath, $strictUtf8)
     $content = $content.TrimStart([char]0xFEFF)
 
     if ([string]::IsNullOrWhiteSpace($content)) {
@@ -43,6 +77,71 @@ function Get-V3RawText {
     }
 
     return $content
+}
+
+function Get-V3ChecksumManifest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestText,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedSourceRef,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$RequiredPaths
+    )
+
+    try {
+        $manifest = $ManifestText | ConvertFrom-Json
+    }
+    catch {
+        throw "Manifesto SHA-256 invalido: $($_.Exception.Message)"
+    }
+
+    if ([int]$manifest.schemaVersion -ne 1) {
+        throw "Manifesto SHA-256 usa schemaVersion nao suportado."
+    }
+
+    if ([string]$manifest.algorithm -ne "SHA256") {
+        throw "Manifesto SHA-256 informa algoritmo nao suportado."
+    }
+
+    if ([string]$manifest.sourceRef -ne $ExpectedSourceRef) {
+        throw (
+            "Manifesto pertence a {0}, mas o instalador solicitou {1}." -f
+                [string]$manifest.sourceRef,
+                $ExpectedSourceRef
+        )
+    }
+
+    $checksums = @{}
+
+    foreach ($entry in @($manifest.files)) {
+        $relativePath = ([string]$entry.path).Replace("\", "/")
+        $sha256 = [string]$entry.sha256
+
+        if ($relativePath -notmatch "^[A-Za-z0-9._/-]+$") {
+            throw "Caminho invalido no manifesto SHA-256: $relativePath"
+        }
+
+        if ($sha256 -notmatch "^[A-Fa-f0-9]{64}$") {
+            throw "Hash SHA-256 invalido no manifesto: $relativePath"
+        }
+
+        if ($checksums.ContainsKey($relativePath)) {
+            throw "Caminho duplicado no manifesto SHA-256: $relativePath"
+        }
+
+        $checksums[$relativePath] = $sha256.ToLowerInvariant()
+    }
+
+    foreach ($requiredPath in $RequiredPaths) {
+        if (-not $checksums.ContainsKey($requiredPath)) {
+            throw "Arquivo obrigatorio ausente do manifesto: $requiredPath"
+        }
+    }
+
+    return $checksums
 }
 
 function Test-V3PowerShellSyntax {
@@ -161,6 +260,9 @@ function Install-V3IntoPath {
         [string]$VersionText,
 
         [Parameter(Mandatory = $true)]
+        [string]$ManifestText,
+
+        [Parameter(Mandatory = $true)]
         [string]$DiagnosticsModuleText,
 
         [Parameter(Mandatory = $true)]
@@ -187,6 +289,7 @@ function Install-V3IntoPath {
     $validatorFile = Join-Path $installPath "tools\Test-ToolkitV3.ps1"
     $readmeFile = Join-Path $installPath "docs\V3-README.md"
     $versionFile = Join-Path $installPath "version-v3.json"
+    $manifestFile = Join-Path $installPath "checksums-v3.json"
     $diagnosticsModuleFile = Join-Path `
         $installPath `
         "src\ServiceDeskToolkit.Diagnostics\ServiceDeskToolkit.Diagnostics.psm1"
@@ -238,6 +341,7 @@ function Install-V3IntoPath {
     Write-V3TextFile -Path $validatorFile -Content $ValidatorText -Encoding $utf8Bom
     Write-V3TextFile -Path $readmeFile -Content $ReadmeText -Encoding $utf8Bom
     Write-V3TextFile -Path $versionFile -Content $VersionText -Encoding $utf8Bom
+    Write-V3TextFile -Path $manifestFile -Content $ManifestText -Encoding $utf8Bom
     Write-V3TextFile `
         -Path $diagnosticsModuleFile `
         -Content $DiagnosticsModuleText `
@@ -264,6 +368,7 @@ function Install-V3IntoPath {
     Unblock-File $validatorFile -ErrorAction SilentlyContinue
     Unblock-File $readmeFile -ErrorAction SilentlyContinue
     Unblock-File $versionFile -ErrorAction SilentlyContinue
+    Unblock-File $manifestFile -ErrorAction SilentlyContinue
     Unblock-File $diagnosticsModuleFile -ErrorAction SilentlyContinue
     Unblock-File $healthModuleFile -ErrorAction SilentlyContinue
     Unblock-File $inventoryModuleFile -ErrorAction SilentlyContinue
@@ -288,6 +393,7 @@ function Install-V3IntoPath {
         ValidatorFile = $validatorFile
         ReadmeFile = $readmeFile
         VersionFile = $versionFile
+        ManifestFile = $manifestFile
         DiagnosticsModuleFile = $diagnosticsModuleFile
         HealthModuleFile = $healthModuleFile
         InventoryModuleFile = $inventoryModuleFile
@@ -318,29 +424,88 @@ else {
     $candidateRoots = @($InstallRoot)
 }
 
-Write-V3Step "1/5 - Baixando arquivos do GitHub..." "Cyan"
+Write-V3Step "1/5 - Baixando e validando integridade..." "Cyan"
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$mainText = Get-V3RawText -Url "$baseUrl/ServiceDeskToolkit-CorporateV3.ps1" -Name "Script principal V3"
-$validatorText = Get-V3RawText -Url "$baseUrl/tools/Test-ToolkitV3.ps1" -Name "Validador V3"
-$readmeText = Get-V3RawText -Url "$baseUrl/docs/V3-README.md" -Name "README V3"
-$versionText = Get-V3RawText -Url "$baseUrl/version-v3.json" -Name "Metadados de versao V3"
-$diagnosticsModuleText = Get-V3RawText `
-    -Url "$baseUrl/src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1" `
-    -Name "Modulo de diagnosticos V3"
-$healthModuleText = Get-V3RawText `
-    -Url "$baseUrl/src/ServiceDeskToolkit.Health/ServiceDeskToolkit.Health.psm1" `
-    -Name "Modulo de avaliacao de saude V3"
-$inventoryModuleText = Get-V3RawText `
-    -Url "$baseUrl/src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1" `
-    -Name "Modulo de inventario V3"
-$networkModuleText = Get-V3RawText `
-    -Url "$baseUrl/src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1" `
-    -Name "Modulo de diagnostico de rede V3"
-$printersModuleText = Get-V3RawText `
-    -Url "$baseUrl/src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1" `
-    -Name "Modulo de diagnostico de impressoras V3"
+$integrityPaths = @(
+    "install-v3.ps1",
+    "ServiceDeskToolkit-CorporateV3.ps1",
+    "tools/Test-ToolkitV3.ps1",
+    "docs/V3-README.md",
+    "version-v3.json",
+    "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
+    "src/ServiceDeskToolkit.Health/ServiceDeskToolkit.Health.psm1",
+    "src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1",
+    "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
+    "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1"
+)
+$downloadRoot = Join-Path `
+    ([System.IO.Path]::GetTempPath()) `
+    ("ServiceDeskToolkitV3-download-" + [guid]::NewGuid().ToString("N"))
+New-Item -Path $downloadRoot -ItemType Directory -Force | Out-Null
+
+try {
+    $manifestText = Get-V3DownloadedText `
+        -Url "$baseUrl/checksums-v3.json" `
+        -Name "Manifesto SHA-256" `
+        -DestinationPath (Join-Path $downloadRoot "checksums-v3.json")
+    $checksumMap = Get-V3ChecksumManifest `
+        -ManifestText $manifestText `
+        -ExpectedSourceRef $Branch `
+        -RequiredPaths $integrityPaths
+
+    $payloads = @{}
+    $payloadNames = @{
+        "ServiceDeskToolkit-CorporateV3.ps1" = "Script principal V3"
+        "tools/Test-ToolkitV3.ps1" = "Validador V3"
+        "docs/V3-README.md" = "README V3"
+        "version-v3.json" = "Metadados de versao V3"
+        "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1" = "Modulo de diagnosticos V3"
+        "src/ServiceDeskToolkit.Health/ServiceDeskToolkit.Health.psm1" = "Modulo de avaliacao de saude V3"
+        "src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1" = "Modulo de inventario V3"
+        "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1" = "Modulo de diagnostico de rede V3"
+        "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1" = "Modulo de diagnostico de impressoras V3"
+    }
+
+    foreach ($relativePath in ($payloadNames.Keys | Sort-Object)) {
+        $destinationName = $relativePath.Replace("/", "-")
+        $payloads[$relativePath] = Get-V3DownloadedText `
+            -Url "$baseUrl/$relativePath" `
+            -Name $payloadNames[$relativePath] `
+            -DestinationPath (Join-Path $downloadRoot $destinationName) `
+            -ExpectedSha256 $checksumMap[$relativePath]
+    }
+}
+finally {
+    if (Test-Path -LiteralPath $downloadRoot) {
+        Remove-Item `
+            -LiteralPath $downloadRoot `
+            -Recurse `
+            -Force `
+            -ErrorAction SilentlyContinue
+    }
+}
+
+$mainText = $payloads["ServiceDeskToolkit-CorporateV3.ps1"]
+$validatorText = $payloads["tools/Test-ToolkitV3.ps1"]
+$readmeText = $payloads["docs/V3-README.md"]
+$versionText = $payloads["version-v3.json"]
+$diagnosticsModuleText = $payloads[
+    "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1"
+]
+$healthModuleText = $payloads[
+    "src/ServiceDeskToolkit.Health/ServiceDeskToolkit.Health.psm1"
+]
+$inventoryModuleText = $payloads[
+    "src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1"
+]
+$networkModuleText = $payloads[
+    "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1"
+]
+$printersModuleText = $payloads[
+    "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1"
+]
 $cmdText = New-V3CmdText
 
 Write-V3Step "2/5 - Validando conteudo baixado..." "Cyan"
@@ -487,6 +652,7 @@ foreach ($root in $candidateRoots) {
             -ValidatorText $validatorText `
             -ReadmeText $readmeText `
             -VersionText $versionText `
+            -ManifestText $manifestText `
             -DiagnosticsModuleText $diagnosticsModuleText `
             -HealthModuleText $healthModuleText `
             -InventoryModuleText $inventoryModuleText `

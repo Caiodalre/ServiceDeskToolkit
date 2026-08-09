@@ -21,6 +21,7 @@ documentação mantida no repositório.
 - Correções medem o estado antes e depois.
 - Ações administrativas exigem confirmação, elevação e evidência.
 - Instaladores usam referência fixa para releases e registram a origem.
+- Downloads da V3 são verificados pelo manifesto SHA-256 da mesma tag.
 - Atualização usa staging, validação, backup e rollback.
 
 ## PowerShell
@@ -58,6 +59,7 @@ Invoke-Pester -Path .\tests -Output Detailed
 powershell.exe -NoProfile -File .\tools\Test-ToolkitQuality.ps1
 powershell.exe -NoProfile -File .\tools\Test-ToolkitRelease.ps1
 powershell.exe -NoProfile -File .\tools\Test-ToolkitV3.ps1
+powershell.exe -NoProfile -File .\tools\New-ToolkitChecksumManifest.ps1 -Check
 ```
 
 O pipeline executa o mesmo conjunto em Windows PowerShell 5.1 e PowerShell 7.
