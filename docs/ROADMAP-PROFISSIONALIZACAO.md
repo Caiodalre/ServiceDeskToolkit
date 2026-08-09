@@ -12,8 +12,8 @@
 
 ## Fase 2 — Segurança da distribuição
 
-- [ ] Publicar manifesto SHA-256 por release.
-- [ ] Validar checksums antes da instalação e atualização.
+- [x] Publicar manifesto SHA-256 por release.
+- [x] Validar checksums antes da instalação e atualização.
 - [ ] Avaliar assinatura Authenticode dos scripts.
 - [ ] Documentar rotação e revogação de certificados.
 - [x] Remover recomendações de execução remota por pipe.
@@ -50,3 +50,4 @@
 - [ ] Criar documentação para N1, N2 e administradores.
 - [ ] Definir canal de incidentes e vulnerabilidades.
 - [x] Publicar release estável da V3 após homologação.
+- [x] Validar a V3 sem erros em mais de 10 máquinas.

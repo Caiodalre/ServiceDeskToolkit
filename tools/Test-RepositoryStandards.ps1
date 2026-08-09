@@ -323,6 +323,10 @@ $readmePath = Join-Path $resolvedRoot "README.md"
 $runbookPath = Join-Path $resolvedRoot "docs\RUNBOOK-OPERACIONAL.md"
 $versionPath = Join-Path $resolvedRoot "version.json"
 $stableInstallerPath = Join-Path $resolvedRoot "install-stable.ps1"
+$checksumManifestPath = Join-Path $resolvedRoot "checksums-v3.json"
+$checksumToolPath = Join-Path `
+    $resolvedRoot `
+    "tools\New-ToolkitChecksumManifest.ps1"
 
 try {
     $v3Version = Get-Content $v3VersionPath -Raw | ConvertFrom-Json
@@ -353,6 +357,50 @@ try {
 catch {
     Add-StandardFailure (
         "Falha no contrato de versão V3: $($_.Exception.Message)"
+    )
+}
+
+try {
+    if (-not (Test-Path -LiteralPath $checksumManifestPath)) {
+        throw "checksums-v3.json não foi encontrado."
+    }
+
+    if (-not (Test-Path -LiteralPath $checksumToolPath)) {
+        throw "Gerador do manifesto SHA-256 não foi encontrado."
+    }
+
+    $checksumManifest = Get-Content $checksumManifestPath -Raw |
+        ConvertFrom-Json
+
+    if ([string]$checksumManifest.algorithm -ne "SHA256") {
+        Add-StandardFailure "checksums-v3.json deve usar SHA256."
+    }
+
+    if (
+        [string]$checksumManifest.sourceRef -ne
+        [string]$v3Version.sourceRef
+    ) {
+        Add-StandardFailure (
+            "checksums-v3.json diverge do sourceRef da V3."
+        )
+    }
+
+    foreach ($marker in @(
+        "Get-FileHash",
+        "ExpectedSha256",
+        "Falha de integridade",
+        "checksums-v3.json"
+    )) {
+        if (-not $v3Installer.Contains($marker)) {
+            Add-StandardFailure (
+                "install-v3.ps1 não implementa integridade: $marker"
+            )
+        }
+    }
+}
+catch {
+    Add-StandardFailure (
+        "Falha no contrato SHA-256: $($_.Exception.Message)"
     )
 }
 

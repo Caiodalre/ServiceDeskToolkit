@@ -38,6 +38,9 @@ jobs:
       - name: Run repository standards
         run: ./tools/Test-RepositoryStandards.ps1
 
+      - name: Validate checksum manifest
+        run: ./tools/New-ToolkitChecksumManifest.ps1 -Check
+
       - name: Run repository tests
         run: |
           New-Item -Path "./reports" -ItemType Directory -Force | Out-Null
@@ -89,6 +92,9 @@ jobs:
 
       - name: Run repository standards
         run: ./tools/Test-RepositoryStandards.ps1
+
+      - name: Validate checksum manifest
+        run: ./tools/New-ToolkitChecksumManifest.ps1 -Check
 
       - name: Run repository tests
         run: |

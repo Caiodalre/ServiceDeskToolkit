@@ -36,6 +36,8 @@
 - [ ] Downloads apontam para o repositório oficial.
 - [ ] Nenhum segredo, credencial ou dado corporativo foi versionado.
 - [ ] Dependências e ações de CI foram revisadas.
+- [ ] `checksums-v3.json` foi regenerado e validado com `-Check`.
+- [ ] O hash do instalador foi conferido antes da execução.
 - [ ] Artefatos e checksums foram publicados quando aplicável.
 - [ ] Pacotes de suporte usados na homologação foram removidos.
 
@@ -57,4 +59,5 @@ Invoke-Pester -Path .\tests -Output Detailed
 powershell.exe -NoProfile -File .\tools\Test-ToolkitQuality.ps1
 powershell.exe -NoProfile -File .\tools\Test-ToolkitRelease.ps1
 powershell.exe -NoProfile -File .\tools\Test-ToolkitV3.ps1
+powershell.exe -NoProfile -File .\tools\New-ToolkitChecksumManifest.ps1 -Check
 ```

@@ -16,12 +16,13 @@ e ação administrativa avançada.
 
 | Canal | Referência | Uso recomendado |
 | --- | --- | --- |
-| V3 estável | `v3.0.0` | Operação interna homologada |
+| V3 estável | `v3.0.0` | Operação interna homologada em mais de 10 máquinas |
+| Candidata | `v3.0.1-rc.1` | Homologação da integridade SHA-256 |
 | V2 legado | `v2.3.0` | Fallback para instalações anteriores |
 | Desenvolvimento | `v3-corporate-redesign` | Evolução controlada da V3 |
 
-A V3 substitui a V2 como canal estável após homologação funcional em máquinas
-diferentes. A tag `v2.3.0` permanece imutável como fallback legado.
+A V3 substitui a V2 como canal estável após homologação funcional sem erros em
+mais de 10 máquinas. A tag `v2.3.0` permanece imutável como fallback legado.
 
 ## Capacidades
 
@@ -61,6 +62,36 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
 A instalação padrão utiliza builds isoladas dentro de
 `%LOCALAPPDATA%\ServiceDeskToolkitV3`.
 
+### V3.0.1-rc.1 — candidata com integridade SHA-256
+
+A candidata deve ser usada somente na rodada de homologação. O exemplo baixa o
+instalador e o manifesto para arquivos, verifica o SHA-256 do instalador e só
+então inicia o processo:
+
+```powershell
+$Version = "v3.0.1-rc.1"
+$BaseUrl = "https://raw.githubusercontent.com/Caiodalre/ServiceDeskToolkit/$Version"
+$Installer = Join-Path $env:TEMP "ServiceDeskToolkitV3-$Version.ps1"
+$ManifestFile = Join-Path $env:TEMP "ServiceDeskToolkitV3-$Version-checksums.json"
+
+Invoke-WebRequest -Uri "$BaseUrl/install-v3.ps1" -OutFile $Installer -UseBasicParsing
+Invoke-WebRequest -Uri "$BaseUrl/checksums-v3.json" -OutFile $ManifestFile -UseBasicParsing
+
+$Manifest = Get-Content $ManifestFile -Raw | ConvertFrom-Json
+$Expected = $Manifest.files |
+    Where-Object { $_.path -eq "install-v3.ps1" } |
+    Select-Object -ExpandProperty sha256
+$Actual = (Get-FileHash $Installer -Algorithm SHA256).Hash
+
+if ($Actual -ne $Expected) {
+    throw "Falha de integridade no instalador V3."
+}
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Installer
+```
+
+O instalador valida novamente todos os componentes do pacote antes de gravá-los.
+
 ### V2.3.0 — fallback legado
 
 ```powershell
@@ -87,6 +118,9 @@ powershell.exe -NoProfile -File .\tools\Test-ToolkitRelease.ps1
 
 # Validação da V3
 powershell.exe -NoProfile -File .\tools\Test-ToolkitV3.ps1
+
+# Integridade do manifesto de distribuição
+powershell.exe -NoProfile -File .\tools\New-ToolkitChecksumManifest.ps1 -Check
 
 # Testes de repositório com Pester 5.7.1
 Invoke-Pester -Path .\tests -Output Detailed

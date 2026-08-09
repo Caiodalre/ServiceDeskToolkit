@@ -3,6 +3,22 @@
 Todas as mudanças relevantes do ServiceDesk Toolkit Corporate são registradas
 neste arquivo.
 
+## v3.0.1-rc.1 — 2026-08-09
+
+### Segurança da distribuição
+
+- Manifesto SHA-256 determinístico para todos os componentes do pacote V3.
+- Instalador bloqueia arquivos ausentes, corrompidos ou com hash divergente.
+- Referência do manifesto deve coincidir com a tag solicitada.
+- Manifesto é preservado na instalação para rastreabilidade.
+- Verificação do manifesto integrada aos testes e ao CI.
+
+### Engenharia
+
+- Scripts históricos normalizados conforme `.gitattributes`, sem mudança lógica.
+- Homologação da `v3.0.0` registrada sem erros em mais de 10 máquinas.
+- Authenticode permanece planejado e depende de certificado corporativo.
+
 ## v3.0.0 — 2026-07-28
 
 ### Estável

@@ -22,9 +22,9 @@ Na rodada complementar da RC2, o SFC concluiu sem violações de integridade e o
 DISM RestoreHealth concluiu com êxito. Os dois testes geraram log, resumo e
 trilha de auditoria pelo toolkit.
 
-A RC3 foi instalada e validada em máquinas diferentes. A instalação remota,
-a interface, os diagnósticos, as ações administrativas e a geração de logs
-foram aprovados antes da promoção para `3.0.0`.
+A RC3 foi instalada e validada em mais de 10 máquinas, sem erros relatados.
+A instalação remota, a interface, os diagnósticos, as ações administrativas e
+a geração de logs foram aprovados antes e depois da promoção para `3.0.0`.
 
 Resultados públicos não devem conter usuários, domínio, endereços de rede,
 seriais, nomes de impressoras, credenciais ou pacotes de suporte.
@@ -56,6 +56,7 @@ Resultado esperado:
 - ServiceDeskToolkit-CorporateV3.ps1
 - ServiceDeskToolkitV3.cmd
 - version-v3.json
+- checksums-v3.json
 - src\ServiceDeskToolkit.Diagnostics\ServiceDeskToolkit.Diagnostics.psm1
 - src\ServiceDeskToolkit.Health\ServiceDeskToolkit.Health.psm1
 - src\ServiceDeskToolkit.Inventory\ServiceDeskToolkit.Inventory.psm1
@@ -116,7 +117,8 @@ recomendada é:
 
 - Monitorar a adoção interna da `v3.0.0`
 - Registrar incidentes e regressões com evidências sanitizadas
-- Implementar checksums e avaliar assinatura Authenticode
+- Homologar a verificação SHA-256 da `v3.0.1-rc.1`
+- Avaliar assinatura Authenticode quando houver certificado corporativo
 - Evoluir módulos e testes somente em nova versão controlada
 
 ## Observação

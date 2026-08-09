@@ -5,6 +5,7 @@
 | Linha | Situação |
 | --- | --- |
 | `v3.0.0` | Estável para operação interna |
+| `v3.0.1-rc.1` | Candidata para homologação da integridade SHA-256 |
 | `v2.3.0` | Fallback legado com suporte crítico |
 | `v3.0.0-rc.*` | Histórico de homologação, sem novas correções |
 | `v3.0.0-preview.*` | Histórico, sem novas correções |
@@ -32,7 +33,8 @@ Inclua:
 
 - Prefira tags fixas a branches.
 - Baixe o instalador para arquivo antes de executá-lo.
-- Revise origem, conteúdo e hash quando disponibilizado.
+- Verifique o manifesto `checksums-v3.json` antes de executar o instalador.
+- O instalador V3 interrompe o processo se qualquer SHA-256 divergir.
 - Não execute scripts recebidos por canais não confiáveis.
 - Homologue ações administrativas em ambiente descartável.
 
