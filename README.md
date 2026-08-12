@@ -17,7 +17,7 @@ e ação administrativa avançada.
 | Canal | Referência | Uso recomendado |
 | --- | --- | --- |
 | V3 estável | `v3.0.1` | SHA-256 homologado em Windows 10 e 11 |
-| Preview rede/impressoras/Appgate | `v3.1.0-preview.2` | Homologação interna; não usar em produção |
+| Preview rede/impressoras/Appgate | `v3.1.0-office-tpm-preview` | `3.1.0-preview.2` em homologação interna; não usar em produção |
 | Preview Office/TPM | `v3.1.0-preview.1` | Homologação interna; não usar em produção |
 | V3 anterior | `v3.0.0` | Fallback temporário da linha V3 |
 | V2 legado | `v2.3.0` | Fallback para instalações anteriores |

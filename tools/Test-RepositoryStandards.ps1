@@ -330,27 +330,41 @@ $checksumToolPath = Join-Path `
 
 try {
     $v3Version = Get-Content $v3VersionPath -Raw | ConvertFrom-Json
-    $expectedSourceRef = "v$($v3Version.version)"
+    $versionSourceRef = "v$($v3Version.version)"
+    $configuredSourceRef = [string]$v3Version.sourceRef
+    $versionBase = ([string]$v3Version.version -split "-", 2)[0]
+    $previewBranchPattern = (
+        "^v{0}-[A-Za-z0-9][A-Za-z0-9._-]*$" -f
+            [regex]::Escape($versionBase)
+    )
+    $isPreviewChannel = [string]$v3Version.channel -eq "preview"
+    $sourceRefIsValid = $configuredSourceRef -eq $versionSourceRef
+
+    if ($isPreviewChannel -and
+        $configuredSourceRef -match $previewBranchPattern) {
+        $sourceRefIsValid = $true
+    }
+
     $v3Installer = Get-Content $v3InstallerPath -Raw
     $readme = Get-Content $readmePath -Raw
 
-    if ([string]$v3Version.sourceRef -ne $expectedSourceRef) {
+    if (-not $sourceRefIsValid) {
         Add-StandardFailure (
-            "version-v3.json deve usar sourceRef $expectedSourceRef."
+            "version-v3.json usa sourceRef invalido para o canal informado."
         )
     }
 
     if (-not $v3Installer.Contains(
-        "[string]`$Branch = `"$expectedSourceRef`""
+        "[string]`$Branch = `"$configuredSourceRef`""
     )) {
         Add-StandardFailure (
-            "install-v3.ps1 não está fixado em $expectedSourceRef."
+            "install-v3.ps1 não está fixado em $configuredSourceRef."
         )
     }
 
-    if (-not $readme.Contains($expectedSourceRef)) {
+    if (-not $readme.Contains($configuredSourceRef)) {
         Add-StandardFailure (
-            "README.md não informa a versão V3 atual $expectedSourceRef."
+            "README.md não informa a referência V3 atual $configuredSourceRef."
         )
     }
 }

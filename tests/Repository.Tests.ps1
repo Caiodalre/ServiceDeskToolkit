@@ -97,6 +97,33 @@ Describe "V3 version contract" {
             -Message "Referencia de origem V3 nao informada."
     }
 
+    It "uses a release tag or a versioned branch during preview homologation" {
+        $version = [string]$script:V3Version.version
+        $sourceRef = [string]$script:V3Version.sourceRef
+        $versionRef = "v$version"
+        $versionBase = ($version -split "-", 2)[0]
+        $previewBranchPattern = (
+            "^v{0}-[A-Za-z0-9][A-Za-z0-9._-]*$" -f
+                [regex]::Escape($versionBase)
+        )
+        $isPreview = [string]$script:V3Version.channel -eq "preview"
+        $isAllowedRef = $sourceRef -eq $versionRef
+
+        if ($isPreview -and $sourceRef -match $previewBranchPattern) {
+            $isAllowedRef = $true
+        }
+
+        Assert-RepositoryCondition `
+            -Condition $isAllowedRef `
+            -Message "A referencia V3 nao corresponde ao canal e a versao."
+
+        Assert-RepositoryCondition `
+            -Condition $script:V3InstallerText.Contains(
+                "[string]`$Branch = `"$sourceRef`""
+            ) `
+            -Message "O instalador V3 diverge da referencia da versao."
+    }
+
     It "makes the application read the dedicated metadata" {
         Assert-RepositoryCondition `
             -Condition ($script:V3AppText -match 'Join-Path \$script:RootPath "version-v3\.json"') `
