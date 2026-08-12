@@ -159,7 +159,8 @@ Describe "V3 version contract" {
         $requiredModules = @(
             "ServiceDeskToolkit\.Inventory\.psm1",
             "ServiceDeskToolkit\.Network\.psm1",
-            "ServiceDeskToolkit\.Printers\.psm1"
+            "ServiceDeskToolkit\.Printers\.psm1",
+            "ServiceDeskToolkit\.Office\.psm1"
         )
 
         foreach ($requiredModule in $requiredModules) {
@@ -167,6 +168,49 @@ Describe "V3 version contract" {
                 -Condition ($script:V3InstallerText -match $requiredModule) `
                 -Message "O instalador V3 nao inclui: $requiredModule"
         }
+    }
+
+    It "connects a safe Office and TPM diagnostic workflow" {
+        $officeModulePath = Join-Path `
+            $script:RepositoryRoot `
+            "src\ServiceDeskToolkit.Office\ServiceDeskToolkit.Office.psm1"
+        $officeModuleText = Get-Content $officeModulePath -Raw
+        $requiredOfficeMarkers = @(
+            'function Invoke-V3OfficeTpmPanel',
+            'function Invoke-V3OfficeWamRepair',
+            'BtnV3OfficeTpm',
+            'BtnV3OfficeWam',
+            'Get-ToolkitOfficeTpmSnapshot',
+            'Get-ToolkitOfficeTpmAssessment',
+            'Format-ToolkitOfficeTpmReport',
+            'Repair-ToolkitOfficeWam',
+            'Get-ToolkitOfficeEdition',
+            'Office 2016',
+            'Office 2019',
+            'Office 2021',
+            '/dstatusall',
+            'OSPP_UNLICENSED',
+            'OFFICE / TPM / AUTENTICACAO - DIAGNOSTICO CONSOLIDADO',
+            'ACOES CRITICAS NAO AUTOMATIZADAS',
+            'Nao limpa TPM'
+        )
+
+        Assert-RepositoryCondition `
+            -Condition (Test-Path $officeModulePath) `
+            -Message "Modulo Office / TPM nao encontrado."
+
+        foreach ($officeMarker in $requiredOfficeMarkers) {
+            Assert-RepositoryCondition `
+                -Condition (
+                    $script:V3AppText.Contains($officeMarker) -or
+                    $officeModuleText.Contains($officeMarker)
+                ) `
+                -Message "Fluxo Office / TPM incompleto: $officeMarker"
+        }
+
+        Assert-RepositoryCondition `
+            -Condition ($officeModuleText -notmatch 'Clear-Tpm|dsregcmd\s+/leave') `
+            -Message "O modulo nao deve limpar TPM nem retirar o dispositivo do Entra."
     }
 
     It "connects useful and protected SFC and DISM actions" {

@@ -23,6 +23,7 @@ $payloadPaths = @(
     "src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1",
     "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
     "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
+    "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
     "tools/Test-ToolkitV3.ps1",
     "version-v3.json"
 )

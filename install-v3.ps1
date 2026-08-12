@@ -1,5 +1,5 @@
 ﻿param(
-    [string]$Branch = "v3.0.1",
+    [string]$Branch = "v3.1.0-preview.1",
     [string]$Repo = "Caiodalre/ServiceDeskToolkit",
     [string]$InstallRoot,
     [switch]$NoShortcut,
@@ -278,6 +278,9 @@ function Install-V3IntoPath {
         [string]$PrintersModuleText,
 
         [Parameter(Mandatory = $true)]
+        [string]$OfficeModuleText,
+
+        [Parameter(Mandatory = $true)]
         [string]$CmdText
     )
 
@@ -305,6 +308,9 @@ function Install-V3IntoPath {
     $printersModuleFile = Join-Path `
         $installPath `
         "src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1"
+    $officeModuleFile = Join-Path `
+        $installPath `
+        "src\ServiceDeskToolkit.Office\ServiceDeskToolkit.Office.psm1"
     $latestFile = Join-Path $RootPath "latest.txt"
 
     New-Item -Path $installPath -ItemType Directory -Force | Out-Null
@@ -331,6 +337,10 @@ function Install-V3IntoPath {
         -Force | Out-Null
     New-Item `
         -Path (Split-Path $printersModuleFile -Parent) `
+        -ItemType Directory `
+        -Force | Out-Null
+    New-Item `
+        -Path (Split-Path $officeModuleFile -Parent) `
         -ItemType Directory `
         -Force | Out-Null
 
@@ -362,6 +372,10 @@ function Install-V3IntoPath {
         -Path $printersModuleFile `
         -Content $PrintersModuleText `
         -Encoding $utf8Bom
+    Write-V3TextFile `
+        -Path $officeModuleFile `
+        -Content $OfficeModuleText `
+        -Encoding $utf8Bom
     Write-V3TextFile -Path $cmdFile -Content $CmdText -Encoding $ascii
 
     Unblock-File $mainFile -ErrorAction SilentlyContinue
@@ -374,6 +388,7 @@ function Install-V3IntoPath {
     Unblock-File $inventoryModuleFile -ErrorAction SilentlyContinue
     Unblock-File $networkModuleFile -ErrorAction SilentlyContinue
     Unblock-File $printersModuleFile -ErrorAction SilentlyContinue
+    Unblock-File $officeModuleFile -ErrorAction SilentlyContinue
     Unblock-File $cmdFile -ErrorAction SilentlyContinue
 
     $mainRead = Get-Content $mainFile -Raw
@@ -399,6 +414,7 @@ function Install-V3IntoPath {
         InventoryModuleFile = $inventoryModuleFile
         NetworkModuleFile = $networkModuleFile
         PrintersModuleFile = $printersModuleFile
+        OfficeModuleFile = $officeModuleFile
         LatestFile = $latestFile
     }
 }
@@ -438,7 +454,8 @@ $integrityPaths = @(
     "src/ServiceDeskToolkit.Health/ServiceDeskToolkit.Health.psm1",
     "src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1",
     "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
-    "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1"
+    "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
+    "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1"
 )
 $downloadRoot = Join-Path `
     ([System.IO.Path]::GetTempPath()) `
@@ -466,6 +483,7 @@ try {
         "src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1" = "Modulo de inventario V3"
         "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1" = "Modulo de diagnostico de rede V3"
         "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1" = "Modulo de diagnostico de impressoras V3"
+        "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1" = "Modulo Office, TPM e autenticacao V3"
     }
 
     foreach ($relativePath in ($payloadNames.Keys | Sort-Object)) {
@@ -505,6 +523,9 @@ $networkModuleText = $payloads[
 ]
 $printersModuleText = $payloads[
     "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1"
+]
+$officeModuleText = $payloads[
+    "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1"
 ]
 $cmdText = New-V3CmdText
 
@@ -563,6 +584,22 @@ $requiredMarkers = @(
     "Get-ToolkitPrinterSnapshot",
     "Get-ToolkitPrinterAssessment",
     "Format-ToolkitPrinterReport",
+    "function Invoke-V3OfficeTpmPanel",
+    "function Invoke-V3OfficeWamRepair",
+    "Get-ToolkitOfficeTpmSnapshot",
+    "Get-ToolkitOfficeTpmAssessment",
+    "Format-ToolkitOfficeTpmReport",
+    "Repair-ToolkitOfficeWam",
+    "Get-ToolkitOfficeEdition",
+    "Office 2016",
+    "Office 2019",
+    "Office 2021",
+    "/dstatusall",
+    "OSPP_UNLICENSED",
+    "BtnV3OfficeTpm",
+    "BtnV3OfficeWam",
+    "OFFICE / TPM / AUTENTICACAO - DIAGNOSTICO CONSOLIDADO",
+    "ACOES CRITICAS NAO AUTOMATIZADAS",
     "CONCLUSAO AUTOMATICA",
     "ActionGridButton",
     "UniformGrid Columns",
@@ -596,6 +633,7 @@ $validationText = @(
     $inventoryModuleText
     $networkModuleText
     $printersModuleText
+    $officeModuleText
 ) -join [Environment]::NewLine
 
 foreach ($marker in $requiredMarkers) {
@@ -621,6 +659,9 @@ Test-V3PowerShellSyntax `
 Test-V3PowerShellSyntax `
     -Text $printersModuleText `
     -Name "ServiceDeskToolkit.Printers.psm1"
+Test-V3PowerShellSyntax `
+    -Text $officeModuleText `
+    -Name "ServiceDeskToolkit.Office.psm1"
 
 try {
     $versionInfo = $versionText | ConvertFrom-Json
@@ -658,6 +699,7 @@ foreach ($root in $candidateRoots) {
             -InventoryModuleText $inventoryModuleText `
             -NetworkModuleText $networkModuleText `
             -PrintersModuleText $printersModuleText `
+            -OfficeModuleText $officeModuleText `
             -CmdText $cmdText
 
         break

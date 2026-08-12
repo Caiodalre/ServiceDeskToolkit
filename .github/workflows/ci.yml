@@ -7,6 +7,7 @@ on:
       - v2.3-functional
       - v2.4-functional
       - v3-corporate-redesign
+      - v3.1.0-office-tpm-preview
   pull_request:
   workflow_dispatch:
 

@@ -1,4 +1,4 @@
-# ServiceDesk Toolkit Corporate
+﻿# ServiceDesk Toolkit Corporate
 
 [![CI](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml)
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4)
@@ -17,6 +17,7 @@ e ação administrativa avançada.
 | Canal | Referência | Uso recomendado |
 | --- | --- | --- |
 | V3 estável | `v3.0.1` | SHA-256 homologado em Windows 10 e 11 |
+| Preview Office/TPM | `v3.1.0-preview.1` | Homologação interna; não usar em produção |
 | V3 anterior | `v3.0.0` | Fallback temporário da linha V3 |
 | V2 legado | `v2.3.0` | Fallback para instalações anteriores |
 | Desenvolvimento | `v3-corporate-redesign` | Evolução controlada da V3 |
@@ -32,6 +33,8 @@ máquinas e validação da distribuição SHA-256 em Windows 10 e 11. A tag
 - Atendimento guiado para falhas comuns
 - Diagnóstico de impressoras e fila de impressão
 - Suporte a Teams, Office, OneDrive e Microsoft Store
+- Diagnóstico Office/TPM, WAM e licenciamento do Microsoft 365 e Office 2016/2019/2021
+- Reparo confirmado dos componentes WAM no perfil afetado
 - Relatórios, logs estruturados e pacote de suporte
 - Base de conhecimento local pesquisável
 - Atualização com staging, backup e rollback
@@ -122,9 +125,10 @@ Invoke-Pester -Path .\tests -Output Detailed
 Os validadores retornam código `0` quando aprovados e código diferente de zero
 quando encontram falhas, permitindo integração confiável com CI.
 
-Os painéis de Saúde, Inventário, Rede e Impressoras da V3 já utilizam módulos
-separados para coleta somente leitura, avaliação das regras e formatação dos
-relatórios.
+Os painéis de Saúde, Inventário, Rede, Impressoras e Office/TPM da V3 já
+utilizam módulos separados para coleta, avaliação das regras e formatação dos
+relatórios. O diagnóstico Office/TPM é somente leitura; o reparo WAM exige
+confirmação e não limpa TPM, credenciais ou vínculo Entra.
 
 ## Estrutura
 

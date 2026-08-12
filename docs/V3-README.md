@@ -1,4 +1,4 @@
-# ServiceDesk Toolkit Corporate V3
+﻿# ServiceDesk Toolkit Corporate V3
 
 ## Status
 
@@ -6,6 +6,9 @@ A V3 é a experiência estável atual do ServiceDesk Toolkit Corporate.
 
 Versão estável atual: `3.0.1`, promovida a partir da candidata de segurança
 `3.0.1-rc.1`.
+
+A `3.1.0-preview.1` inicia a homologação interna do novo painel Office/TPM e
+do reparo controlado de autenticação WAM. Ela não substitui a versão estável.
 
 A versão preserva o reparo operacional do Windows com SFC e DISM, os painéis
 modulares e a camada transversal de padrões de engenharia. A tag `v2.3.0`
@@ -66,7 +69,9 @@ Resultado esperado:
 - src\ServiceDeskToolkit.Inventory\ServiceDeskToolkit.Inventory.psm1
 - src\ServiceDeskToolkit.Network\ServiceDeskToolkit.Network.psm1
 - src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1
+- src\ServiceDeskToolkit.Office\ServiceDeskToolkit.Office.psm1
 - tools\Test-ToolkitV3.ps1
+- docs\OFFICE-TPM-RUNBOOK.md
 - docs\V3-CORPORATE-REDESIGN-ESCOPO.md
 - docs\V3-PREVIEW5-HOMOLOGACAO.md
 
@@ -84,10 +89,27 @@ Resultado esperado:
 - Pipeline de CI para Windows PowerShell 5.1 e PowerShell 7
 - Painel de Saúde com coleta e avaliação modularizadas
 - Inventário, Rede e Impressoras com coleta, avaliação e relatório modularizados
+- Office/TPM para Microsoft 365 e Office 2016/2019/2021, com WAM, vnextdiag, OSPP e Entra
+- Reparo WAM confirmado, restrito ao perfil atual e com trilha de auditoria
 - SFC e DISM operacionais, com confirmação, elevação administrativa, progresso,
   log técnico, resumo final e próxima ação recomendada
 - Validação transversal de sintaxe, encoding, finais de linha, JSON, verbos
   PowerShell, distribuição segura e consistência de versão
+
+## Office, TPM e autenticação
+
+O botão **Office / TPM** coleta evidências sem alterar o computador. O resultado
+correlaciona estado do TPM, proteção BitLocker, reinicialização pendente,
+registro dos componentes WAM, licenciamento moderno do Office e os campos
+seguros do `dsregcmd /status`.
+
+O botão **Reparar login Office** registra novamente AAD BrokerPlugin e
+CloudExperienceHost no perfil afetado. Ele exige confirmação e recusa a
+execução enquanto aplicativos Office ou Teams estiverem abertos.
+
+Limpeza do TPM, exclusão de caches e credenciais, remoção de vínculo Entra e
+reset indiscriminado de licenças são ações críticas orientadas pelo
+[runbook Office/TPM](OFFICE-TPM-RUNBOOK.md), não automatizadas.
 
 ## Reparo do Windows com SFC e DISM
 
@@ -121,7 +143,7 @@ recomendada é:
 
 - Monitorar a adoção interna da `v3.0.1`
 - Registrar incidentes e regressões com evidências sanitizadas
-- Avaliar assinatura Authenticode quando houver certificado corporativo
+- Manter Authenticode fora do escopo conforme a decisão operacional
 - Atualizar as actions do CI para versões nativas de Node.js 24
 - Evoluir módulos e testes somente em nova versão controlada
 

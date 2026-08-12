@@ -10,6 +10,7 @@ ambiente de suporte técnico.
 | Referência | Situação |
 | --- | --- |
 | `v3.0.1` | Versão estável atual |
+| `v3.1.0-preview.1` | Homologação interna Office/TPM |
 | `v3.0.0` | Fallback temporário da linha V3 |
 | `v2.3.0` | Fallback legado |
 | `v3-corporate-redesign` | Desenvolvimento, não usar em produção |
@@ -46,8 +47,13 @@ $Build = Get-Content (Join-Path $Root "latest.txt") -Raw
 
 ## Diagnósticos
 
-Os painéis de Saúde, Inventário, Rede e Impressoras são somente leitura. Preserve
-o resultado antes de executar qualquer correção.
+Os painéis de Saúde, Inventário, Rede, Impressoras e Office/TPM são somente
+leitura. Preserve o resultado antes de executar qualquer correção.
+
+Para incidentes de login, ativação ou erro TPM do Office, use o
+[runbook Office/TPM](OFFICE-TPM-RUNBOOK.md). O único reparo automatizado desse
+fluxo é o novo registro dos componentes WAM, após confirmação e com os
+aplicativos Office fechados.
 
 Os relatórios e logs ficam dentro do build ativo:
 

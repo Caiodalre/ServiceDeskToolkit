@@ -21,6 +21,9 @@ $NetworkModule = Join-Path `
 $PrintersModule = Join-Path `
     $Root `
     "src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1"
+$OfficeModule = Join-Path `
+    $Root `
+    "src\ServiceDeskToolkit.Office\ServiceDeskToolkit.Office.psm1"
 $Reports = Join-Path $Root "reports"
 
 if (-not (Test-Path $Reports)) {
@@ -140,7 +143,8 @@ if (Test-Path $ChecksumManifest) {
             "install-v3.ps1",
             "ServiceDeskToolkit-CorporateV3.ps1",
             "tools/Test-ToolkitV3.ps1",
-            "version-v3.json"
+            "version-v3.json",
+            "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1"
         )) {
             if ($manifestPaths -contains $requiredManifestPath) {
                 Add-Result "OK" "Manifesto inclui: $requiredManifestPath"
@@ -178,6 +182,10 @@ $moduleFiles = @(
     @{
         Name = "Modulo de diagnostico de impressoras"
         Path = $PrintersModule
+    },
+    @{
+        Name = "Modulo Office, TPM e autenticacao"
+        Path = $OfficeModule
     }
 )
 
@@ -450,6 +458,23 @@ $markers = @(
     "function Get-ToolkitPrinterSnapshot",
     "function Get-ToolkitPrinterAssessment",
     "function Format-ToolkitPrinterReport",
+    "function Invoke-V3OfficeTpmPanel",
+    "function Invoke-V3OfficeWamRepair",
+    "function Get-ToolkitOfficeTpmSnapshot",
+    "function Get-ToolkitOfficeTpmAssessment",
+    "function Format-ToolkitOfficeTpmReport",
+    "function Repair-ToolkitOfficeWam",
+    "function Get-ToolkitOfficeEdition",
+    "Office 2016",
+    "Office 2019",
+    "Office 2021",
+    "/dstatusall",
+    "OSPP_UNLICENSED",
+    "BtnV3OfficeTpm",
+    "BtnV3OfficeWam",
+    "OFFICE / TPM / AUTENTICACAO - DIAGNOSTICO CONSOLIDADO",
+    "ACOES CRITICAS NAO AUTOMATIZADAS",
+    "Nao limpa TPM",
     "ActionGridButton",
     "UniformGrid Columns",
     "function Invoke-V3WorkflowPrinter",

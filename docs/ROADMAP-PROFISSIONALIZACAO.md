@@ -14,8 +14,8 @@
 
 - [x] Publicar manifesto SHA-256 por release.
 - [x] Validar checksums antes da instalação e atualização.
-- [ ] Avaliar assinatura Authenticode dos scripts.
-- [ ] Documentar rotação e revogação de certificados.
+- [x] Registrar Authenticode como fora do escopo da operação atual.
+- [x] Encerrar rotação e revogação de certificados como não aplicáveis.
 - [x] Remover recomendações de execução remota por pipe.
 - [x] Criar teste de instalação usando somente uma tag fixa.
 - [x] Homologar a distribuição SHA-256 em Windows 10 e Windows 11.
@@ -30,8 +30,9 @@
 - [x] Extrair o painel de impressoras.
 - [x] Preservar os relatórios dos três painéis por adaptadores de compatibilidade.
 - [ ] Extrair modelos de resultado e logging.
-- [ ] Extrair Office/Teams e VPN.
-- [ ] Extrair correções seguras.
+- [x] Extrair diagnóstico Office/TPM e reparo WAM protegido.
+- [ ] Extrair Teams e VPN.
+- [ ] Extrair as demais correções seguras.
 - [ ] Separar XAML da lógica PowerShell.
 - [ ] Manter adaptadores de compatibilidade para os entrypoints atuais.
 
@@ -43,6 +44,7 @@
 - [ ] Testar instalação, atualização e rollback em máquina virtual.
 - [x] Validar ações administrativas com estado antes/depois.
 - [ ] Criar suíte de regressão para Windows 10 e Windows 11.
+- [ ] Homologar Office/TPM e reparo WAM nos dois sistemas.
 
 ## Fase 5 — Operação corporativa
 

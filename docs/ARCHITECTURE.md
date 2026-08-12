@@ -17,6 +17,8 @@ Os principais painéis de diagnóstico da V3 já possuem fatias modulares:
 - `ServiceDeskToolkit.Inventory.psm1` coleta e interpreta o inventário;
 - `ServiceDeskToolkit.Network.psm1` executa testes e determina a causa provável;
 - `ServiceDeskToolkit.Printers.psm1` avalia spooler, impressoras e filas;
+- `ServiceDeskToolkit.Office.psm1` diagnostica TPM, WAM, Office e Entra, e
+  expõe somente o reparo WAM reversível como ação automatizada;
 - a aplicação WPF atua como adaptador de apresentação.
 
 Cada módulo operacional separa três contratos públicos: coleta do snapshot,
@@ -56,6 +58,7 @@ src/
   ServiceDeskToolkit.Inventory/
   ServiceDeskToolkit.Network/
   ServiceDeskToolkit.Printers/
+  ServiceDeskToolkit.Office/
   ServiceDeskToolkit.Actions/
   ServiceDeskToolkit.Logging/
   ServiceDeskToolkit.Knowledge/

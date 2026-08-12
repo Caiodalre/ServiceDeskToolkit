@@ -43,7 +43,8 @@ try {
     $operationalModulePaths = @(
         "src\ServiceDeskToolkit.Inventory\ServiceDeskToolkit.Inventory.psm1",
         "src\ServiceDeskToolkit.Network\ServiceDeskToolkit.Network.psm1",
-        "src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1"
+        "src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1",
+        "src\ServiceDeskToolkit.Office\ServiceDeskToolkit.Office.psm1"
     )
 
     foreach ($relativeModulePath in $operationalModulePaths) {
@@ -1542,6 +1543,76 @@ function Invoke-V3PrintersPanel {
     }
 }
 
+function Invoke-V3OfficeTpmPanel {
+    $generatedAt = Get-Date
+    $failureParameters = @{
+        Header = "OFFICE / TPM / AUTENTICACAO - DIAGNOSTICO CONSOLIDADO"
+        Divider = "====================================================="
+        ActionType = "Diagnostico Office / TPM somente leitura"
+        FailureMessage = "Falha ao gerar diagnostico Office / TPM."
+        GeneratedAt = $generatedAt
+    }
+
+    if (-not $script:V3OperationalModulesAvailable) {
+        $failureParameters.ErrorDetail = $script:V3OperationalModuleError
+        return New-V3OperationalFailureReport @failureParameters
+    }
+
+    try {
+        $snapshot = Get-ToolkitOfficeTpmSnapshot -ObservedAt $generatedAt
+        $assessment = Get-ToolkitOfficeTpmAssessment -Snapshot $snapshot
+
+        return Format-ToolkitOfficeTpmReport `
+            -Snapshot $snapshot `
+            -Assessment $assessment `
+            -ComputerName $env:COMPUTERNAME `
+            -UserName "$env:USERDOMAIN\$env:USERNAME" `
+            -IsAdministrator (Test-V3Admin) `
+            -GeneratedAt $generatedAt
+    }
+    catch {
+        $failureParameters.ErrorDetail = $_.Exception.Message
+        return New-V3OperationalFailureReport @failureParameters
+    }
+}
+
+function Invoke-V3OfficeWamRepair {
+    try {
+        if (-not $script:V3OperationalModulesAvailable) {
+            throw (
+                "Modulo Office / TPM indisponivel: " +
+                $script:V3OperationalModuleError
+            )
+        }
+
+        $auditPath = Join-Path `
+            $script:RootPath `
+            "logs\office-tpm\office-wam-audit.jsonl"
+        $result = Repair-ToolkitOfficeWam `
+            -Confirmed `
+            -AuditPath $auditPath
+
+        return Format-ToolkitOfficeWamRepairReport -Result $result
+    }
+    catch {
+        $sb = New-Object System.Text.StringBuilder
+        [void]$sb.AppendLine("REPARO DO LOGIN OFFICE - NAO EXECUTADO")
+        [void]$sb.AppendLine("======================================")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("Motivo: $($_.Exception.Message)")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine(
+            "Nenhuma credencial, conta Entra ou chave TPM foi removida."
+        )
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine(
+            "Feche Word, Excel, Outlook, Teams e outros aplicativos Office antes de tentar novamente."
+        )
+
+        return $sb.ToString()
+    }
+}
+
 function Invoke-V3SafeSpoolerRestart {
     $sb = New-Object System.Text.StringBuilder
 
@@ -2132,6 +2203,8 @@ $xaml = @"
     <Button Name="BtnV3Inventory" Content="Inventário" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3Network" Content="Diagnóstico de rede" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3Printers" Content="Impressoras" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3OfficeTpm" Content="Office / TPM" Style="{StaticResource ActionGridButton}" ToolTip="Diagnostica Office, TPM, WAM, licenciamento e estado Entra sem executar correcao."/>
+    <Button Name="BtnV3OfficeWam" Content="Reparar login Office" Style="{StaticResource ActionGridButton}" ToolTip="Repara o login WAM de Microsoft 365 e Office 2016, 2019 e 2021. Nao limpa TPM nem credenciais."/>
 
     <Button Name="BtnV3FlushDns" Content="Limpar DNS" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3TimeSync" Content="Sincronizar horário" Style="{StaticResource ActionGridButton}"/>
@@ -2216,8 +2289,8 @@ $CardV3Version.Text = Get-V3VersionInfo
 $window.FindName("BtnV3NavHome").Add_Click({ Set-V3Output (Get-V3HomeText) })
 $window.FindName("BtnV3NavGuided").Add_Click({ Set-V3Output (Get-V3GuidedHomeText) })
 $window.FindName("BtnV3NavEvidence").Add_Click({ Set-V3Output "Evidências:`r`n- Inventário`r`n- Diagnóstico de rede`r`n- Relatório`r`n- Pacote de suporte`r`n- Copiar resultado" })
-$window.FindName("BtnV3NavSafeFix").Add_Click({ Set-V3Output "Correções Seguras:`r`n- Limpar DNS`r`n- Renovar IP`r`n- Sincronizar horário`r`n- Reiniciar spooler`r`n- Limpar temporários" })
-$window.FindName("BtnV3NavAdvanced").Add_Click({ Set-V3Output "Área avançada:`r`nAções críticas protegidas por confirmação, elevação administrativa e log.`r`n`r`nDisponíveis agora:`r`n- SFC /scannow: verifica e repara arquivos protegidos do Windows.`r`n- DISM RestoreHealth: repara a imagem de componentes do Windows.`r`n`r`nOrdem recomendada quando o SFC não consegue reparar:`r`n1. Execute o DISM.`r`n2. Reinicie se solicitado.`r`n3. Execute o SFC novamente." })
+$window.FindName("BtnV3NavSafeFix").Add_Click({ Set-V3Output "Correções Seguras:`r`n- Limpar DNS`r`n- Renovar IP`r`n- Sincronizar horário`r`n- Reiniciar spooler`r`n- Reparar login Office (WAM)`r`n- Limpar temporários" })
+$window.FindName("BtnV3NavAdvanced").Add_Click({ Set-V3Output "Área avançada:`r`nAções críticas protegidas por confirmação, elevação administrativa e log.`r`n`r`nDisponíveis agora:`r`n- SFC /scannow: verifica e repara arquivos protegidos do Windows.`r`n- DISM RestoreHealth: repara a imagem de componentes do Windows.`r`n- Office / TPM: diagnóstico de TPM, WAM, licenciamento e Entra ID.`r`n`r`nO toolkit não limpa TPM nem remove o dispositivo do Entra automaticamente.`r`n`r`nOrdem recomendada quando o SFC não consegue reparar:`r`n1. Execute o DISM.`r`n2. Reinicie se solicitado.`r`n3. Execute o SFC novamente." })
 $window.FindName("BtnV3NavToolkit").Add_Click({ Set-V3Output "Toolkit:`r`n- Status`r`n- Atualização`r`n- Rollback`r`n- Logs`r`n- Validação`r`n`r`nEssas funções serão conectadas ao motor atual em etapas futuras." })
 
 $window.FindName("BtnV3QuickInternet").Add_Click({ Set-V3Output (Invoke-V3WorkflowNoInternet) })
@@ -2229,6 +2302,26 @@ $window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3SafeTimeSyn
 $window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3SafeSpoolerRestart) })
 $window.FindName("BtnV3Printers").Add_Click({ Set-V3Output (Invoke-V3WorkflowPrinter) })
 $window.FindName("BtnV3Health").Add_Click({ Set-V3Output (Invoke-V3MachineHealthPanel) })
+$window.FindName("BtnV3OfficeTpm").Add_Click({
+    Set-V3Output (Invoke-V3OfficeTpmPanel)
+})
+$window.FindName("BtnV3OfficeWam").Add_Click({
+    $confirmation = [System.Windows.MessageBox]::Show(
+        "O reparo de login para Microsoft 365 e Office 2016, 2019 ou 2021 registrara novamente AAD BrokerPlugin e CloudExperienceHost no perfil atual.`r`n`r`nFeche Word, Excel, Outlook, Teams e outros aplicativos Office antes de continuar.`r`n`r`nA acao nao limpa TPM, nao remove credenciais e nao desconecta o Entra ID.`r`n`r`nDeseja continuar?",
+        "Reparar login do Office - WAM",
+        [System.Windows.MessageBoxButton]::YesNo,
+        [System.Windows.MessageBoxImage]::Warning
+    )
+
+    if ($confirmation -eq [System.Windows.MessageBoxResult]::Yes) {
+        Set-V3Output (Invoke-V3OfficeWamRepair)
+    }
+    else {
+        Set-V3Output (
+            "Reparo WAM cancelado pelo usuario. Nenhuma alteracao foi aplicada."
+        )
+    }
+})
 $window.FindName("BtnV3CopyOutput").Add_Click({ Copy-V3OutputToClipboard })
 $window.FindName("BtnV3Sfc").Add_Click({
     $confirmation = [System.Windows.MessageBox]::Show(

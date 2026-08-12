@@ -1,7 +1,22 @@
-# Changelog
+﻿# Changelog
 
 Todas as mudanças relevantes do ServiceDesk Toolkit Corporate são registradas
 neste arquivo.
+
+## v3.1.0-preview.1 — 2026-08-11
+
+### Office, TPM e autenticação
+
+- Novo diagnóstico somente leitura para TPM, BitLocker, WAM, vnextdiag e OSPP do
+  Office, reinicialização pendente e identidade do dispositivo no Entra.
+- Avaliação determinística com severidade, observações e próxima ação.
+- Reparo confirmado dos pacotes AAD BrokerPlugin e CloudExperienceHost no
+  perfil afetado, com bloqueio quando Office ou Teams estiverem abertos.
+- Relatório consolidado, auditoria JSONL e runbook baseado em documentação
+  oficial da Microsoft.
+- Limpeza do TPM, exclusão de credenciais/caches e remoção do vínculo Entra
+  permanecem fora da automação.
+- Instalador, manifesto SHA-256, base de conhecimento, testes e CI atualizados.
 
 ## v3.0.1 — 2026-08-09
 

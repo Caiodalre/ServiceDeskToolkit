@@ -4,7 +4,8 @@ $script:RepositoryRoot = Split-Path -Parent $PSScriptRoot
 foreach ($moduleName in @(
     "ServiceDeskToolkit.Inventory",
     "ServiceDeskToolkit.Network",
-    "ServiceDeskToolkit.Printers"
+    "ServiceDeskToolkit.Printers",
+    "ServiceDeskToolkit.Office"
 )) {
     $modulePath = Join-Path `
         $script:RepositoryRoot `
@@ -276,6 +277,333 @@ function New-PrinterSnapshot {
     }
 }
 
+function New-OfficeTpmSnapshot {
+    param(
+        [bool]$TpmPresent = $true,
+        [bool]$TpmReady = $true,
+        [bool]$RebootPending = $false,
+        [bool]$AadBrokerPackagePresent = $true,
+        [bool]$CloudExperiencePackagePresent = $true,
+        [int]$WamEventCount = 0,
+        [string]$DeviceAuthStatus = "SUCCESS",
+        [string]$AzureAdPrt = "YES",
+        [string]$WamDefaultSet = "YES",
+        [int]$OfficeCredentialCount = 0,
+        [bool]$LicenseLooksUnlicensed = $false,
+        [string]$OfficeEdition = "Microsoft 365 Apps",
+        [string]$OfficeProductReleaseIds = "O365ProPlusRetail",
+        [string]$VNextDiagPath = "C:\Program Files\Microsoft Office\root\Office16\vnextdiag.ps1",
+        [string]$OsppPath = "",
+        [bool]$OsppCheckRan = $false,
+        [int]$OsppLicensedCount = 0,
+        [int]$OsppUnlicensedCount = 0,
+        [string[]]$OsppLicenseStatuses = @()
+    )
+
+    return [pscustomobject]@{
+        ObservedAt = [datetime]"2026-08-09T10:00:00"
+        TpmCommandAvailable = $true
+        TpmQueryMethod = "Synthetic"
+        TpmPresent = $TpmPresent
+        TpmReady = $TpmReady
+        TpmEnabled = $TpmPresent
+        TpmActivated = $TpmPresent
+        TpmOwned = $TpmPresent
+        TpmAutoProvisioning = "Enabled"
+        TpmSpecVersion = "2.0"
+        TpmManufacturer = "TEST"
+        TpmError = $null
+        BitLockerAvailable = $true
+        BitLockerProtectionStatus = "On"
+        BitLockerVolumeStatus = "FullyEncrypted"
+        BitLockerError = $null
+        CbsRebootPending = $RebootPending
+        WindowsUpdateRebootPending = $false
+        PendingFileRenameOperations = $false
+        RebootPending = $RebootPending
+        OfficeInstalled = $true
+        OfficeProductReleaseIds = $OfficeProductReleaseIds
+        OfficePlatform = "x64"
+        OfficeVersion = "16.0.99999.1"
+        OfficeEdition = $OfficeEdition
+        OfficeLicensingModel = if (
+            $OfficeEdition -eq "Microsoft 365 Apps"
+        ) {
+            "Assinatura moderna (vnextdiag)"
+        }
+        else {
+            "Perpetuo ou volume (OSPP)"
+        }
+        VNextDiagPath = $VNextDiagPath
+        OsppPath = $OsppPath
+        OsppCheckRan = $OsppCheckRan
+        OsppExitCode = if ($OsppCheckRan) { 0 } else { $null }
+        OsppProductCount = (
+            $OsppLicensedCount +
+            $OsppUnlicensedCount
+        )
+        OsppLicensedCount = $OsppLicensedCount
+        OsppUnlicensedCount = $OsppUnlicensedCount
+        OsppGraceCount = 0
+        OsppLicenseStatuses = $OsppLicenseStatuses
+        OsppErrorCodes = [string[]]@()
+        OsppActivationType = if ($OsppCheckRan) { "KMS" } else { $null }
+        OsppCheckError = $null
+        OfficeProcesses = [string[]]@()
+        AadBrokerPackagePresent = $AadBrokerPackagePresent
+        CloudExperiencePackagePresent = $CloudExperiencePackagePresent
+        AadBrokerManifestPresent = $true
+        CloudExperienceManifestPresent = $true
+        WamPackageError = $null
+        AadTokenCachePresent = $true
+        CloudTokenCachePresent = $true
+        AadTokenFileCount = 1
+        CloudTokenFileCount = 1
+        DsRegCommandAvailable = $true
+        DsRegExitCode = 0
+        DsRegError = $null
+        AzureAdJoined = "YES"
+        EnterpriseJoined = "NO"
+        DomainJoined = "YES"
+        WorkplaceJoined = "NO"
+        WamDefaultSet = $WamDefaultSet
+        AzureAdPrt = $AzureAdPrt
+        TpmProtected = "YES"
+        DeviceAuthStatus = $DeviceAuthStatus
+        NgcSet = "YES"
+        KeySignTest = "PASSED"
+        OfficeCredentialCount = $OfficeCredentialCount
+        CredentialQueryError = $null
+        OfficeLicenseFileCount = 1
+        LicenseCheckRan = $true
+        LicenseCheckExitCode = 0
+        LicenseLooksLicensed = (-not $LicenseLooksUnlicensed)
+        LicenseLooksUnlicensed = $LicenseLooksUnlicensed
+        LicenseCheckError = $null
+        ProtectionPolicy = $null
+        WamEvents = [pscustomobject]@{
+            Available = $true
+            Count = $WamEventCount
+            EventIds = [int[]]@()
+            Error = $null
+        }
+        AadEvents = [pscustomobject]@{
+            Available = $true
+            Count = 0
+            EventIds = [int[]]@()
+            Error = $null
+        }
+        TpmEvents = [pscustomobject]@{
+            Available = $true
+            Count = 0
+            EventIds = [int[]]@()
+            Error = $null
+        }
+    }
+}
+
+}
+
+Describe "Office and TPM diagnostic assessment" {
+    It "keeps a healthy Office authentication environment informational" {
+        $assessment = Get-ToolkitOfficeTpmAssessment `
+            -Snapshot (New-OfficeTpmSnapshot)
+
+        Assert-OperationalCondition `
+            -Condition ($assessment.Severity -eq "Informativo") `
+            -Message "Ambiente Office saudavel recebeu severidade incorreta."
+        Assert-OperationalCondition `
+            -Condition (
+                ($assessment.Observations -join "`n") -match
+                "nao apresentam alerta evidente"
+            ) `
+            -Message "Conclusao saudavel do Office nao foi gerada."
+    }
+
+    It "identifies Office 2016, 2019 and 2021 licensing families" {
+        InModuleScope ServiceDeskToolkit.Office {
+            $cases = @(
+                @{
+                    Product = "ProPlusVolume"
+                    Names = @("Office 16, Office16ProPlusVL_KMS_Client edition")
+                    Expected = "Office 2016"
+                },
+                @{
+                    Product = "ProPlus2019Volume"
+                    Names = @()
+                    Expected = "Office 2019"
+                },
+                @{
+                    Product = "ProPlus2021Volume"
+                    Names = @()
+                    Expected = "Office 2021"
+                }
+            )
+
+            foreach ($case in $cases) {
+                $actual = Get-ToolkitOfficeEdition -ProductReleaseIds $case.Product -LicenseNames $case.Names
+
+                if ($actual -ne $case.Expected) {
+                    throw (
+                        "Edicao incorreta para $($case.Product): " +
+                        "$actual, esperado $($case.Expected)."
+                    )
+                }
+            }
+        }
+    }
+
+    It "uses OSPP instead of vnextdiag for an unlicensed Office 2021" {
+        $snapshot = New-OfficeTpmSnapshot -OfficeEdition "Office 2021" -OfficeProductReleaseIds "ProPlus2021Volume" -VNextDiagPath "" -OsppPath "C:\Program Files\Microsoft Office\root\Office16\ospp.vbs" -OsppCheckRan $true -OsppUnlicensedCount 1 -OsppLicenseStatuses @("NOTIFICATIONS")
+        $assessment = Get-ToolkitOfficeTpmAssessment -Snapshot $snapshot
+        $codes = @($assessment.Remediations | ForEach-Object Code)
+
+        Assert-OperationalCondition -Condition ($codes -contains "OSPP_UNLICENSED") -Message "Office 2021 nao licenciado nao recebeu fluxo OSPP."
+        Assert-OperationalCondition -Condition ($codes -notcontains "VNEXT_NOT_FOUND") -Message "Office 2021 recebeu fluxo vnextdiag indevido."
+
+        $report = Format-ToolkitOfficeTpmReport -Snapshot $snapshot -Assessment $assessment -ComputerName "PC-TESTE" -UserName "CORP\usuario"
+
+        Assert-OperationalTextContains -Text $report -Expected "Edicao identificada: Office 2021"
+        Assert-OperationalTextContains -Text $report -Expected "OSPP consultado: Sim"
+        Assert-OperationalTextContains -Text $report -Expected "nenhuma chave de produto"
+    }
+
+    It "prioritizes a pending restart before authentication changes" {
+        $assessment = Get-ToolkitOfficeTpmAssessment `
+            -Snapshot (New-OfficeTpmSnapshot -RebootPending $true)
+        $codes = @($assessment.Remediations | ForEach-Object Code)
+
+        Assert-OperationalCondition `
+            -Condition ($codes -contains "RESTART_PENDING") `
+            -Message "Reinicio pendente nao recebeu prioridade."
+    }
+
+    It "classifies an unready TPM as critical" {
+        $assessment = Get-ToolkitOfficeTpmAssessment `
+            -Snapshot (New-OfficeTpmSnapshot -TpmReady $false)
+        $codes = @($assessment.Remediations | ForEach-Object Code)
+
+        Assert-OperationalCondition `
+            -Condition ($assessment.Severity -eq "Critico") `
+            -Message "TPM nao pronto nao foi classificado como critico."
+        Assert-OperationalCondition `
+            -Condition ($codes -contains "TPM_NOT_READY") `
+            -Message "Remediacao TPM_NOT_READY ausente."
+    }
+
+    It "offers the protected WAM repair when the package is missing" {
+        $assessment = Get-ToolkitOfficeTpmAssessment `
+            -Snapshot (
+                New-OfficeTpmSnapshot `
+                    -AadBrokerPackagePresent $false
+            )
+        $repair = $assessment.Remediations |
+            Where-Object Code -eq "WAM_PACKAGE_MISSING" |
+            Select-Object -First 1
+
+        Assert-OperationalCondition `
+            -Condition ($null -ne $repair -and $repair.Automatable) `
+            -Message "Reparo WAM protegido nao foi recomendado."
+    }
+
+    It "escalates a failed device identity to the Entra administrator" {
+        $assessment = Get-ToolkitOfficeTpmAssessment `
+            -Snapshot (
+                New-OfficeTpmSnapshot `
+                    -DeviceAuthStatus "FAILED. Device is disabled"
+            )
+        $codes = @($assessment.Remediations | ForEach-Object Code)
+
+        Assert-OperationalCondition `
+            -Condition (
+                $assessment.Severity -eq "Critico" -and
+                $codes -contains "DEVICE_AUTH_FAILED"
+            ) `
+            -Message "Falha de identidade Entra nao foi escalada."
+    }
+
+    It "formats the safe remediation and official-reference contract" {
+        $snapshot = New-OfficeTpmSnapshot -TpmReady $false
+        $assessment = Get-ToolkitOfficeTpmAssessment -Snapshot $snapshot
+        $report = Format-ToolkitOfficeTpmReport `
+            -Snapshot $snapshot `
+            -Assessment $assessment `
+            -ComputerName "PC-TESTE" `
+            -UserName "CORP\usuario"
+
+        Assert-OperationalTextContains `
+            -Text $report `
+            -Expected "OFFICE / TPM / AUTENTICACAO"
+        Assert-OperationalTextContains `
+            -Text $report `
+            -Expected "ACOES CRITICAS NAO AUTOMATIZADAS"
+        Assert-OperationalTextContains `
+            -Text $report `
+            -Expected "learn.microsoft.com"
+        Assert-OperationalTextContains `
+            -Text $report `
+            -Expected "nenhuma chave BitLocker"
+    }
+
+    It "refuses a WAM repair without explicit confirmation" {
+        $thrown = $false
+
+        try {
+            Repair-ToolkitOfficeWam -ErrorAction Stop
+        }
+        catch {
+            $thrown = $true
+        }
+
+        Assert-OperationalCondition `
+            -Condition $thrown `
+            -Message "Reparo WAM foi aceito sem confirmacao explicita."
+    }
+}
+
+Describe "Office WAM repair protections" {
+    It "registers exactly the two official WAM manifests" {
+        InModuleScope ServiceDeskToolkit.Office {
+            Mock Get-Process { @() }
+            Mock Test-Path { $true }
+            Mock Add-AppxPackage {}
+            Mock Get-AppxPackage {
+                [pscustomobject]@{ Name = $Name }
+            }
+
+            $result = Repair-ToolkitOfficeWam -Confirmed
+
+            Assert-MockCalled Add-AppxPackage -Times 2 -Exactly
+
+            if (-not $result.Success) {
+                throw "Reparo WAM simulado nao confirmou os dois pacotes."
+            }
+        }
+    }
+
+    It "does not change WAM while an Office process is open" {
+        InModuleScope ServiceDeskToolkit.Office {
+            Mock Get-Process {
+                [pscustomobject]@{ ProcessName = "WINWORD" }
+            }
+            Mock Add-AppxPackage {}
+
+            $thrown = $false
+
+            try {
+                Repair-ToolkitOfficeWam -Confirmed -ErrorAction Stop
+            }
+            catch {
+                $thrown = $true
+            }
+
+            Assert-MockCalled Add-AppxPackage -Times 0 -Exactly
+
+            if (-not $thrown) {
+                throw "Reparo WAM nao foi bloqueado com Word aberto."
+            }
+        }
+    }
 }
 
 Describe "Network diagnostic assessment" {

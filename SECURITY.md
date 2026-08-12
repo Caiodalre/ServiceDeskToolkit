@@ -1,10 +1,11 @@
-# Política de segurança
+﻿# Política de segurança
 
 ## Versões suportadas
 
 | Linha | Situação |
 | --- | --- |
 | `v3.0.1` | Estável para operação interna |
+| `v3.1.0-preview.1` | Homologação interna Office/TPM |
 | `v3.0.0` | Versão anterior, suporte de transição |
 | `v3.0.1-rc.1` | Histórico de homologação, sem novas correções |
 | `v2.3.0` | Fallback legado com suporte crítico |
@@ -38,6 +39,14 @@ Inclua:
 - O instalador V3 interrompe o processo se qualquer SHA-256 divergir.
 - Não execute scripts recebidos por canais não confiáveis.
 - Homologue ações administrativas em ambiente descartável.
+
+## Office, TPM e identidade
+
+O diagnóstico não registra chaves BitLocker, chaves de produto Office, tokens, nomes de credenciais ou a
+saída bruta do `dsregcmd`. Limpeza do TPM, remoção de credenciais ou caches,
+`dsregcmd /leave`, recuperação forçada e desconexão do Microsoft Entra não são
+automatizadas. Essas ações podem afetar Windows Hello, certificados,
+criptografia e o objeto corporativo do dispositivo.
 
 ## Dados coletados
 
