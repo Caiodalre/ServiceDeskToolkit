@@ -454,8 +454,148 @@ function Format-ToolkitNetworkReport {
     return $sb.ToString()
 }
 
+function Get-ToolkitAdvancedNetworkReport {
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("REDE AVANCADA - CONFIGURACAO LOCAL")
+    [void]$sb.AppendLine("=================================")
+    [void]$sb.AppendLine("")
+
+    try {
+        [void]$sb.AppendLine("ADAPTADORES")
+        [void]$sb.AppendLine((Get-NetAdapter -ErrorAction Stop |
+            Sort-Object Status, Name |
+            Select-Object Name, InterfaceDescription, Status, MacAddress, LinkSpeed |
+            Format-Table -AutoSize | Out-String))
+    }
+    catch { [void]$sb.AppendLine("Falha ao consultar adaptadores: $($_.Exception.Message)") }
+
+    try {
+        [void]$sb.AppendLine("CONFIGURACAO IP")
+        [void]$sb.AppendLine((Get-NetIPConfiguration -ErrorAction Stop |
+            Select-Object InterfaceAlias, InterfaceIndex, IPv4Address, IPv4DefaultGateway, DNSServer |
+            Format-List | Out-String))
+    }
+    catch { [void]$sb.AppendLine("Falha ao consultar IP: $($_.Exception.Message)") }
+
+    try {
+        [void]$sb.AppendLine("PERFIL DE REDE")
+        [void]$sb.AppendLine((Get-NetConnectionProfile -ErrorAction Stop |
+            Select-Object Name, InterfaceAlias, NetworkCategory, IPv4Connectivity, IPv6Connectivity |
+            Format-Table -AutoSize | Out-String))
+    }
+    catch { [void]$sb.AppendLine("Falha ao consultar perfil: $($_.Exception.Message)") }
+
+    return $sb.ToString()
+}
+
+function Get-ToolkitDnsReport {
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("DNS - CONFIGURACAO E CACHE")
+    [void]$sb.AppendLine("==========================")
+    [void]$sb.AppendLine("")
+    try {
+        $dns = @(Get-DnsClientServerAddress -AddressFamily IPv4 -ErrorAction Stop |
+            Select-Object InterfaceAlias, InterfaceIndex, ServerAddresses)
+        if ($dns.Count -gt 0) {
+            [void]$sb.AppendLine(($dns | Format-Table -AutoSize | Out-String))
+        }
+        else { [void]$sb.AppendLine("Nenhum servidor DNS IPv4 encontrado.") }
+    }
+    catch { [void]$sb.AppendLine("Falha ao consultar DNS: $($_.Exception.Message)") }
+
+    [void]$sb.AppendLine("CACHE DNS (30 PRIMEIROS REGISTROS)")
+    try {
+        $cache = @(Get-DnsClientCache -ErrorAction Stop |
+            Select-Object -First 30 Entry, RecordType, Status, Data)
+        if ($cache.Count -gt 0) {
+            [void]$sb.AppendLine(($cache | Format-Table -AutoSize | Out-String))
+        }
+        else { [void]$sb.AppendLine("Cache DNS vazio.") }
+    }
+    catch { [void]$sb.AppendLine("Cache DNS indisponivel: $($_.Exception.Message)") }
+    return $sb.ToString()
+}
+
+function Get-ToolkitRoutesReport {
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("ROTAS IPV4")
+    [void]$sb.AppendLine("==========")
+    try {
+        $routes = @(Get-NetRoute -AddressFamily IPv4 -ErrorAction Stop |
+            Sort-Object RouteMetric |
+            Select-Object -First 80 DestinationPrefix, NextHop, InterfaceAlias, RouteMetric)
+        [void]$sb.AppendLine(($routes | Format-Table -AutoSize | Out-String))
+    }
+    catch { [void]$sb.AppendLine("Falha ao consultar rotas: $($_.Exception.Message)") }
+    return $sb.ToString()
+}
+
+function Test-ToolkitDefaultGateway {
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("TESTE DO GATEWAY PADRAO")
+    [void]$sb.AppendLine("=======================")
+    try {
+        $gateways = @(Get-NetIPConfiguration -ErrorAction Stop |
+            Where-Object { $_.IPv4DefaultGateway.NextHop } |
+            ForEach-Object { $_.IPv4DefaultGateway.NextHop } |
+            Select-Object -Unique)
+        if ($gateways.Count -eq 0) { return "Nenhum gateway IPv4 encontrado." }
+        foreach ($gateway in $gateways) {
+            $ok = Test-Connection -ComputerName $gateway -Count 2 -Quiet -ErrorAction SilentlyContinue
+            [void]$sb.AppendLine("$gateway : $(if ($ok) { 'OK' } else { 'SEM RESPOSTA' })")
+        }
+    }
+    catch { [void]$sb.AppendLine("Falha ao testar gateway: $($_.Exception.Message)") }
+    return $sb.ToString()
+}
+
+function Invoke-ToolkitRenewIp {
+    param([switch]$Confirmed)
+    if (-not $Confirmed) { throw "Renovacao de IP exige confirmacao explicita." }
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("RENOVACAO DE IP")
+    [void]$sb.AppendLine("===============")
+    [void]$sb.AppendLine("A conexao pode ser interrompida temporariamente.")
+    [void]$sb.AppendLine((ipconfig /release 2>&1 | Out-String))
+    Start-Sleep -Seconds 2
+    [void]$sb.AppendLine((ipconfig /renew 2>&1 | Out-String))
+    return $sb.ToString()
+}
+
+function Invoke-ToolkitNetworkStackReset {
+    param(
+        [ValidateSet("Winsock", "TcpIp")][string]$Target,
+        [switch]$Confirmed
+    )
+    if (-not $Confirmed) { throw "Reset da pilha de rede exige confirmacao explicita." }
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal $identity
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        throw "Execute o Toolkit como administrador para resetar a pilha de rede."
+    }
+    $output = if ($Target -eq "Winsock") {
+        netsh winsock reset 2>&1 | Out-String
+    }
+    else {
+        netsh int ip reset 2>&1 | Out-String
+    }
+    return "RESET $($Target.ToUpperInvariant())`r`n================`r`n$output`r`nReinicie o computador para concluir."
+}
+
+function Open-ToolkitNetworkConnections {
+    Start-Process "ncpa.cpl"
+    return "Conexoes de Rede abertas."
+}
+
 Export-ModuleMember -Function @(
     'Get-ToolkitNetworkSnapshot',
     'Get-ToolkitNetworkAssessment',
-    'Format-ToolkitNetworkReport'
+    'Format-ToolkitNetworkReport',
+    'Get-ToolkitAdvancedNetworkReport',
+    'Get-ToolkitDnsReport',
+    'Get-ToolkitRoutesReport',
+    'Test-ToolkitDefaultGateway',
+    'Invoke-ToolkitRenewIp',
+    'Invoke-ToolkitNetworkStackReset',
+    'Open-ToolkitNetworkConnections'
 )

@@ -1749,6 +1749,90 @@ function Invoke-V3SafeSpoolerRestart {
 
     return $sb.ToString()
 }
+function Get-V3AppgateStatus {
+    $sb = New-Object System.Text.StringBuilder
+    $configPath = "C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config"
+    [void]$sb.AppendLine("APPGATE SDP - STATUS DETALHADO")
+    [void]$sb.AppendLine("==============================")
+    [void]$sb.AppendLine("Config: $(if (Test-Path $configPath) { $configPath } else { 'Nao encontrada' })")
+    if (Test-Path $configPath) {
+        try {
+            [xml]$xml = Get-Content $configPath -Raw -ErrorAction Stop
+            $node = $xml.SelectSingleNode("//applicationSettings/Cryptzone.Stratus.WindowsClient.Properties.Application/setting[@name='RunScriptTimeout']/value")
+            [void]$sb.AppendLine("RunScriptTimeout: $(if ($node) { $node.InnerText } else { 'Nao encontrado' })")
+        }
+        catch { [void]$sb.AppendLine("Falha ao ler configuracao: $($_.Exception.Message)") }
+    }
+    try {
+        $uac = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ErrorAction Stop).ConsentPromptBehaviorAdmin
+        [void]$sb.AppendLine("UAC ConsentPromptBehaviorAdmin: $uac")
+    }
+    catch { [void]$sb.AppendLine("UAC: indisponivel") }
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("SERVICOS")
+    $services = @(Get-Service -ErrorAction SilentlyContinue | Where-Object {
+        $_.Name -in @("appgatedriver", "AppgateUpdateService") -or $_.DisplayName -like "*Appgate*"
+    } | Select-Object Name, DisplayName, Status)
+    [void]$sb.AppendLine($(if ($services.Count) { $services | Format-Table -AutoSize | Out-String } else { "Nenhum servico encontrado." }))
+    [void]$sb.AppendLine("PROCESSOS")
+    $processes = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+        $_.ProcessName -like "*appgate*" -or $_.ProcessName -like "*sdp*"
+    } | Select-Object ProcessName, Id, Path)
+    [void]$sb.AppendLine($(if ($processes.Count) { $processes | Format-Table -AutoSize | Out-String } else { "Nenhum processo encontrado." }))
+    return $sb.ToString()
+}
+
+function Restart-V3Appgate {
+    param([switch]$Confirmed)
+    if (-not $Confirmed) { throw "Reinicio do Appgate exige confirmacao explicita." }
+    if (-not (Test-V3Admin)) { throw "Execute o Toolkit como administrador para reiniciar o Appgate." }
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("REINICIO CONTROLADO DO APPGATE")
+    [void]$sb.AppendLine("==============================")
+    foreach ($name in @("Appgate SDP Service", "appgate-driver")) {
+        foreach ($process in @(Get-Process -Name $name -ErrorAction SilentlyContinue)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            [void]$sb.AppendLine("Processo finalizado: $($process.ProcessName) ($($process.Id))")
+        }
+    }
+    Start-Sleep -Seconds 2
+    foreach ($name in @("appgatedriver", "AppgateUpdateService")) {
+        $service = Get-Service $name -ErrorAction SilentlyContinue
+        if ($service) {
+            Restart-Service $name -Force -ErrorAction SilentlyContinue
+            [void]$sb.AppendLine("Servico reiniciado: $name")
+        }
+    }
+    $exePath = "C:\Program Files\Appgate SDP\Service\Appgate SDP Service.exe"
+    if (Test-Path $exePath) {
+        Start-Process $exePath
+        [void]$sb.AppendLine("Cliente iniciado: $exePath")
+    }
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("A VPN foi reiniciada. Valide autenticacao e acesso ao recurso corporativo.")
+    return $sb.ToString()
+}
+
+function Repair-V3AppgateConfiguration {
+    param([switch]$Confirmed)
+    if (-not $Confirmed) { throw "Ajuste do Appgate exige confirmacao explicita." }
+    if (-not (Test-V3Admin)) { throw "Execute o Toolkit como administrador para ajustar o Appgate." }
+    $configPath = "C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config"
+    if (-not (Test-Path $configPath)) { throw "Configuracao do Appgate nao encontrada: $configPath" }
+    $backupDirectory = Join-Path $script:RootPath "backup-appgate"
+    if (-not (Test-Path $backupDirectory)) { New-Item $backupDirectory -ItemType Directory -Force | Out-Null }
+    $backupPath = Join-Path $backupDirectory ("Appgate-SDP-Service.dll.config.{0}.bak" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+    Copy-Item $configPath $backupPath -Force -ErrorAction Stop
+    [xml]$xml = Get-Content $configPath -Raw -ErrorAction Stop
+    $node = $xml.SelectSingleNode("//applicationSettings/Cryptzone.Stratus.WindowsClient.Properties.Application/setting[@name='RunScriptTimeout']/value")
+    if (-not $node) { throw "RunScriptTimeout nao encontrado. Backup preservado em $backupPath" }
+    $oldValue = $node.InnerText
+    $node.InnerText = "300000"
+    $xml.Save($configPath)
+    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name ConsentPromptBehaviorAdmin -Value 5 -Type DWord -ErrorAction Stop
+    return "AJUSTE DO APPGATE CONCLUIDO`r`n============================`r`nRunScriptTimeout: $oldValue -> 300000`r`nUAC ConsentPromptBehaviorAdmin: 5`r`nBackup: $backupPath`r`n`r`nReinicie o Appgate e valide a conexao."
+}
+
 function Invoke-V3MachineHealthPanel {
     try {
         if (-not $script:V3HealthModulesAvailable) {
@@ -2213,6 +2297,24 @@ $xaml = @"
     <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource ActionGridButton}"/>
     <Button Name="BtnV3Sfc" Content="SFC: verificar arquivos" Style="{StaticResource ActionGridButton}" ToolTip="Verifica e tenta reparar arquivos protegidos do Windows. Exige permissão administrativa."/>
     <Button Name="BtnV3Dism" Content="DISM: reparar imagem" Style="{StaticResource ActionGridButton}" ToolTip="Repara a imagem de componentes do Windows. Exige permissão administrativa e pode depender do Windows Update."/>
+    <Button Name="BtnV3NetworkAdvanced" Content="Rede: adaptadores e IP" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3DnsDetails" Content="Rede: DNS detalhado" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3Routes" Content="Rede: rotas" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3Gateway" Content="Rede: testar gateway" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3RenewIp" Content="Rede: renovar IP" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a conexão temporariamente e exige confirmação."/>
+    <Button Name="BtnV3Winsock" Content="Rede: reset Winsock" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização."/>
+    <Button Name="BtnV3TcpIp" Content="Rede: reset TCP/IP" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização."/>
+    <Button Name="BtnV3NetworkConnections" Content="Abrir conexões de rede" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3PrinterList" Content="Impressoras: listar" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3PrintJobs" Content="Impressoras: filas" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3DefaultPrinter" Content="Impressora padrão" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3OfflinePrinters" Content="Impressoras offline" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3ClearPrintQueue" Content="Limpar fila de impressão" Style="{StaticResource ActionGridButton}" ToolTip="Remove trabalhos pendentes e exige confirmação administrativa."/>
+    <Button Name="BtnV3PrinterSettings" Content="Abrir impressoras" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3PrintManagement" Content="Gerenciar impressão" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3AppgateStatus" Content="Appgate: status" Style="{StaticResource ActionGridButton}"/>
+    <Button Name="BtnV3AppgateRestart" Content="Appgate: reiniciar" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a VPN temporariamente e exige confirmação."/>
+    <Button Name="BtnV3AppgateFix" Content="Appgate: ajustar" Style="{StaticResource ActionGridButton}" ToolTip="Cria backup, ajusta RunScriptTimeout e UAC com confirmação."/>
 </UniformGrid>
                 </StackPanel>
             </Border>
@@ -2301,6 +2403,48 @@ $window.FindName("BtnV3FlushDns").Add_Click({ Set-V3Output (Invoke-V3SafeFlushDn
 $window.FindName("BtnV3TimeSync").Add_Click({ Set-V3Output (Invoke-V3SafeTimeSync) })
 $window.FindName("BtnV3Spooler").Add_Click({ Set-V3Output (Invoke-V3SafeSpoolerRestart) })
 $window.FindName("BtnV3Printers").Add_Click({ Set-V3Output (Invoke-V3WorkflowPrinter) })
+$window.FindName("BtnV3NetworkAdvanced").Add_Click({ Set-V3Output (Get-ToolkitAdvancedNetworkReport) })
+$window.FindName("BtnV3DnsDetails").Add_Click({ Set-V3Output (Get-ToolkitDnsReport) })
+$window.FindName("BtnV3Routes").Add_Click({ Set-V3Output (Get-ToolkitRoutesReport) })
+$window.FindName("BtnV3Gateway").Add_Click({ Set-V3Output (Test-ToolkitDefaultGateway) })
+$window.FindName("BtnV3NetworkConnections").Add_Click({ Set-V3Output (Open-ToolkitNetworkConnections) })
+$window.FindName("BtnV3PrinterList").Add_Click({ Set-V3Output (Get-ToolkitPrinterListReport) })
+$window.FindName("BtnV3PrintJobs").Add_Click({ Set-V3Output (Get-ToolkitPrintJobsReport) })
+$window.FindName("BtnV3DefaultPrinter").Add_Click({ Set-V3Output (Get-ToolkitDefaultPrinterReport) })
+$window.FindName("BtnV3OfflinePrinters").Add_Click({ Set-V3Output (Get-ToolkitOfflinePrintersReport) })
+$window.FindName("BtnV3PrinterSettings").Add_Click({ Set-V3Output (Open-ToolkitPrintersSettings) })
+$window.FindName("BtnV3PrintManagement").Add_Click({ Set-V3Output (Open-ToolkitPrintManagement) })
+$window.FindName("BtnV3AppgateStatus").Add_Click({ Set-V3Output (Get-V3AppgateStatus) })
+$window.FindName("BtnV3RenewIp").Add_Click({
+    if ([System.Windows.MessageBox]::Show("A renovacao de IP interrompera a conexao temporariamente. Deseja continuar?", "Renovar IP", "YesNo", "Warning") -eq "Yes") {
+        Set-V3Output (Invoke-ToolkitRenewIp -Confirmed)
+    }
+})
+$window.FindName("BtnV3Winsock").Add_Click({
+    if ([System.Windows.MessageBox]::Show("O reset do Winsock exige administrador e reinicializacao. Deseja continuar?", "Reset Winsock", "YesNo", "Warning") -eq "Yes") {
+        Set-V3Output (Invoke-ToolkitNetworkStackReset -Target Winsock -Confirmed)
+    }
+})
+$window.FindName("BtnV3TcpIp").Add_Click({
+    if ([System.Windows.MessageBox]::Show("O reset TCP/IP pode remover ajustes locais e exige reinicializacao. Deseja continuar?", "Reset TCP/IP", "YesNo", "Warning") -eq "Yes") {
+        Set-V3Output (Invoke-ToolkitNetworkStackReset -Target TcpIp -Confirmed)
+    }
+})
+$window.FindName("BtnV3ClearPrintQueue").Add_Click({
+    if ([System.Windows.MessageBox]::Show("Todos os trabalhos pendentes serao removidos da fila. Deseja continuar?", "Limpar fila de impressao", "YesNo", "Warning") -eq "Yes") {
+        Set-V3Output (Clear-ToolkitPrintQueue -Confirmed)
+    }
+})
+$window.FindName("BtnV3AppgateRestart").Add_Click({
+    if ([System.Windows.MessageBox]::Show("O Appgate e a VPN serao interrompidos temporariamente. Deseja continuar?", "Reiniciar Appgate", "YesNo", "Warning") -eq "Yes") {
+        Set-V3Output (Restart-V3Appgate -Confirmed)
+    }
+})
+$window.FindName("BtnV3AppgateFix").Add_Click({
+    if ([System.Windows.MessageBox]::Show("Sera criado um backup e aplicado RunScriptTimeout=300000 e UAC=5. Deseja continuar?", "Ajustar Appgate", "YesNo", "Warning") -eq "Yes") {
+        Set-V3Output (Repair-V3AppgateConfiguration -Confirmed)
+    }
+})
 $window.FindName("BtnV3Health").Add_Click({ Set-V3Output (Invoke-V3MachineHealthPanel) })
 $window.FindName("BtnV3OfficeTpm").Add_Click({
     Set-V3Output (Invoke-V3OfficeTpmPanel)

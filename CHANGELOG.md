@@ -3,6 +3,20 @@
 Todas as mudanças relevantes do ServiceDesk Toolkit Corporate são registradas
 neste arquivo.
 
+## v3.1.0-preview.2 — 2026-08-12
+
+### Rede, impressoras, horario e Appgate
+
+- Reincorporados os controles operacionais úteis da V2.0.2 na arquitetura V3.
+- Rede avançada com adaptadores/IP, DNS, rotas, gateway, renovação de IP,
+  reset Winsock/TCP-IP e abertura das conexões de rede.
+- Impressoras com lista, filas, padrão, condição offline, limpeza confirmada da
+  fila, configurações e Gerenciamento de Impressão.
+- Appgate com status detalhado, reinício controlado e ajuste protegido do
+  `RunScriptTimeout`, sempre com backup e confirmação.
+- Mantida a sincronização segura de horário da V3, com validação antes/depois.
+- Ações disruptivas exigem confirmação e, quando necessário, administrador.
+
 ## v3.1.0-preview.1 — 2026-08-11
 
 ### Office, TPM e autenticação

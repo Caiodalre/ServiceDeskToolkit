@@ -7,8 +7,10 @@ A V3 é a experiência estável atual do ServiceDesk Toolkit Corporate.
 Versão estável atual: `3.0.1`, promovida a partir da candidata de segurança
 `3.0.1-rc.1`.
 
-A `3.1.0-preview.1` inicia a homologação interna do novo painel Office/TPM e
-do reparo controlado de autenticação WAM. Ela não substitui a versão estável.
+A `3.1.0-preview.2` amplia a homologação interna do painel Office/TPM com os
+recursos operacionais de rede, impressoras, horário e Appgate trazidos da V2.0.2.
+Essa candidata mantém o diagnóstico Office/TPM e o reparo controlado de
+autenticação WAM. Ela não substitui a versão estável.
 
 A versão preserva o reparo operacional do Windows com SFC e DISM, os painéis
 modulares e a camada transversal de padrões de engenharia. A tag `v2.3.0`

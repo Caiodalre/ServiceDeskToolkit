@@ -488,8 +488,105 @@ function Format-ToolkitPrinterReport {
     return $sb.ToString()
 }
 
+function Get-ToolkitPrinterListReport {
+    try {
+        $printers = @(Get-CimInstance Win32_Printer -ErrorAction Stop |
+            Sort-Object Name |
+            Select-Object Name, DriverName, PortName, PrinterStatus, Default, Shared, WorkOffline)
+        if ($printers.Count -eq 0) { return "Nenhuma impressora instalada." }
+        return "IMPRESSORAS INSTALADAS`r`n=====================`r`n`r`n" +
+            ($printers | Format-Table -AutoSize | Out-String)
+    }
+    catch { return "Falha ao listar impressoras: $($_.Exception.Message)" }
+}
+
+function Get-ToolkitPrintJobsReport {
+    try {
+        $jobs = @(Get-CimInstance Win32_PrintJob -ErrorAction Stop |
+            Select-Object Name, Document, Owner, JobStatus, TotalPages, Size, TimeSubmitted)
+        if ($jobs.Count -eq 0) { return "Nenhum trabalho na fila de impressao." }
+        return "FILA DE IMPRESSAO`r`n=================`r`n`r`n" +
+            ($jobs | Format-Table -AutoSize | Out-String)
+    }
+    catch { return "Falha ao consultar filas: $($_.Exception.Message)" }
+}
+
+function Get-ToolkitDefaultPrinterReport {
+    try {
+        $printer = Get-CimInstance Win32_Printer -ErrorAction Stop |
+            Where-Object { $_.Default } |
+            Select-Object -First 1 Name, DriverName, PortName, PrinterStatus, WorkOffline
+        if ($null -eq $printer) { return "Nenhuma impressora padrao encontrada." }
+        return "IMPRESSORA PADRAO`r`n=================`r`n`r`n" +
+            ($printer | Format-List | Out-String)
+    }
+    catch { return "Falha ao consultar impressora padrao: $($_.Exception.Message)" }
+}
+
+function Get-ToolkitOfflinePrintersReport {
+    try {
+        $printers = @(Get-CimInstance Win32_Printer -ErrorAction Stop |
+            Where-Object { $_.WorkOffline -or $_.PrinterStatus -notin @(3, 4) } |
+            Select-Object Name, DriverName, PortName, PrinterStatus, WorkOffline, Default)
+        if ($printers.Count -eq 0) { return "Nenhuma impressora offline ou com alerta." }
+        return "IMPRESSORAS OFFLINE / COM ALERTA`r`n================================`r`n`r`n" +
+            ($printers | Format-Table -AutoSize | Out-String)
+    }
+    catch { return "Falha ao consultar impressoras offline: $($_.Exception.Message)" }
+}
+
+function Clear-ToolkitPrintQueue {
+    param([switch]$Confirmed)
+    if (-not $Confirmed) { throw "Limpeza da fila exige confirmacao explicita." }
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal $identity
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        throw "Execute o Toolkit como administrador para limpar a fila."
+    }
+
+    $spoolPath = Join-Path $env:WINDIR "System32\spool\PRINTERS"
+    $removed = 0
+    $service = Get-Service Spooler -ErrorAction Stop
+    try {
+        Stop-Service Spooler -Force -ErrorAction Stop
+        if (Test-Path $spoolPath) {
+            foreach ($item in @(Get-ChildItem $spoolPath -Force -ErrorAction SilentlyContinue)) {
+                Remove-Item $item.FullName -Force -ErrorAction Stop
+                $removed++
+            }
+        }
+    }
+    finally {
+        Start-Service Spooler -ErrorAction SilentlyContinue
+    }
+    $after = Get-Service Spooler -ErrorAction SilentlyContinue
+    return "LIMPEZA DA FILA CONCLUIDA`r`n=========================`r`nArquivos removidos: $removed`r`nSpooler antes: $($service.Status)`r`nSpooler depois: $($after.Status)"
+}
+
+function Open-ToolkitPrintersSettings {
+    Start-Process "ms-settings:printers"
+    return "Impressoras e scanners aberto."
+}
+
+function Open-ToolkitPrintManagement {
+    try {
+        Start-Process "printmanagement.msc"
+        return "Gerenciamento de Impressao aberto."
+    }
+    catch {
+        return "Gerenciamento de Impressao indisponivel nesta edicao do Windows: $($_.Exception.Message)"
+    }
+}
+
 Export-ModuleMember -Function @(
     'Get-ToolkitPrinterSnapshot',
     'Get-ToolkitPrinterAssessment',
-    'Format-ToolkitPrinterReport'
+    'Format-ToolkitPrinterReport',
+    'Get-ToolkitPrinterListReport',
+    'Get-ToolkitPrintJobsReport',
+    'Get-ToolkitDefaultPrinterReport',
+    'Get-ToolkitOfflinePrintersReport',
+    'Clear-ToolkitPrintQueue',
+    'Open-ToolkitPrintersSettings',
+    'Open-ToolkitPrintManagement'
 )
