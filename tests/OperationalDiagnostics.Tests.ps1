@@ -891,49 +891,51 @@ Describe "Protected network operations" {
         }
     }
 
-    InModuleScope ServiceDeskToolkit.Network {
-        It "generates DNS and route reports from mocked read-only data" {
-            Mock Get-DnsClientServerAddress {
-                [pscustomobject]@{
-                    InterfaceAlias = "Ethernet"
-                    InterfaceIndex = 7
-                    ServerAddresses = @("10.0.0.2")
-                }
+    It "generates DNS and route reports from mocked read-only data" {
+        Mock Get-DnsClientServerAddress {
+            [pscustomobject]@{
+                InterfaceAlias = "Ethernet"
+                InterfaceIndex = 7
+                ServerAddresses = @("10.0.0.2")
             }
-            Mock Get-DnsClientCache {
-                [pscustomobject]@{
-                    Entry = "example.test"
-                    RecordType = "A"
-                    Status = "Success"
-                    Data = "192.0.2.1"
-                }
+        } -ModuleName ServiceDeskToolkit.Network
+        Mock Get-DnsClientCache {
+            [pscustomobject]@{
+                Entry = "example.test"
+                RecordType = "A"
+                Status = "Success"
+                Data = "192.0.2.1"
             }
-            Mock Get-NetRoute {
-                [pscustomobject]@{
-                    DestinationPrefix = "0.0.0.0/0"
+        } -ModuleName ServiceDeskToolkit.Network
+        Mock Get-NetRoute {
+            [pscustomobject]@{
+                DestinationPrefix = "0.0.0.0/0"
+                NextHop = "10.0.0.1"
+                InterfaceAlias = "Ethernet"
+                RouteMetric = 25
+            }
+        } -ModuleName ServiceDeskToolkit.Network
+
+        (Get-ToolkitDnsReport) | Should -Match "DNS - CONFIGURACAO"
+        (Get-ToolkitRoutesReport) | Should -Match "ROTAS IPV4"
+    }
+
+    It "tests the discovered gateway without changing network state" {
+        Mock Get-NetIPConfiguration {
+            [pscustomobject]@{
+                IPv4DefaultGateway = [pscustomobject]@{
                     NextHop = "10.0.0.1"
-                    InterfaceAlias = "Ethernet"
-                    RouteMetric = 25
                 }
             }
+        } -ModuleName ServiceDeskToolkit.Network
+        Mock Test-Connection { $true } `
+            -ModuleName ServiceDeskToolkit.Network
 
-            (Get-ToolkitDnsReport) | Should -Match "DNS - CONFIGURACAO"
-            (Get-ToolkitRoutesReport) | Should -Match "ROTAS IPV4"
-        }
-
-        It "tests the discovered gateway without changing network state" {
-            Mock Get-NetIPConfiguration {
-                [pscustomobject]@{
-                    IPv4DefaultGateway = [pscustomobject]@{
-                        NextHop = "10.0.0.1"
-                    }
-                }
-            }
-            Mock Test-Connection { $true }
-
-            (Test-ToolkitDefaultGateway) | Should -Match "10.0.0.1 : OK"
-            Should -Invoke Test-Connection -Times 1 -Exactly
-        }
+        (Test-ToolkitDefaultGateway) | Should -Match "10.0.0.1 : OK"
+        Should -Invoke Test-Connection `
+            -ModuleName ServiceDeskToolkit.Network `
+            -Times 1 `
+            -Exactly
     }
 }
 
@@ -957,37 +959,39 @@ Describe "Protected printer operations" {
         }
     }
 
-    InModuleScope ServiceDeskToolkit.Printers {
-        It "formats printer and job reports from mocked read-only data" {
-            Mock Get-CimInstance {
-                [pscustomobject]@{
-                    Name = "Impressora de teste"
-                    DriverName = "Driver de teste"
-                    PortName = "IP_192.0.2.10"
-                    PrinterStatus = 3
-                    Default = $true
-                    Shared = $false
-                    WorkOffline = $false
-                }
-            } -ParameterFilter { $ClassName -eq "Win32_Printer" }
-            Mock Get-CimInstance {
-                [pscustomobject]@{
-                    Name = "Impressora de teste, 1"
-                    Document = "Documento de teste"
-                    Owner = "usuario"
-                    JobStatus = "Spooling"
-                    TotalPages = 1
-                    Size = 1024
-                    TimeSubmitted = "20260812120000.000000-000"
-                }
-            } -ParameterFilter { $ClassName -eq "Win32_PrintJob" }
+    It "formats printer and job reports from mocked read-only data" {
+        Mock Get-CimInstance {
+            [pscustomobject]@{
+                Name = "Impressora de teste"
+                DriverName = "Driver de teste"
+                PortName = "IP_192.0.2.10"
+                PrinterStatus = 3
+                Default = $true
+                Shared = $false
+                WorkOffline = $false
+            }
+        } -ParameterFilter {
+            $ClassName -eq "Win32_Printer"
+        } -ModuleName ServiceDeskToolkit.Printers
+        Mock Get-CimInstance {
+            [pscustomobject]@{
+                Name = "Impressora de teste, 1"
+                Document = "Documento de teste"
+                Owner = "usuario"
+                JobStatus = "Spooling"
+                TotalPages = 1
+                Size = 1024
+                TimeSubmitted = "20260812120000.000000-000"
+            }
+        } -ParameterFilter {
+            $ClassName -eq "Win32_PrintJob"
+        } -ModuleName ServiceDeskToolkit.Printers
 
-            (Get-ToolkitPrinterListReport) |
-                Should -Match "IMPRESSORAS INSTALADAS"
-            (Get-ToolkitPrintJobsReport) |
-                Should -Match "FILA DE IMPRESSAO"
-            (Get-ToolkitDefaultPrinterReport) |
-                Should -Match "IMPRESSORA PADRAO"
-        }
+        (Get-ToolkitPrinterListReport) |
+            Should -Match "IMPRESSORAS INSTALADAS"
+        (Get-ToolkitPrintJobsReport) |
+            Should -Match "FILA DE IMPRESSAO"
+        (Get-ToolkitDefaultPrinterReport) |
+            Should -Match "IMPRESSORA PADRAO"
     }
 }
