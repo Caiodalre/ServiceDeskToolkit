@@ -40,6 +40,7 @@ máquinas e validação da distribuição SHA-256 em Windows 10 e 11. A tag
 - Impressoras: lista, filas, padrão, offline, limpeza confirmada e gerenciamento
 - Appgate: status, reinício e ajuste protegido com backup
 - Sincronização segura de horário com validação antes/depois
+- Coletor de homologação sanitizado para a `v3.1.0-preview.2`
 - Relatórios, logs estruturados e pacote de suporte
 - Base de conhecimento local pesquisável
 - Atualização com staging, backup e rollback

@@ -263,6 +263,81 @@ Describe "V3 version contract" {
             -Condition ($dismHandlers -eq 1) `
             -Message "Esperado um handler DISM, encontrado: $dismHandlers"
     }
+
+    It "ships the preview.2 homologation collector through the installer" {
+        $homologationTool = Join-Path $script:RepositoryRoot `
+            "tools\Invoke-V3Preview2Homologation.ps1"
+        $homologationGuide = Join-Path $script:RepositoryRoot `
+            "docs\V3.1.0-PREVIEW2-HOMOLOGACAO.md"
+
+        Assert-RepositoryCondition `
+            -Condition (Test-Path $homologationTool) `
+            -Message "Coletor de homologacao da preview.2 nao encontrado."
+        Assert-RepositoryCondition `
+            -Condition (Test-Path $homologationGuide) `
+            -Message "Guia de homologacao da preview.2 nao encontrado."
+        Assert-RepositoryCondition `
+            -Condition ($script:V3InstallerText.Contains(
+                "Invoke-V3Preview2Homologation.ps1"
+            )) `
+            -Message "Instalador nao distribui o coletor de homologacao."
+
+        $homologationText = Get-Content $homologationTool -Raw
+        Assert-RepositoryCondition `
+            -Condition ($homologationText -notmatch 'Clear-Tpm|dsregcmd\s+/leave') `
+            -Message "Coletor possui acao de identidade ou TPM proibida."
+        Assert-RepositoryCondition `
+            -Condition ($homologationText -notmatch 'Invoke-ToolkitRenewIp\s+-Confirmed') `
+            -Message "Coletor nao pode renovar IP automaticamente."
+        Assert-RepositoryCondition `
+            -Condition ($homologationText -notmatch 'Clear-ToolkitPrintQueue\s+-Confirmed') `
+            -Message "Coletor nao pode limpar fila automaticamente."
+        Assert-RepositoryCondition `
+            -Condition ($homologationText -notmatch 'Repair-V3AppgateConfiguration') `
+            -Message "Coletor nao pode alterar configuracao do Appgate."
+    }
+
+    It "protects disruptive network printer and Appgate operations" {
+        $networkModuleText = Get-Content (
+            Join-Path $script:RepositoryRoot `
+                "src\ServiceDeskToolkit.Network\ServiceDeskToolkit.Network.psm1"
+        ) -Raw
+        $printerModuleText = Get-Content (
+            Join-Path $script:RepositoryRoot `
+                "src\ServiceDeskToolkit.Printers\ServiceDeskToolkit.Printers.psm1"
+        ) -Raw
+
+        foreach ($protectedMarker in @(
+            "Renovacao de IP exige confirmacao explicita",
+            "Reset da pilha de rede exige confirmacao explicita"
+        )) {
+            Assert-RepositoryCondition `
+                -Condition ($networkModuleText.Contains($protectedMarker)) `
+                -Message "Protecao de rede ausente: $protectedMarker"
+        }
+
+        Assert-RepositoryCondition `
+            -Condition ($printerModuleText.Contains(
+                "Limpeza da fila exige confirmacao explicita"
+            )) `
+            -Message "Limpeza de fila nao exige confirmacao explicita."
+        Assert-RepositoryCondition `
+            -Condition ($script:V3AppText.Contains(
+                "Ajuste do Appgate exige confirmacao explicita"
+            )) `
+            -Message "Ajuste do Appgate nao exige confirmacao explicita."
+        $backupIndex = $script:V3AppText.IndexOf(
+            "Copy-Item `$configPath `$backupPath"
+        )
+        $saveIndex = $script:V3AppText.IndexOf('$xml.Save($configPath)')
+        Assert-RepositoryCondition `
+            -Condition (
+                $backupIndex -ge 0 -and
+                $saveIndex -ge 0 -and
+                $backupIndex -lt $saveIndex
+            ) `
+            -Message "Backup do Appgate deve ocorrer antes da gravacao do XML."
+    }
 }
 
 Describe "Knowledge base contract" {

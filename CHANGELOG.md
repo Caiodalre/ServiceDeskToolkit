@@ -16,6 +16,7 @@ neste arquivo.
   `RunScriptTimeout`, sempre com backup e confirmação.
 - Mantida a sincronização segura de horário da V3, com validação antes/depois.
 - Ações disruptivas exigem confirmação e, quando necessário, administrador.
+- Coletor somente leitura e roteiro de homologação incluídos no instalador.
 
 ## v3.1.0-preview.1 — 2026-08-11
 

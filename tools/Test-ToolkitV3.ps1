@@ -24,6 +24,9 @@ $PrintersModule = Join-Path `
 $OfficeModule = Join-Path `
     $Root `
     "src\ServiceDeskToolkit.Office\ServiceDeskToolkit.Office.psm1"
+$HomologationTool = Join-Path `
+    $Root `
+    "tools\Invoke-V3Preview2Homologation.ps1"
 $Reports = Join-Path $Root "reports"
 
 if (-not (Test-Path $Reports)) {
@@ -144,7 +147,9 @@ if (Test-Path $ChecksumManifest) {
             "ServiceDeskToolkit-CorporateV3.ps1",
             "tools/Test-ToolkitV3.ps1",
             "version-v3.json",
-            "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1"
+            "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
+            "tools/Invoke-V3Preview2Homologation.ps1",
+            "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md"
         )) {
             if ($manifestPaths -contains $requiredManifestPath) {
                 Add-Result "OK" "Manifesto inclui: $requiredManifestPath"
@@ -186,6 +191,10 @@ $moduleFiles = @(
     @{
         Name = "Modulo Office, TPM e autenticacao"
         Path = $OfficeModule
+    },
+    @{
+        Name = "Coletor de homologacao da preview.2"
+        Path = $HomologationTool
     }
 )
 

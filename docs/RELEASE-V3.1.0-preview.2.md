@@ -5,6 +5,8 @@ Data da candidata: 12/08/2026.
 ## Status
 
 Preview interna para homologação. A versão estável permanece `v3.0.1`.
+Enquanto a homologação estiver aberta, o `sourceRef` permanece na branch
+`v3.1.0-office-tpm-preview`. A tag só será criada após a aprovação prática.
 
 ## Incluído
 
@@ -15,6 +17,7 @@ Preview interna para homologação. A versão estável permanece `v3.0.1`.
 - limpeza confirmada da fila de impressão, com restauração do Spooler;
 - status, reinício e ajuste protegido do Appgate SDP;
 - sincronização segura de horário com validação antes e depois.
+- coletor sanitizado e roteiro de homologação distribuídos com a instalação.
 
 ## Proteções
 

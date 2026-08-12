@@ -1,5 +1,5 @@
 ﻿param(
-    [string]$Branch = "v3.1.0-preview.2",
+    [string]$Branch = "v3.1.0-office-tpm-preview",
     [string]$Repo = "Caiodalre/ServiceDeskToolkit",
     [string]$InstallRoot,
     [switch]$NoShortcut,
@@ -281,6 +281,12 @@ function Install-V3IntoPath {
         [string]$OfficeModuleText,
 
         [Parameter(Mandatory = $true)]
+        [string]$HomologationToolText,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HomologationGuideText,
+
+        [Parameter(Mandatory = $true)]
         [string]$CmdText
     )
 
@@ -311,6 +317,12 @@ function Install-V3IntoPath {
     $officeModuleFile = Join-Path `
         $installPath `
         "src\ServiceDeskToolkit.Office\ServiceDeskToolkit.Office.psm1"
+    $homologationToolFile = Join-Path `
+        $installPath `
+        "tools\Invoke-V3Preview2Homologation.ps1"
+    $homologationGuideFile = Join-Path `
+        $installPath `
+        "docs\V3.1.0-PREVIEW2-HOMOLOGACAO.md"
     $latestFile = Join-Path $RootPath "latest.txt"
 
     New-Item -Path $installPath -ItemType Directory -Force | Out-Null
@@ -376,6 +388,14 @@ function Install-V3IntoPath {
         -Path $officeModuleFile `
         -Content $OfficeModuleText `
         -Encoding $utf8Bom
+    Write-V3TextFile `
+        -Path $homologationToolFile `
+        -Content $HomologationToolText `
+        -Encoding $utf8Bom
+    Write-V3TextFile `
+        -Path $homologationGuideFile `
+        -Content $HomologationGuideText `
+        -Encoding $utf8Bom
     Write-V3TextFile -Path $cmdFile -Content $CmdText -Encoding $ascii
 
     Unblock-File $mainFile -ErrorAction SilentlyContinue
@@ -389,6 +409,8 @@ function Install-V3IntoPath {
     Unblock-File $networkModuleFile -ErrorAction SilentlyContinue
     Unblock-File $printersModuleFile -ErrorAction SilentlyContinue
     Unblock-File $officeModuleFile -ErrorAction SilentlyContinue
+    Unblock-File $homologationToolFile -ErrorAction SilentlyContinue
+    Unblock-File $homologationGuideFile -ErrorAction SilentlyContinue
     Unblock-File $cmdFile -ErrorAction SilentlyContinue
 
     $mainRead = Get-Content $mainFile -Raw
@@ -415,6 +437,8 @@ function Install-V3IntoPath {
         NetworkModuleFile = $networkModuleFile
         PrintersModuleFile = $printersModuleFile
         OfficeModuleFile = $officeModuleFile
+        HomologationToolFile = $homologationToolFile
+        HomologationGuideFile = $homologationGuideFile
         LatestFile = $latestFile
     }
 }
@@ -455,7 +479,9 @@ $integrityPaths = @(
     "src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1",
     "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
     "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
-    "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1"
+    "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
+    "tools/Invoke-V3Preview2Homologation.ps1",
+    "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md"
 )
 $downloadRoot = Join-Path `
     ([System.IO.Path]::GetTempPath()) `
@@ -484,6 +510,8 @@ try {
         "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1" = "Modulo de diagnostico de rede V3"
         "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1" = "Modulo de diagnostico de impressoras V3"
         "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1" = "Modulo Office, TPM e autenticacao V3"
+        "tools/Invoke-V3Preview2Homologation.ps1" = "Coletor de homologacao da preview.2"
+        "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md" = "Guia de homologacao da preview.2"
     }
 
     foreach ($relativePath in ($payloadNames.Keys | Sort-Object)) {
@@ -526,6 +554,12 @@ $printersModuleText = $payloads[
 ]
 $officeModuleText = $payloads[
     "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1"
+]
+$homologationToolText = $payloads[
+    "tools/Invoke-V3Preview2Homologation.ps1"
+]
+$homologationGuideText = $payloads[
+    "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md"
 ]
 $cmdText = New-V3CmdText
 
@@ -669,6 +703,9 @@ Test-V3PowerShellSyntax `
 Test-V3PowerShellSyntax `
     -Text $officeModuleText `
     -Name "ServiceDeskToolkit.Office.psm1"
+Test-V3PowerShellSyntax `
+    -Text $homologationToolText `
+    -Name "Invoke-V3Preview2Homologation.ps1"
 
 try {
     $versionInfo = $versionText | ConvertFrom-Json
@@ -707,6 +744,8 @@ foreach ($root in $candidateRoots) {
             -NetworkModuleText $networkModuleText `
             -PrintersModuleText $printersModuleText `
             -OfficeModuleText $officeModuleText `
+            -HomologationToolText $homologationToolText `
+            -HomologationGuideText $homologationGuideText `
             -CmdText $cmdText
 
         break

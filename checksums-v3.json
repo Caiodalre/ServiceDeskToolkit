@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "ServiceDesk Toolkit Corporate V3",
   "version": "3.1.0-preview.2",
-  "sourceRef": "v3.1.0-preview.2",
+  "sourceRef": "v3.1.0-office-tpm-preview",
   "algorithm": "SHA256",
   "files": [
     {
       "path": "docs/V3-README.md",
-      "sha256": "f934e0bd3bded09a37d6ccabc2d20399a27fef4512800f6215c1c6763425d0de"
+      "sha256": "a7683c225945adf7e671acd3ccde2bb49c39eb1df03e6a3557c09023287f716b"
     },
     {
       "path": "install-v3.ps1",
-      "sha256": "31497d92e6f68aaf89d4f1b940e82843664aa64578da9a91b251c60af1ebd14f"
+      "sha256": "09d8c5f38dd858742393c87cb3d12a5c838862b01c4a1bb5833024f7a18f7b1a"
     },
     {
       "path": "ServiceDeskToolkit-CorporateV3.ps1",
@@ -42,12 +42,20 @@
       "sha256": "81ece25a3223e736cf7a0b3c19a67dd574676f274e0a8e3ae52c0f038bd54b2c"
     },
     {
+      "path": "tools/Invoke-V3Preview2Homologation.ps1",
+      "sha256": "282d2e3beab75a45cb0bc76f01915163420bbc135aea8bc53d6e29f02d6742e7"
+    },
+    {
+      "path": "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md",
+      "sha256": "616a272cd789cd96265fb2f3eca4655540e9989c583a3f935e19f760ccdf2280"
+    },
+    {
       "path": "tools/Test-ToolkitV3.ps1",
-      "sha256": "7d32c833b1c2d8d49b0660f074ab4392318a8fe7671835965836cf38aa23ca78"
+      "sha256": "b64547c55ad229bbcf590e431aa9ac16081f467b155e71b527226539a5c96963"
     },
     {
       "path": "version-v3.json",
-      "sha256": "e587fa6a56e22ec91829743307f903e09eaa3422c22b640b64329523df0c467c"
+      "sha256": "ecb8228088d39f9e1c4ef6e3aaa14e029726c3351046aaef07dbc4c31f976c57"
     }
   ]
 }

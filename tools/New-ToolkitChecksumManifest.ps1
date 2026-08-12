@@ -24,6 +24,8 @@ $payloadPaths = @(
     "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
     "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
     "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
+    "tools/Invoke-V3Preview2Homologation.ps1",
+    "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md",
     "tools/Test-ToolkitV3.ps1",
     "version-v3.json"
 )

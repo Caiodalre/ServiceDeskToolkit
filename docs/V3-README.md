@@ -12,6 +12,11 @@ recursos operacionais de rede, impressoras, horário e Appgate trazidos da V2.0.
 Essa candidata mantém o diagnóstico Office/TPM e o reparo controlado de
 autenticação WAM. Ela não substitui a versão estável.
 
+O pacote inclui `tools\Invoke-V3Preview2Homologation.ps1`, um coletor somente
+leitura que gera evidências sanitizadas em `reports\homologation`.
+Durante a homologação, o instalador usa a branch
+`v3.1.0-office-tpm-preview`; a tag será criada somente após a aprovação prática.
+
 A versão preserva o reparo operacional do Windows com SFC e DISM, os painéis
 modulares e a camada transversal de padrões de engenharia. A tag `v2.3.0`
 permanece disponível como fallback legado.

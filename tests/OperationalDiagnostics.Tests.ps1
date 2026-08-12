@@ -861,3 +861,133 @@ Describe "Printer diagnostic assessment" {
             -Expected "CONCLUSAO AUTOMATICA"
     }
 }
+
+Describe "Protected network operations" {
+    It "does not renew IP without explicit confirmation" {
+        { Invoke-ToolkitRenewIp } |
+            Should -Throw "*confirmacao explicita*"
+    }
+
+    It "does not reset Winsock without explicit confirmation" {
+        { Invoke-ToolkitNetworkStackReset -Target Winsock } |
+            Should -Throw "*confirmacao explicita*"
+    }
+
+    It "does not reset TCP/IP without explicit confirmation" {
+        { Invoke-ToolkitNetworkStackReset -Target TcpIp } |
+            Should -Throw "*confirmacao explicita*"
+    }
+
+    It "exports the read-only advanced network commands" {
+        foreach ($commandName in @(
+            "Get-ToolkitAdvancedNetworkReport",
+            "Get-ToolkitDnsReport",
+            "Get-ToolkitRoutesReport",
+            "Test-ToolkitDefaultGateway",
+            "Open-ToolkitNetworkConnections"
+        )) {
+            Get-Command $commandName -ErrorAction Stop |
+                Should -Not -BeNullOrEmpty
+        }
+    }
+
+    InModuleScope ServiceDeskToolkit.Network {
+        It "generates DNS and route reports from mocked read-only data" {
+            Mock Get-DnsClientServerAddress {
+                [pscustomobject]@{
+                    InterfaceAlias = "Ethernet"
+                    InterfaceIndex = 7
+                    ServerAddresses = @("10.0.0.2")
+                }
+            }
+            Mock Get-DnsClientCache {
+                [pscustomobject]@{
+                    Entry = "example.test"
+                    RecordType = "A"
+                    Status = "Success"
+                    Data = "192.0.2.1"
+                }
+            }
+            Mock Get-NetRoute {
+                [pscustomobject]@{
+                    DestinationPrefix = "0.0.0.0/0"
+                    NextHop = "10.0.0.1"
+                    InterfaceAlias = "Ethernet"
+                    RouteMetric = 25
+                }
+            }
+
+            (Get-ToolkitDnsReport) | Should -Match "DNS - CONFIGURACAO"
+            (Get-ToolkitRoutesReport) | Should -Match "ROTAS IPV4"
+        }
+
+        It "tests the discovered gateway without changing network state" {
+            Mock Get-NetIPConfiguration {
+                [pscustomobject]@{
+                    IPv4DefaultGateway = [pscustomobject]@{
+                        NextHop = "10.0.0.1"
+                    }
+                }
+            }
+            Mock Test-Connection { $true }
+
+            (Test-ToolkitDefaultGateway) | Should -Match "10.0.0.1 : OK"
+            Should -Invoke Test-Connection -Times 1 -Exactly
+        }
+    }
+}
+
+Describe "Protected printer operations" {
+    It "does not clear the print queue without explicit confirmation" {
+        { Clear-ToolkitPrintQueue } |
+            Should -Throw "*confirmacao explicita*"
+    }
+
+    It "exports the read-only printer commands" {
+        foreach ($commandName in @(
+            "Get-ToolkitPrinterListReport",
+            "Get-ToolkitPrintJobsReport",
+            "Get-ToolkitDefaultPrinterReport",
+            "Get-ToolkitOfflinePrintersReport",
+            "Open-ToolkitPrintersSettings",
+            "Open-ToolkitPrintManagement"
+        )) {
+            Get-Command $commandName -ErrorAction Stop |
+                Should -Not -BeNullOrEmpty
+        }
+    }
+
+    InModuleScope ServiceDeskToolkit.Printers {
+        It "formats printer and job reports from mocked read-only data" {
+            Mock Get-CimInstance {
+                [pscustomobject]@{
+                    Name = "Impressora de teste"
+                    DriverName = "Driver de teste"
+                    PortName = "IP_192.0.2.10"
+                    PrinterStatus = 3
+                    Default = $true
+                    Shared = $false
+                    WorkOffline = $false
+                }
+            } -ParameterFilter { $ClassName -eq "Win32_Printer" }
+            Mock Get-CimInstance {
+                [pscustomobject]@{
+                    Name = "Impressora de teste, 1"
+                    Document = "Documento de teste"
+                    Owner = "usuario"
+                    JobStatus = "Spooling"
+                    TotalPages = 1
+                    Size = 1024
+                    TimeSubmitted = "20260812120000.000000-000"
+                }
+            } -ParameterFilter { $ClassName -eq "Win32_PrintJob" }
+
+            (Get-ToolkitPrinterListReport) |
+                Should -Match "IMPRESSORAS INSTALADAS"
+            (Get-ToolkitPrintJobsReport) |
+                Should -Match "FILA DE IMPRESSAO"
+            (Get-ToolkitDefaultPrinterReport) |
+                Should -Match "IMPRESSORA PADRAO"
+        }
+    }
+}
