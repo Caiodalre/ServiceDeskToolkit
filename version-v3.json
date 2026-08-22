@@ -1,0 +1,13 @@
+﻿{
+  "name": "ServiceDesk Toolkit Corporate V3",
+  "version": "3.1.0-preview.2",
+  "channel": "preview",
+  "sourceRef": "v3.1.0-office-tpm-preview",
+  "minimumPowerShell": "5.1",
+  "compatiblePowerShell": [
+    "Windows PowerShell 5.1",
+    "PowerShell 7+"
+  ],
+  "releaseDate": "2026-08-12",
+  "repository": "https://github.com/Caiodalre/ServiceDeskToolkit"
+}

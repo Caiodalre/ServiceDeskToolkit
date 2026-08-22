@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "product": "ServiceDesk Toolkit Corporate V3",
+  "version": "3.1.0-preview.2",
+  "sourceRef": "v3.1.0-office-tpm-preview",
+  "algorithm": "SHA256",
+  "files": [
+    {
+      "path": "docs/V3-README.md",
+      "sha256": "a7683c225945adf7e671acd3ccde2bb49c39eb1df03e6a3557c09023287f716b"
+    },
+    {
+      "path": "install-v3.ps1",
+      "sha256": "09d8c5f38dd858742393c87cb3d12a5c838862b01c4a1bb5833024f7a18f7b1a"
+    },
+    {
+      "path": "ServiceDeskToolkit-CorporateV3.ps1",
+      "sha256": "65810cfd5f948e0a058e66f4decfc089ef1ae354e8cf1c9fea66faf602cff6cf"
+    },
+    {
+      "path": "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
+      "sha256": "cd3dfce9639bbd2ead58b2cab24302c7ed4b3b042f6bec57f26d47e973f739b1"
+    },
+    {
+      "path": "src/ServiceDeskToolkit.Health/ServiceDeskToolkit.Health.psm1",
+      "sha256": "e3d5e625d66d15ce7a3a6542912078b337a79dea494d9191a3c2b4b8df42ee5f"
+    },
+    {
+      "path": "src/ServiceDeskToolkit.Inventory/ServiceDeskToolkit.Inventory.psm1",
+      "sha256": "544684c21f06b1c21d61ee3cd204bda86482c91dc7a6e98e13173c4d69edf47d"
+    },
+    {
+      "path": "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
+      "sha256": "9eed28a9fa088f97bb938e71888388dca4329cc3395bd8f69818c551383956c0"
+    },
+    {
+      "path": "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
+      "sha256": "c6986fbda27e49044aa34afe1b100ac356e3a5a0e766a443614779a00f9f7ebd"
+    },
+    {
+      "path": "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
+      "sha256": "81ece25a3223e736cf7a0b3c19a67dd574676f274e0a8e3ae52c0f038bd54b2c"
+    },
+    {
+      "path": "tools/Invoke-V3Preview2Homologation.ps1",
+      "sha256": "282d2e3beab75a45cb0bc76f01915163420bbc135aea8bc53d6e29f02d6742e7"
+    },
+    {
+      "path": "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md",
+      "sha256": "616a272cd789cd96265fb2f3eca4655540e9989c583a3f935e19f760ccdf2280"
+    },
+    {
+      "path": "tools/Test-ToolkitV3.ps1",
+      "sha256": "b64547c55ad229bbcf590e431aa9ac16081f467b155e71b527226539a5c96963"
+    },
+    {
+      "path": "version-v3.json",
+      "sha256": "ecb8228088d39f9e1c4ef6e3aaa14e029726c3351046aaef07dbc4c31f976c57"
+    }
+  ]
+}

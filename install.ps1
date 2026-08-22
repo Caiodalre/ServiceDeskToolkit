@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # ServiceDesk Toolkit Corporate - Instalador via GitHub
 # Repositorio: github.com/Caiodalre/ServiceDeskToolkit
 # Compatibilidade: Windows PowerShell 5.1 e PowerShell 7+
@@ -9,28 +9,78 @@ $ErrorActionPreference = "Stop"
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 }
-catch {}
+catch {
+    Write-Verbose "Nao foi possivel forcar TLS 1.2: $($_.Exception.Message)"
+}
 
 $GitHubUser = "Caiodalre"
 $RepoName = "ServiceDeskToolkit"
-$Branch = "main"
+$DefaultRef = "v2.3.0"
+$Ref = $env:SDTK_REF
+
+if ([string]::IsNullOrWhiteSpace($Ref)) {
+    $Ref = $DefaultRef
+}
+
+$Branch = $Ref
 
 $BaseUrl = "https://raw.githubusercontent.com/$GitHubUser/$RepoName/$Branch"
-
 $InstallPath = "C:\ServiceDeskToolkit"
 $DataPath = Join-Path $InstallPath "data"
+$ToolsPath = Join-Path $InstallPath "tools"
+$ConfigPath = Join-Path $InstallPath "config"
+$SourceRefPath = Join-Path $ConfigPath "source-ref.json"
 
 $MainScriptUrl = "$BaseUrl/ServiceDeskToolkit-Corporate.ps1"
 $CmdUrl = "$BaseUrl/ServiceDeskToolkit.cmd"
 $KnowledgeUrl = "$BaseUrl/data/knowledge-base.json"
 $ReadmeUrl = "$BaseUrl/README.md"
+$VersionUrl = "$BaseUrl/version.json"
+$UpdateUrl = "$BaseUrl/update.ps1"
+$RollbackUrl = "$BaseUrl/rollback.ps1"
+$DiagnosticToolUrl = "$BaseUrl/tools/Get-ToolkitDiagnostic.ps1"
+$QualityGateToolUrl = "$BaseUrl/tools/Test-ToolkitQuality.ps1"
+$ReleaseValidatorToolUrl = "$BaseUrl/tools/Test-ToolkitRelease.ps1"
+$InstalledValidatorToolUrl = "$BaseUrl/tools/Test-ToolkitInstalled.ps1"
 
 $MainScriptPath = Join-Path $InstallPath "ServiceDeskToolkit-Corporate.ps1"
 $CmdPath = Join-Path $InstallPath "ServiceDeskToolkit.cmd"
 $KnowledgePath = Join-Path $DataPath "knowledge-base.json"
 $ReadmePath = Join-Path $InstallPath "README.md"
+$VersionPath = Join-Path $InstallPath "version.json"
+$UpdatePath = Join-Path $InstallPath "update.ps1"
+$RollbackPath = Join-Path $InstallPath "rollback.ps1"
+$DiagnosticToolPath = Join-Path $ToolsPath "Get-ToolkitDiagnostic.ps1"
+$QualityGateToolPath = Join-Path $ToolsPath "Test-ToolkitQuality.ps1"
+$ReleaseValidatorToolPath = Join-Path $ToolsPath "Test-ToolkitRelease.ps1"
+$InstalledValidatorToolPath = Join-Path $ToolsPath "Test-ToolkitInstalled.ps1"
+try {
+    if (!(Test-Path $ConfigPath)) {
+        New-Item -Path $ConfigPath -ItemType Directory -Force | Out-Null
+    }
 
-function Download-ToolkitFile {
+    $sourceRefInfo = [ordered]@{
+        repository = "https://github.com/$GitHubUser/$RepoName"
+        ref = $Ref
+        defaultRef = $DefaultRef
+        installedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        installPath = $InstallPath
+    }
+
+    $sourceRefJson = $sourceRefInfo | ConvertTo-Json -Depth 4
+    $sourceRefEncoding = New-Object System.Text.UTF8Encoding($true)
+    [System.IO.File]::WriteAllText($SourceRefPath, $sourceRefJson, $sourceRefEncoding)
+
+    Write-Host "Origem da instalacao registrada:" -ForegroundColor Cyan
+    Write-Host $SourceRefPath -ForegroundColor DarkGray
+    Write-Host "source-ref.json salvo." -ForegroundColor Green
+}
+catch {
+    Write-Host "AVISO - Nao foi possivel registrar source-ref.json: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
+
+function Save-ToolkitFile {
     param(
         [Parameter(Mandatory=$true)][string]$Url,
         [Parameter(Mandatory=$true)][string]$Destination,
@@ -85,6 +135,7 @@ Write-Host "Criando estrutura local..." -ForegroundColor Cyan
 $folders = @(
     $InstallPath,
     $DataPath,
+    $ToolsPath,
     (Join-Path $InstallPath "logs"),
     (Join-Path $InstallPath "reports"),
     (Join-Path $InstallPath "exports"),
@@ -99,16 +150,54 @@ foreach ($folder in $folders) {
     }
 }
 
-Download-ToolkitFile -Url $MainScriptUrl -Destination $MainScriptPath -Name "Script principal"
-Convert-ToolkitFileToUtf8Bom -Path $MainScriptPath -Name "Script principal"
-
-Download-ToolkitFile -Url $CmdUrl -Destination $CmdPath -Name "Launcher CMD"
-
-Download-ToolkitFile -Url $KnowledgeUrl -Destination $KnowledgePath -Name "Base de Conhecimento"
-Convert-ToolkitFileToUtf8Bom -Path $KnowledgePath -Name "Base de Conhecimento"
+# Log de instalação
+$InstallLogPath = Join-Path (Join-Path $InstallPath "logs") ("install-" + (Get-Date -Format "yyyy-MM-dd_HH-mm-ss") + ".log")
 
 try {
-    Download-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
+    Start-Transcript -Path $InstallLogPath -Append | Out-Null
+    Write-Host "Log de instalação:" -ForegroundColor Cyan
+    Write-Host $InstallLogPath -ForegroundColor Cyan
+}
+catch {
+    Write-Host "Aviso: não foi possível iniciar log de instalação." -ForegroundColor Yellow
+    Write-Host $_.Exception.Message -ForegroundColor Yellow
+}
+Save-ToolkitFile -Url $MainScriptUrl -Destination $MainScriptPath -Name "Script principal"
+Convert-ToolkitFileToUtf8Bom -Path $MainScriptPath -Name "Script principal"
+
+Save-ToolkitFile -Url $CmdUrl -Destination $CmdPath -Name "Launcher CMD"
+
+Save-ToolkitFile -Url $KnowledgeUrl -Destination $KnowledgePath -Name "Base de Conhecimento"
+Convert-ToolkitFileToUtf8Bom -Path $KnowledgePath -Name "Base de Conhecimento"
+
+Save-ToolkitFile -Url $VersionUrl -Destination $VersionPath -Name "Controle de Versao"
+Convert-ToolkitFileToUtf8Bom -Path $VersionPath -Name "Controle de Versao"
+
+Save-ToolkitFile -Url $DiagnosticToolUrl -Destination $DiagnosticToolPath -Name "Diagnostico do Toolkit"
+Convert-ToolkitFileToUtf8Bom -Path $DiagnosticToolPath -Name "Diagnostico do Toolkit"
+
+Save-ToolkitFile -Url $QualityGateToolUrl -Destination $QualityGateToolPath -Name "Quality Gate"
+Convert-ToolkitFileToUtf8Bom -Path $QualityGateToolPath -Name "Quality Gate"
+
+Save-ToolkitFile -Url $ReleaseValidatorToolUrl -Destination $ReleaseValidatorToolPath -Name "Validador de Release"
+Convert-ToolkitFileToUtf8Bom -Path $ReleaseValidatorToolPath -Name "Validador de Release"
+
+Save-ToolkitFile -Url $InstalledValidatorToolUrl -Destination $InstalledValidatorToolPath -Name "Validador de Instalacao"
+Convert-ToolkitFileToUtf8Bom -Path $InstalledValidatorToolPath -Name "Validador de Instalacao"
+$SupportPackageToolPath = Join-Path $ToolsPath "Export-ToolkitSupportPackage.ps1"
+
+Save-ToolkitFile -Url "$BaseUrl/tools/Export-ToolkitSupportPackage.ps1" -Destination $SupportPackageToolPath -Name "Exportador de Pacote de Suporte"
+Convert-ToolkitFileToUtf8Bom -Path $SupportPackageToolPath -Name "Exportador de Pacote de Suporte"
+
+
+Save-ToolkitFile -Url $UpdateUrl -Destination $UpdatePath -Name "Atualizador"
+Convert-ToolkitFileToUtf8Bom -Path $UpdatePath -Name "Atualizador"
+
+Save-ToolkitFile -Url $RollbackUrl -Destination $RollbackPath -Name "Rollback"
+Convert-ToolkitFileToUtf8Bom -Path $RollbackPath -Name "Rollback"
+
+try {
+    Save-ToolkitFile -Url $ReadmeUrl -Destination $ReadmePath -Name "README"
 }
 catch {
     Write-Host "Aviso: README nao encontrado. Continuando instalacao." -ForegroundColor Yellow
@@ -120,7 +209,15 @@ Write-Host "Validando arquivos baixados..." -ForegroundColor Cyan
 $requiredFiles = @(
     $MainScriptPath,
     $CmdPath,
-    $KnowledgePath
+    $KnowledgePath,
+    $VersionPath,
+    $DiagnosticToolPath,
+    $QualityGateToolPath,
+    $ReleaseValidatorToolPath,
+    $InstalledValidatorToolPath,
+    $SupportPackageToolPath,
+    $UpdatePath,
+    $RollbackPath
 )
 
 foreach ($file in $requiredFiles) {
@@ -198,6 +295,15 @@ Write-Host ""
 Write-Host "Base de Conhecimento:" -ForegroundColor Cyan
 Write-Host $KnowledgePath
 Write-Host ""
+Write-Host ""
+Write-Host "Versao instalada:" -ForegroundColor Cyan
+try {
+    $versionInfo = Get-Content $VersionPath -Raw | ConvertFrom-Json
+    Write-Host "$($versionInfo.name) $($versionInfo.version) [$($versionInfo.channel)]" -ForegroundColor Green
+}
+catch {
+    Write-Host "Nao foi possivel ler o version.json." -ForegroundColor Yellow
+}
 Write-Host "Launcher:" -ForegroundColor Cyan
 Write-Host $CmdPath
 Write-Host ""

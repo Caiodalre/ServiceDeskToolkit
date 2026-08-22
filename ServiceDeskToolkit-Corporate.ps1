@@ -1,4 +1,4 @@
-Add-Type -AssemblyName PresentationFramework
+﻿Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
@@ -19,28 +19,210 @@ function Get-InventoryObj {
   }catch{"Erro ao coletar inventário: $($_.Exception.Message)"}
 }
 function Get-InventoryText { $i=Get-InventoryObj; if($i -is [string]){return $i}; return ($i|Format-List|Out-String) }
-function Test-NetworkBasic { try{ $o=@(); $o+='Diagnóstico de rede'; $o+=''; $o+='Ping 8.8.8.8: '+$(if(Test-Connection 8.8.8.8 -Count 2 -Quiet -ErrorAction SilentlyContinue){'OK'}else{'Falha'}); $o+='Ping google.com: '+$(if(Test-Connection google.com -Count 2 -Quiet -ErrorAction SilentlyContinue){'OK'}else{'Falha'}); try{Resolve-DnsName google.com -ErrorAction Stop|Out-Null;$o+='DNS: OK'}catch{$o+='DNS: Falha'}; $o+=''; $o+='Adaptadores ativos:'; $o+=(Get-NetAdapter|Where Status -eq Up|Select Name,InterfaceDescription,MacAddress,LinkSpeed,Status|Format-Table -AutoSize|Out-String); $o -join "`n" }catch{"Erro na rede: $($_.Exception.Message)"} }
+function Test-NetworkBasic { try{ $o=@(); $o+='Diagnóstico de rede'; $o+=''; $o+='Ping 8.8.8.8: '+$(if(Test-Connection 8.8.8.8 -Count 2 -Quiet -ErrorAction SilentlyContinue){'OK'}else{'Falha'}); $o+='Ping google.com: '+$(if(Test-Connection google.com -Count 2 -Quiet -ErrorAction SilentlyContinue){'OK'}else{'Falha'}); try{Resolve-DnsName google.com -ErrorAction Stop|Out-Null;$o+='DNS: OK'}catch{$o+='DNS: Falha'}; $o+=''; $o+='Adaptadores ativos:'; $o+=(Get-NetAdapter|Where-Object Status -eq Up|Select-Object Name,InterfaceDescription,MacAddress,LinkSpeed,Status|Format-Table -AutoSize|Out-String); $o -join "`n" }catch{"Erro na rede: $($_.Exception.Message)"} }
 function Invoke-FlushDns { try{ipconfig /flushdns|Out-Null;'Cache DNS limpo com sucesso.'}catch{"Erro: $($_.Exception.Message)"} }
 function Invoke-RenewIp { try{ipconfig /release|Out-Null;Start-Sleep 2;ipconfig /renew|Out-Null;'IP renovado. Verifique a conexão.'}catch{"Erro: $($_.Exception.Message)"} }
 function Invoke-TimeSync { try{Start-Service w32time -ErrorAction SilentlyContinue; w32tm /resync 2>&1|Out-String}catch{"Erro: $($_.Exception.Message)"} }
 function Invoke-SpoolerRestart { try{Restart-Service Spooler -Force;'Spooler reiniciado.'}catch{"Erro: $($_.Exception.Message)"} }
 function Get-TpmBasic { try{ if(Get-Command Get-Tpm -ErrorAction SilentlyContinue){Get-Tpm|Format-List|Out-String}else{'Get-Tpm indisponível.'}}catch{"Erro TPM: $($_.Exception.Message)"} }
 function Get-BitlockerBasic { try{manage-bde -status 2>&1|Out-String}catch{"Erro BitLocker: $($_.Exception.Message)"} }
-function Get-DefenderBasic { try{ if(Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue){Get-MpComputerStatus|Select AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AntivirusSignatureLastUpdated|Format-List|Out-String}else{'Get-MpComputerStatus indisponível.'}}catch{"Erro Defender: $($_.Exception.Message)"} }
-function Get-UacBasic { try{Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'|Select EnableLUA,ConsentPromptBehaviorAdmin,PromptOnSecureDesktop|Format-List|Out-String}catch{"Erro UAC: $($_.Exception.Message)"} }
-function Get-AdminsBasic { try{Get-LocalGroupMember -Group Administradores|Select Name,ObjectClass,PrincipalSource|Format-Table -AutoSize|Out-String}catch{net localgroup Administradores 2>&1|Out-String} }
-function Get-StoppedAutoServices { try{Get-CimInstance Win32_Service|Where {$_.StartMode -eq 'Auto' -and $_.State -ne 'Running'}|Select Name,DisplayName,State|Sort DisplayName|Format-Table -AutoSize|Out-String}catch{"Erro: $($_.Exception.Message)"} }
-function Get-CriticalEvents { try{$e=Get-WinEvent -FilterHashtable @{LogName='System';Level=1,2;StartTime=(Get-Date).AddHours(-24)} -MaxEvents 30 -ErrorAction SilentlyContinue|Select TimeCreated,ProviderName,Id,LevelDisplayName,Message; if($e){$e|Format-List|Out-String}else{'Nenhum evento crítico/erro nas últimas 24h.'}}catch{"Erro eventos: $($_.Exception.Message)"} }
+function Get-DefenderBasic { try{ if(Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue){Get-MpComputerStatus|Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AntivirusSignatureLastUpdated|Format-List|Out-String}else{'Get-MpComputerStatus indisponível.'}}catch{"Erro Defender: $($_.Exception.Message)"} }
+function Get-UacBasic { try{Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'|Select-Object EnableLUA,ConsentPromptBehaviorAdmin,PromptOnSecureDesktop|Format-List|Out-String}catch{"Erro UAC: $($_.Exception.Message)"} }
+function Get-AdminsBasic { try{Get-LocalGroupMember -Group Administradores|Select-Object Name,ObjectClass,PrincipalSource|Format-Table -AutoSize|Out-String}catch{net localgroup Administradores 2>&1|Out-String} }
+function Get-StoppedAutoServices { try{Get-CimInstance Win32_Service|Where-Object {$_.StartMode -eq 'Auto' -and $_.State -ne 'Running'}|Select-Object Name,DisplayName,State|Sort-Object DisplayName|Format-Table -AutoSize|Out-String}catch{"Erro: $($_.Exception.Message)"} }
+function Get-CriticalEvents { try{$e=Get-WinEvent -FilterHashtable @{LogName='System';Level=1,2;StartTime=(Get-Date).AddHours(-24)} -MaxEvents 30 -ErrorAction SilentlyContinue|Select-Object TimeCreated,ProviderName,Id,LevelDisplayName,Message; if($e){$e|Format-List|Out-String}else{'Nenhum evento crítico/erro nas últimas 24h.'}}catch{"Erro eventos: $($_.Exception.Message)"} }
 function Invoke-GpUpdate { try{gpupdate /force 2>&1|Out-String}catch{"Erro: $($_.Exception.Message)"} }
 function Invoke-GpResult { try{$f=New-ReportName 'GPResult' 'html'; gpresult /h $f /f 2>&1|Out-Null; Start-Process $f; "GPResult gerado:`n$f"}catch{"Erro: $($_.Exception.Message)"} }
 function Test-TcpPort($hostName,[int]$port){ try{Test-NetConnection -ComputerName $hostName -Port $port -InformationLevel Detailed|Format-List|Out-String}catch{"Erro TCP: $($_.Exception.Message)"} }
 function Export-ReportTxt { try{$f=New-ReportName 'RelatorioCompleto' 'txt'; @("INVENTÃRIO",(Get-InventoryText),"REDE",(Test-NetworkBasic),"TPM",(Get-TpmBasic),"BITLOCKER",(Get-BitlockerBasic),"DEFENDER",(Get-DefenderBasic),"UAC",(Get-UacBasic),"ADMINS",(Get-AdminsBasic),"EVENTOS",(Get-CriticalEvents)) -join "`n`n"|Out-File $f -Encoding UTF8; "Relatório TXT gerado:`n$f"}catch{"Erro: $($_.Exception.Message)"} }
-function Export-ReportHtml { try{$f=New-ReportName 'RelatorioCompleto' 'html'; $inv=Get-InventoryText; $net=Test-NetworkBasic; $html="<html><head><meta charset='utf-8'><title>ServiceDesk Toolkit</title><style>body{font-family:Segoe UI,Arial;background:#f5f7fa;padding:30px}.hero{background:#1849A9;color:white;padding:24px;border-radius:16px}pre{background:white;padding:16px;border-radius:12px;white-space:pre-wrap}</style></head><body><div class='hero'><h1>ServiceDesk Toolkit</h1><p>Relatório $env:COMPUTERNAME - $(Get-Date)</p></div><h2>Inventário</h2><pre>$([System.Net.WebUtility]::HtmlEncode($inv))</pre><h2>Rede</h2><pre>$([System.Net.WebUtility]::HtmlEncode($net))</pre></body></html>"; $html|Out-File $f -Encoding UTF8; Start-Process $f; "Relatório HTML gerado:`n$f"}catch{"Erro: $($_.Exception.Message)"} }
+function Export-ReportHtml {
+    try {
+        $f = New-ReportName 'RelatorioCompleto' 'html'
+
+        $inv = Get-InventoryText
+        $net = Test-NetworkBasic
+        $winRepair = Get-WindowsRepairStatus
+
+        $invHtml = [System.Net.WebUtility]::HtmlEncode($inv)
+        $netHtml = [System.Net.WebUtility]::HtmlEncode($net)
+        $winRepairHtml = [System.Net.WebUtility]::HtmlEncode($winRepair)
+
+        $generatedAt = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
+        $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+        $adminStatus = if (Test-Admin) { "Administrador" } else { "Usuario comum" }
+
+        $hostHtml = [System.Net.WebUtility]::HtmlEncode($env:COMPUTERNAME)
+        $userHtml = [System.Net.WebUtility]::HtmlEncode($currentUser)
+        $generatedAtHtml = [System.Net.WebUtility]::HtmlEncode($generatedAt)
+        $adminStatusHtml = [System.Net.WebUtility]::HtmlEncode($adminStatus)
+
+        $html = @"
+<html>
+<head>
+<meta charset='utf-8'>
+<title>ServiceDesk Toolkit</title>
+<style>
+body {
+    margin: 0;
+    font-family: Segoe UI, Arial, sans-serif;
+    background: #E9EEF5;
+    color: #0F172A;
+}
+
+body::before {
+    content: "";
+    display: block;
+    height: 8px;
+    background: linear-gradient(90deg, #0F2F70, #1D4ED8, #38BDF8);
+}
+
+.hero {
+    background: linear-gradient(135deg, #0F2F70, #1D4ED8);
+    color: white;
+    padding: 28px 32px;
+    border-radius: 20px;
+    margin: 30px auto 22px auto;
+    max-width: 1180px;
+    box-shadow: 0 18px 45px rgba(15, 47, 112, .22);
+}
+
+.hero h1 {
+    margin: 0 0 8px 0;
+    font-size: 30px;
+}
+
+.hero p {
+    margin: 0;
+    opacity: .92;
+    font-size: 14px;
+}
+
+.cards {
+    max-width: 1180px;
+    margin: 0 auto 22px auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.info-card {
+    background: #FFFFFF;
+    border: 1px solid #DDE7F0;
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .05);
+}
+
+.info-card .label {
+    color: #64748B;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-weight: 700;
+}
+
+.info-card .value {
+    margin-top: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0F172A;
+    word-break: break-word;
+}
+
+@media (max-width: 900px) {
+    .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+h2 {
+    max-width: 1180px;
+    margin: 18px auto 0 auto;
+    background: #FFFFFF;
+    border: 1px solid #DDE7F0;
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 20px;
+    font-size: 18px;
+    color: #0F172A;
+}
+
+pre {
+    max-width: 1180px;
+    margin: 0 auto 18px auto;
+    background: #FFFFFF;
+    border: 1px solid #DDE7F0;
+    border-radius: 0 0 16px 16px;
+    padding: 18px 20px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: Consolas, Cascadia Mono, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .05);
+}
+</style>
+</head>
+<body>
+<div class='hero'>
+    <h1>ServiceDesk Toolkit</h1>
+    <p>Relatório executivo gerado em $generatedAtHtml</p>
+</div>
+
+<div class='cards'>
+    <div class='info-card'>
+        <div class='label'>Hostname</div>
+        <div class='value'>$hostHtml</div>
+    </div>
+
+    <div class='info-card'>
+        <div class='label'>Usuario</div>
+        <div class='value'>$userHtml</div>
+    </div>
+
+    <div class='info-card'>
+        <div class='label'>Execucao</div>
+        <div class='value'>$adminStatusHtml</div>
+    </div>
+
+    <div class='info-card'>
+        <div class='label'>Gerado em</div>
+        <div class='value'>$generatedAtHtml</div>
+    </div>
+</div>
+
+<h2>Inventário</h2>
+<pre>$invHtml</pre>
+
+<h2>Rede</h2>
+<pre>$netHtml</pre>
+
+<h2>Manutenção Windows</h2>
+<pre>$winRepairHtml</pre>
+</body>
+</html>
+"@
+
+        $html | Out-File $f -Encoding UTF8
+        Start-Process $f
+
+        return "Relatório HTML gerado:`n$f"
+    }
+    catch {
+        return "Erro: $($_.Exception.Message)"
+    }
+}
 
 # VPN / Appgate
 function Invoke-AppgateFix { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $cfg='C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config'; if(!(Test-Path $cfg)){return "Arquivo não encontrado:`n$cfg"}; $b=Join-Path $Backups ("Appgate SDP Service.dll.config.backup-$(Get-Date -Format yyyy-MM-dd_HH-mm-ss)"); Copy-Item $cfg $b -Force; $xml=New-Object System.Xml.XmlDocument; $xml.PreserveWhitespace=$true; $xml.Load($cfg); $n=$xml.SelectSingleNode("//applicationSettings/Cryptzone.Stratus.WindowsClient.Properties.Application/setting[@name='RunScriptTimeout']/value"); if(!$n){return "RunScriptTimeout não encontrado. Backup: $b"}; $old=$n.InnerText; $n.InnerText='300000'; $xml.Save($cfg); Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name ConsentPromptBehaviorAdmin -Value 5 -Type DWord; "Correção Appgate concluída.`nRunScriptTimeout: $old -> 300000`nUAC ConsentPromptBehaviorAdmin = 5`nBackup: $b" }catch{"ERRO Appgate: $($_.Exception.Message)"} }
-function Restart-Appgate { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $o=New-Object Text.StringBuilder; foreach($p in 'Appgate SDP Service','appgate-driver'){ $ps=Get-Process -Name $p -ErrorAction SilentlyContinue; if($ps){$ps|%{[void]$o.AppendLine("Finalizando $($_.ProcessName) PID $($_.Id)"); Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue}}else{[void]$o.AppendLine("Processo não encontrado: $p")}}; Start-Sleep 3; foreach($s in 'appgatedriver','AppgateUpdateService'){ if(Get-Service $s -ErrorAction SilentlyContinue){[void]$o.AppendLine("Reiniciando serviço: $s"); Restart-Service $s -Force -ErrorAction SilentlyContinue; Start-Sleep 2}}; $exe='C:\Program Files\Appgate SDP\service\Appgate SDP Service.exe'; if(Test-Path $exe){Start-Process $exe; [void]$o.AppendLine("Iniciado: $exe")}; [void]$o.AppendLine('Concluído.'); $o.ToString()}catch{"ERRO ao reiniciar Appgate: $($_.Exception.Message)"} }
-function Get-AppgateStatus { try{ $o=New-Object Text.StringBuilder; $cfg='C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config'; [void]$o.AppendLine('Status VPN / Appgate'); [void]$o.AppendLine(''); if(Test-Path $cfg){[void]$o.AppendLine("Config OK: $cfg"); try{$xml=New-Object Xml.XmlDocument; $xml.Load($cfg); $n=$xml.SelectSingleNode("//applicationSettings/Cryptzone.Stratus.WindowsClient.Properties.Application/setting[@name='RunScriptTimeout']/value"); [void]$o.AppendLine("RunScriptTimeout: $($n.InnerText)")}catch{[void]$o.AppendLine("Erro XML: $($_.Exception.Message)")}}else{[void]$o.AppendLine("Config não encontrado: $cfg")}; $u=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System').ConsentPromptBehaviorAdmin; [void]$o.AppendLine("UAC ConsentPromptBehaviorAdmin: $u"); [void]$o.AppendLine(''); [void]$o.AppendLine('Serviços:'); [void]$o.AppendLine((Get-Service|Where {$_.Name -eq 'appgatedriver' -or $_.Name -eq 'AppgateUpdateService' -or $_.DisplayName -like '*Appgate*'}|Select Name,DisplayName,Status|Format-Table -AutoSize|Out-String)); [void]$o.AppendLine('Processos:'); [void]$o.AppendLine((Get-Process|Where {$_.ProcessName -like '*appgate*' -or $_.ProcessName -like '*sdp*'}|Select ProcessName,Id,Path|Format-Table -AutoSize|Out-String)); $o.ToString() }catch{"ERRO status Appgate: $($_.Exception.Message)"} }
+function Restart-Appgate { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $o=New-Object Text.StringBuilder; foreach($p in 'Appgate SDP Service','appgate-driver'){ $ps=Get-Process -Name $p -ErrorAction SilentlyContinue; if($ps){$ps|ForEach-Object{[void]$o.AppendLine("Finalizando $($_.ProcessName) PID $($_.Id)"); Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue}}else{[void]$o.AppendLine("Processo não encontrado: $p")}}; Start-Sleep 3; foreach($s in 'appgatedriver','AppgateUpdateService'){ if(Get-Service $s -ErrorAction SilentlyContinue){[void]$o.AppendLine("Reiniciando serviço: $s"); Restart-Service $s -Force -ErrorAction SilentlyContinue; Start-Sleep 2}}; $exe='C:\Program Files\Appgate SDP\service\Appgate SDP Service.exe'; if(Test-Path $exe){Start-Process $exe; [void]$o.AppendLine("Iniciado: $exe")}; [void]$o.AppendLine('Concluído.'); $o.ToString()}catch{"ERRO ao reiniciar Appgate: $($_.Exception.Message)"} }
+function Get-AppgateStatus { try{ $o=New-Object Text.StringBuilder; $cfg='C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config'; [void]$o.AppendLine('Status VPN / Appgate'); [void]$o.AppendLine(''); if(Test-Path $cfg){[void]$o.AppendLine("Config OK: $cfg"); try{$xml=New-Object Xml.XmlDocument; $xml.Load($cfg); $n=$xml.SelectSingleNode("//applicationSettings/Cryptzone.Stratus.WindowsClient.Properties.Application/setting[@name='RunScriptTimeout']/value"); [void]$o.AppendLine("RunScriptTimeout: $($n.InnerText)")}catch{[void]$o.AppendLine("Erro XML: $($_.Exception.Message)")}}else{[void]$o.AppendLine("Config não encontrado: $cfg")}; $u=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System').ConsentPromptBehaviorAdmin; [void]$o.AppendLine("UAC ConsentPromptBehaviorAdmin: $u"); [void]$o.AppendLine(''); [void]$o.AppendLine('Serviços:'); [void]$o.AppendLine((Get-Service|Where-Object {$_.Name -eq 'appgatedriver' -or $_.Name -eq 'AppgateUpdateService' -or $_.DisplayName -like '*Appgate*'}|Select-Object Name,DisplayName,Status|Format-Table -AutoSize|Out-String)); [void]$o.AppendLine('Processos:'); [void]$o.AppendLine((Get-Process|Where-Object {$_.ProcessName -like '*appgate*' -or $_.ProcessName -like '*sdp*'}|Select-Object ProcessName,Id,Path|Format-Table -AutoSize|Out-String)); $o.ToString() }catch{"ERRO status Appgate: $($_.Exception.Message)"} }
 
 # TPM / Office
 function Invoke-TpmOfficeFix { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $p='HKLM:\Software\Microsoft\Cryptography\Protect\Providers\df9d8cd0-1501-11d1-8c7a-00c04fc297eb'; $o='HKCU:\Software\Microsoft\Office\16.0\Common\Identity'; if(!(Test-Path $p)){New-Item $p -Force|Out-Null}; New-ItemProperty -Path $p -Name ProtectionPolicy -Value 1 -PropertyType DWord -Force|Out-Null; if(!(Test-Path $o)){New-Item $o -Force|Out-Null}; New-ItemProperty -Path $o -Name EnableADAL -Value 0 -PropertyType DWord -Force|Out-Null; "Ajuste TPM 2 aplicado.`nProtectionPolicy=1`nEnableADAL=0`nReinicie o computador."}catch{"ERRO TPM 2: $($_.Exception.Message)"} }
@@ -49,10 +231,10 @@ function Start-DismSfc { try{ if(!(Test-Admin)){return 'ERRO: execute como admin
 function Get-TpmOfficeStatus { try{ $o=New-Object Text.StringBuilder; [void]$o.AppendLine('Status TPM / Office'); [void]$o.AppendLine(''); [void]$o.AppendLine((Get-TpmBasic)); $p='HKLM:\Software\Microsoft\Cryptography\Protect\Providers\df9d8cd0-1501-11d1-8c7a-00c04fc297eb'; $id='HKCU:\Software\Microsoft\Office\16.0\Common\Identity'; if(Test-Path $p){try{[void]$o.AppendLine("ProtectionPolicy: $((Get-ItemProperty $p).ProtectionPolicy)")}catch{[void]$o.AppendLine('ProtectionPolicy não encontrado')}}else{[void]$o.AppendLine('Chave ProtectionPolicy não encontrada')}; if(Test-Path $id){try{[void]$o.AppendLine("EnableADAL: $((Get-ItemProperty $id).EnableADAL)")}catch{[void]$o.AppendLine('EnableADAL não encontrado')}}else{[void]$o.AppendLine('Chave Office Identity não encontrada')}; $o.ToString()}catch{"ERRO status TPM/Office: $($_.Exception.Message)"} }
 
 # Windows / Reparo
-function Get-WindowsRepairStatus { try{ $os=Get-CimInstance Win32_OperatingSystem; $d=Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"; $o=@(); $o+='Status Windows / Reparo'; $o+=''; $o+="Windows: $($os.Caption) $($os.Version) Build $($os.BuildNumber)"; $o+="Disco C: $([math]::Round($d.FreeSpace/1GB,2)) GB livres de $([math]::Round($d.Size/1GB,2)) GB"; $o+=''; $o+='Serviços WU:'; $o+=(Get-Service wuauserv,bits,cryptsvc,msiserver -ErrorAction SilentlyContinue|Select Name,DisplayName,Status|Format-Table -AutoSize|Out-String); $o+='Eventos 24h:'; $o+=(Get-CriticalEvents); $o -join "`n"}catch{"ERRO status Windows: $($_.Exception.Message)"} }
+function Get-WindowsRepairStatus { try{ $os=Get-CimInstance Win32_OperatingSystem; $d=Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"; $o=@(); $o+='Status Windows / Reparo'; $o+=''; $o+="Windows: $($os.Caption) $($os.Version) Build $($os.BuildNumber)"; $o+="Disco C: $([math]::Round($d.FreeSpace/1GB,2)) GB livres de $([math]::Round($d.Size/1GB,2)) GB"; $o+=''; $o+='Serviços WU:'; $o+=(Get-Service wuauserv,bits,cryptsvc,msiserver -ErrorAction SilentlyContinue|Select-Object Name,DisplayName,Status|Format-Table -AutoSize|Out-String); $o+='Eventos 24h:'; $o+=(Get-CriticalEvents); $o -join "`n"}catch{"ERRO status Windows: $($_.Exception.Message)"} }
 function Restart-WUServices { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $o=@(); foreach($s in 'wuauserv','bits','cryptsvc','msiserver'){ if(Get-Service $s -ErrorAction SilentlyContinue){Restart-Service $s -Force -ErrorAction SilentlyContinue; $o+="Reiniciado: $s"}else{$o+="Não encontrado: $s"}}; $o -join "`n"}catch{"ERRO WU: $($_.Exception.Message)"} }
 function Clear-WUCache { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; foreach($s in 'wuauserv','bits','cryptsvc'){Stop-Service $s -Force -ErrorAction SilentlyContinue}; Start-Sleep 2; $d=Get-Date -Format yyyy-MM-dd_HH-mm-ss; if(Test-Path 'C:\Windows\SoftwareDistribution'){Rename-Item 'C:\Windows\SoftwareDistribution' "SoftwareDistribution.old-$d" -Force}; if(Test-Path 'C:\Windows\System32\catroot2'){Rename-Item 'C:\Windows\System32\catroot2' "catroot2.old-$d" -Force}; foreach($s in 'wuauserv','bits','cryptsvc'){Start-Service $s -ErrorAction SilentlyContinue}; 'Cache Windows Update limpo. Teste o Windows Update novamente.'}catch{"ERRO cache WU: $($_.Exception.Message)"} }
-function Clear-UserTemp { try{$c=0; foreach($p in @($env:TEMP,"$env:LOCALAPPDATA\Temp")|Select -Unique){if(Test-Path $p){Get-ChildItem $p -Force -ErrorAction SilentlyContinue|%{Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue;$c++}}}; "Temporários processados: $c"}catch{"ERRO temp: $($_.Exception.Message)"} }
+function Clear-UserTemp { try{$c=0; foreach($p in @($env:TEMP,"$env:LOCALAPPDATA\Temp")|Select-Object -Unique){if(Test-Path $p){Get-ChildItem $p -Force -ErrorAction SilentlyContinue|ForEach-Object{Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue;$c++}}}; "Temporários processados: $c"}catch{"ERRO temp: $($_.Exception.Message)"} }
 function Start-DismOnly { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $d=Get-Date -Format yyyy-MM-dd_HH-mm-ss; $sp=Join-Path $Logs "Executar-DISM-$d.ps1"; $lp=Join-Path $Logs "DISM-$d.log"; "Dism /Online /Cleanup-Image /RestoreHealth 2>&1 | Tee-Object -FilePath '$lp' -Append`nPause"|Set-Content $sp -Encoding UTF8; Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$sp`"" -Verb RunAs; "DISM iniciado.`nLog: $lp"}catch{"ERRO DISM: $($_.Exception.Message)"} }
 function Start-SfcOnly { try{ if(!(Test-Admin)){return 'ERRO: execute como administrador.'}; $d=Get-Date -Format yyyy-MM-dd_HH-mm-ss; $sp=Join-Path $Logs "Executar-SFC-$d.ps1"; $lp=Join-Path $Logs "SFC-$d.log"; "sfc /scannow 2>&1 | Tee-Object -FilePath '$lp' -Append`nPause"|Set-Content $sp -Encoding UTF8; Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$sp`"" -Verb RunAs; "SFC iniciado.`nLog: $lp"}catch{"ERRO SFC: $($_.Exception.Message)"} }
 
@@ -2354,7 +2536,7 @@ Sugestões:
         $o = New-Object System.Text.StringBuilder
 
         [void]$o.AppendLine("BASE DE CONHECIMENTO - RESULTADOS")
-        [void]$o.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        [void]$o.AppendLine("============================================================")
         [void]$o.AppendLine("Busca: $Query")
         [void]$o.AppendLine("Resultados encontrados: $($top.Count)")
         [void]$o.AppendLine("")
@@ -2381,7 +2563,7 @@ function Get-ToolkitKnowledgeBaseSummary {
         $o = New-Object System.Text.StringBuilder
 
         [void]$o.AppendLine("BASE DE CONHECIMENTO")
-        [void]$o.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        [void]$o.AppendLine("============================================================")
         [void]$o.AppendLine("Arquivo: $(Get-ToolkitKnowledgeBasePath)")
         [void]$o.AppendLine("Artigos cadastrados: $($kb.Count)")
         [void]$o.AppendLine("")
@@ -2455,21 +2637,212 @@ function Select-ToolkitTabByHeader {
     }
 }
 
+
+# ============================================================
+# Structured Logs - ServiceDesk Toolkit
+# Compatibilidade: Windows PowerShell 5.1 e PowerShell 7+
+# ============================================================
+
+function Get-ToolkitRootPath {
+    try {
+        if ($PSScriptRoot -and (Test-Path $PSScriptRoot)) {
+            return $PSScriptRoot
+        }
+
+        return "C:\ServiceDeskToolkit"
+    }
+    catch {
+        return "C:\ServiceDeskToolkit"
+    }
+}
+
+function Get-ToolkitIsAdmin {
+    try {
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+        return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-ToolkitLogDirectory {
+    try {
+        $root = Get-ToolkitRootPath
+        $logDir = Join-Path $root "logs"
+
+        if (!(Test-Path $logDir)) {
+            New-Item -Path $logDir -ItemType Directory -Force | Out-Null
+        }
+
+        return $logDir
+    }
+    catch {
+        return "C:\ServiceDeskToolkit\logs"
+    }
+}
+
+function Get-ToolkitStructuredLogPath {
+    param(
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("runtime","actions","errors","install","diagnostic")]
+        [string]$LogType = "runtime"
+    )
+
+    $logDir = Get-ToolkitLogDirectory
+    $month = Get-Date -Format "yyyy-MM"
+    $fileName = "$LogType-$month.jsonl"
+
+    return (Join-Path $logDir $fileName)
+}
+
+function Write-ToolkitStructuredLog {
+    param(
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("runtime","actions","errors","install","diagnostic")]
+        [string]$LogType = "runtime",
+
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("DEBUG","INFO","WARN","ERROR","CRITICAL")]
+        [string]$Level = "INFO",
+
+        [Parameter(Mandatory=$false)]
+        [string]$Module = "General",
+
+        [Parameter(Mandatory=$false)]
+        [string]$Action = "None",
+
+        [Parameter(Mandatory=$false)]
+        [string]$Status = "None",
+
+        [Parameter(Mandatory=$false)]
+        [string]$Message = "",
+
+        [Parameter(Mandatory=$false)]
+        $Data = $null,
+
+        [Parameter(Mandatory=$false)]
+        $ErrorRecord = $null
+    )
+
+    try {
+        $logPath = Get-ToolkitStructuredLogPath -LogType $LogType
+
+        $errorInfo = $null
+
+        if ($null -ne $ErrorRecord) {
+            $errorInfo = [ordered]@{
+                message = $ErrorRecord.Exception.Message
+                type = $ErrorRecord.Exception.GetType().FullName
+                category = [string]$ErrorRecord.CategoryInfo.Category
+                fullyQualifiedErrorId = [string]$ErrorRecord.FullyQualifiedErrorId
+                scriptStackTrace = [string]$ErrorRecord.ScriptStackTrace
+            }
+        }
+
+        $event = [ordered]@{
+            timestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+            machine = $env:COMPUTERNAME
+            user = $env:USERNAME
+            userDomain = $env:USERDOMAIN
+            isAdmin = Get-ToolkitIsAdmin
+            processId = $PID
+            powershellVersion = $PSVersionTable.PSVersion.ToString()
+            logType = $LogType
+            level = $Level
+            module = $Module
+            action = $Action
+            status = $Status
+            message = $Message
+            data = $Data
+            error = $errorInfo
+        }
+
+        $json = $event | ConvertTo-Json -Depth 12 -Compress
+        Add-Content -Path $logPath -Value $json -Encoding UTF8
+
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Write-ToolkitRuntimeLog {
+    param(
+        [string]$Module = "Runtime",
+        [string]$Action = "None",
+        [string]$Status = "Info",
+        [string]$Message = "",
+        $Data = $null
+    )
+
+    Write-ToolkitStructuredLog `
+        -LogType "runtime" `
+        -Level "INFO" `
+        -Module $Module `
+        -Action $Action `
+        -Status $Status `
+        -Message $Message `
+        -Data $Data | Out-Null
+}
+
+function Write-ToolkitActionLog {
+    param(
+        [string]$Module = "Action",
+        [string]$Action = "None",
+        [string]$Status = "Executed",
+        [string]$Message = "",
+        $Data = $null
+    )
+
+    Write-ToolkitStructuredLog `
+        -LogType "actions" `
+        -Level "INFO" `
+        -Module $Module `
+        -Action $Action `
+        -Status $Status `
+        -Message $Message `
+        -Data $Data | Out-Null
+}
+
+function Write-ToolkitErrorLog {
+    param(
+        [string]$Module = "Error",
+        [string]$Action = "None",
+        [string]$Status = "Error",
+        [string]$Message = "",
+        $ErrorRecord = $null,
+        $Data = $null
+    )
+
+    Write-ToolkitStructuredLog `
+        -LogType "errors" `
+        -Level "ERROR" `
+        -Module $Module `
+        -Action $Action `
+        -Status $Status `
+        -Message $Message `
+        -ErrorRecord $ErrorRecord `
+        -Data $Data | Out-Null
+}
+
 [xml]$xaml=@"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate" Height="820" Width="1380" MinHeight="740" MinWidth="1220" WindowStartupLocation="CenterScreen" Background="#E9EEF5">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate" Height="820" Width="1380" MinHeight="740" MinWidth="1220" WindowStartupLocation="CenterScreen" Background="#E9EEF5" FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True">
 <Window.Resources>
 
     <Style TargetType="Button">
-        <Setter Property="Height" Value="34"/>
-        <Setter Property="Margin" Value="0,0,0,6"/>
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Margin" Value="0,0,0,7"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Background" Value="#FFFFFF"/>
+        <Setter Property="Background" Value="#F8FAFC"/>
         <Setter Property="Foreground" Value="#0F172A"/>
         <Setter Property="BorderBrush" Value="#CBD5E1"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="12,0"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -2477,7 +2850,7 @@ function Select-ToolkitTabByHeader {
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="10"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter VerticalAlignment="Center"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
@@ -2500,14 +2873,34 @@ function Select-ToolkitTabByHeader {
         <Setter Property="Background" Value="#FFF1F2"/>
         <Setter Property="BorderBrush" Value="#FDA4AF"/>
         <Setter Property="Foreground" Value="#9F1239"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#FFE4E6"/>
+                <Setter Property="BorderBrush" Value="#FB7185"/>
+                <Setter Property="Foreground" Value="#881337"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#FECDD3"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="#1D4ED8"/>
         <Setter Property="BorderBrush" Value="#1D4ED8"/>
         <Setter Property="Foreground" Value="White"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#2563EB"/>
+                <Setter Property="BorderBrush" Value="#2563EB"/>
+                <Setter Property="Foreground" Value="White"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#1E40AF"/>
+                <Setter Property="BorderBrush" Value="#1E40AF"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
-
     <Style TargetType="TextBox">
         <Setter Property="FontFamily" Value="Consolas"/>
         <Setter Property="FontSize" Value="12"/>
@@ -2530,12 +2923,27 @@ function Select-ToolkitTabByHeader {
 
     <Style TargetType="TabItem">
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Padding" Value="14,7"/>
-        <Setter Property="Margin" Value="0,0,4,0"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
         <Setter Property="Foreground" Value="#334155"/>
+        <Setter Property="Background" Value="#F8FAFC"/>
+        <Setter Property="BorderBrush" Value="#E2E8F0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#EFF6FF"/>
+                <Setter Property="Foreground" Value="#1D4ED8"/>
+                <Setter Property="BorderBrush" Value="#BFDBFE"/>
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="#1D4ED8"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="BorderBrush" Value="#1D4ED8"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
-
     <Style TargetType="Expander">
         <Setter Property="Margin" Value="0,0,0,10"/>
         <Setter Property="FontWeight" Value="Bold"/>
@@ -2551,21 +2959,176 @@ function Select-ToolkitTabByHeader {
         <Setter Property="Margin" Value="0,6,0,0"/>
     </Style>
 
+    <Style x:Key="SidebarGroup" TargetType="Border">
+        <Setter Property="Background" Value="#0F1B2D"/>
+        <Setter Property="BorderBrush" Value="#1E293B"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="10"/>
+        <Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+
+    <Style x:Key="SidebarSectionTitle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="#93C5FD"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
 </Window.Resources>
-<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-<Border Grid.Column="0" Background="#07111F"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="14"><TextBlock Text="ServiceDesk" Foreground="White" FontSize="22" FontWeight="Bold"/><TextBlock Text="Toolkit" Foreground="#60A5FA" FontSize="22" FontWeight="Bold"/><TextBlock Text="Corporate Toolkit" Foreground="#D0D5DD" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,12"/><Border Background="#0F1B2D" CornerRadius="10" Padding="10" Margin="0,6,0,14"><StackPanel><TextBlock Text="Ambiente" Foreground="#98A2B3" FontSize="12"/><TextBlock Name="TxtAdminStatus" Foreground="#FACC15" TextWrapping="Wrap" FontSize="12"/></StackPanel></Border>
-<TextBlock Text="Ações principais" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,0,0,6"/><Button Name="BtnInventory" Content="Inventário completo"/><Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/><Button Name="BtnFlushDns" Content="Limpar DNS"/><Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/><Button Name="BtnTimeSync" Content="Sincronizar horário"/><Button Name="BtnSpooler" Content="Reiniciar spooler"/>
-<TextBlock Text="Windows" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/><Button Name="BtnPrograms" Content="Programas e Recursos"/><Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/><Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
-<TextBlock Text="VPN / Appgate" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/><Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/><Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
-<TextBlock Text="Evidências / Relatórios" Foreground="#D0D5DD" FontWeight="SemiBold" Margin="0,8,0,6"/><Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/><Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/><Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/><Button Name="BtnCopyOutput" Content="Copiar resultado"/>
-</StackPanel></ScrollViewer></Border>
+<Grid Background="#E9EEF5"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+<Border Grid.Column="0" Background="#07111F">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="14">
+            <TextBlock Text="ServiceDesk" Foreground="White" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="Toolkit" Foreground="#60A5FA" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="Corporate Toolkit" Foreground="#D0D5DD" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,12"/>
+
+            <Border Background="#0F1B2D" CornerRadius="10" Padding="10" Margin="0,6,0,14">
+                <StackPanel>
+                    <TextBlock Text="Ambiente" Foreground="#98A2B3" FontSize="12"/>
+                    <TextBlock Name="TxtAdminStatus" Foreground="#FACC15" TextWrapping="Wrap" FontSize="12"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Atendimento Rápido" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnSidebarQuickInternet" Content="Sem internet" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnSidebarQuickAppgate" Content="VPN / Appgate"/>
+                    <Button Name="BtnSidebarQuickTeams" Content="Teams"/>
+                    <Button Name="BtnSidebarQuickPrinter" Content="Impressora"/>
+                    <Button Name="BtnSidebarQuickFullReport" Content="Relatório geral"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Ferramentas rápidas" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnInventory" Content="Inventário completo"/>
+                    <Button Name="BtnNetwork" Content="Diagnóstico rápido de rede"/>
+                    <Button Name="BtnFlushDns" Content="Limpar DNS"/>
+                    <Button Name="BtnRenewIp" Content="Renovar IP" Style="{StaticResource DangerButton}"/>
+                    <Button Name="BtnTimeSync" Content="Sincronizar horário"/>
+                    <Button Name="BtnSpooler" Content="Reiniciar spooler"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Atalhos do Windows" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnWindowsUpdate" Content="Abrir Windows Update"/>
+                    <Button Name="BtnPrograms" Content="Programas e Recursos"/>
+                    <Button Name="BtnDeviceManager" Content="Gerenciador de Dispositivos"/>
+                    <Button Name="BtnNetworkConnections" Content="Conexões de Rede"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Reparo Windows" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnMaintenanceStatus" Content="Status Windows / Reparo" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnMaintenanceSfc" Content="Verificar sistema com SFC"/>
+                    <Button Name="BtnMaintenanceDism" Content="Reparar imagem com DISM"/>
+                    <Button Name="BtnMaintenanceTemp" Content="Limpar temporários"/>
+                    <Button Name="BtnMaintenanceWuServices" Content="Reiniciar serviços Windows Update"/>
+                    <Button Name="BtnMaintenanceNetworkQuick" Content="Reparo rápido de rede"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="VPN / Appgate" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnAppgateFix" Content="Corrigir VPN / Appgate"/>
+                    <Button Name="BtnAppgateRestart" Content="Reiniciar VPN / Appgate" Style="{StaticResource DangerButton}"/>
+                    <Button Name="BtnAppgateStatus" Content="Status VPN / Appgate"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Evidências" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnReportHtml" Content="Gerar relatório visual HTML" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnReportTxt" Content="Gerar relatório técnico TXT"/>
+                    <Button Name="BtnOpenReports" Content="Abrir pasta de relatórios"/>
+                    <Button Name="BtnToolkitDiagnostic" Content="Gerar diagnóstico do Toolkit" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"/>
+                    <Button Name="BtnValidateToolkitInstalled" Content="Validar instalação do Toolkit" Style="{StaticResource PrimaryButton}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SidebarGroup}">
+                <StackPanel>
+                    <TextBlock Text="Toolkit" Style="{StaticResource SidebarSectionTitle}"/>
+                    <Button Name="BtnToolkitStatus" Content="Status do Toolkit" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnRunToolkitUpdate" Content="Atualizar Toolkit" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnRunRollbackDryRun" Content="Testar rollback dry-run"/>
+                    <Button Name="BtnOpenUpdateRollbackLogs" Content="Abrir logs de update/rollback"/>
+                    <Button Name="BtnShowToolkitLogSummary" Content="Resumo dos logs do Toolkit" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnOpenLatestUpdateSummary" Content="Abrir último resumo do update" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnExportToolkitSupportPackage" Content="Gerar pacote de suporte" Style="{StaticResource PrimaryButton}"/>
+                    <Button Name="BtnOpenBackups" Content="Abrir backups"/>
+                    <Button Name="BtnCopyOutput" Content="Copiar resultado"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Border>
 <Grid Grid.Column="1" Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-<Border Background="White" CornerRadius="16" Padding="18" Margin="0,0,0,10"><StackPanel><TextBlock Text="Central de Suporte Técnico" FontSize="22" FontWeight="Bold" Foreground="#101828"/><TextBlock Text="Selecione uma área, execute a ação desejada e acompanhe o resultado técnico no painel ao lado." FontSize="13" Foreground="#667085"/></StackPanel></Border>
-<Grid Grid.Row="1" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Border Grid.Column="0" Background="White" CornerRadius="16" Padding="18" Margin="0,0,10,0"><StackPanel><TextBlock Text="Hostname" Foreground="#667085" FontSize="12"/><TextBlock Name="CardHostname" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border><Border Grid.Column="1" Background="White" CornerRadius="16" Padding="18" Margin="0,0,10,0"><StackPanel><TextBlock Text="Usuário" Foreground="#667085" FontSize="12"/><TextBlock Name="CardUser" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border><Border Grid.Column="2" Background="White" CornerRadius="16" Padding="18" Margin="0,0,10,0"><StackPanel><TextBlock Text="Windows" Foreground="#667085" FontSize="12"/><TextBlock Name="CardWindows" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border><Border Grid.Column="3" Background="White" CornerRadius="16" Padding="18"><StackPanel><TextBlock Text="IP" Foreground="#667085" FontSize="12"/><TextBlock Name="CardIp" Text="-" FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/></StackPanel></Border></Grid>
+<Border Grid.Row="0" Background="White" CornerRadius="18" Padding="20" Margin="0,0,0,12" BorderBrush="#E2E8F0" BorderThickness="1">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0">
+            <TextBlock Text="Central de Suporte Técnico" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
+            <TextBlock Text="Execute diagnósticos, colete evidências e acompanhe os resultados técnicos em um único painel." FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Column="1" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="999" Padding="12,6" VerticalAlignment="Center">
+            <TextBlock Text="ServiceDesk Toolkit" Foreground="#1D4ED8" FontSize="12" FontWeight="Bold"/>
+        </Border>
+    </Grid>
+</Border>
+
+<Grid Grid.Row="1" Margin="0,0,0,12">
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition/>
+        <ColumnDefinition/>
+        <ColumnDefinition/>
+        <ColumnDefinition/>
+    </Grid.ColumnDefinitions>
+
+    <Border Grid.Column="0" Background="White" CornerRadius="16" Padding="16" Margin="0,0,10,0" BorderBrush="#E2E8F0" BorderThickness="1">
+        <StackPanel>
+            <TextBlock Text="HOSTNAME" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+            <TextBlock Name="CardHostname" Text="-" FontWeight="Bold" FontSize="14" Foreground="#0F172A" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+    </Border>
+
+    <Border Grid.Column="1" Background="White" CornerRadius="16" Padding="16" Margin="0,0,10,0" BorderBrush="#E2E8F0" BorderThickness="1">
+        <StackPanel>
+            <TextBlock Text="USUÁRIO" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+            <TextBlock Name="CardUser" Text="-" FontWeight="Bold" FontSize="14" Foreground="#0F172A" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+    </Border>
+
+    <Border Grid.Column="2" Background="White" CornerRadius="16" Padding="16" Margin="0,0,10,0" BorderBrush="#E2E8F0" BorderThickness="1">
+        <StackPanel>
+            <TextBlock Text="WINDOWS" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+            <TextBlock Name="CardWindows" Text="-" FontWeight="Bold" FontSize="14" Foreground="#0F172A" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+    </Border>
+
+    <Border Grid.Column="3" Background="White" CornerRadius="16" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
+        <StackPanel>
+            <TextBlock Text="IP" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
+            <TextBlock Name="CardIp" Text="-" FontWeight="Bold" FontSize="14" Foreground="#0F172A" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+    </Border>
+</Grid>
 <TabControl Name="MainTabs" Grid.Row="2" Background="Transparent" BorderBrush="Transparent">
 
-                
-                
+
+
                 <TabItem Header="Base de Conhecimento">
                     <Border Background="White" CornerRadius="18" Padding="18">
                         <Grid>
@@ -2844,7 +3407,7 @@ function Select-ToolkitTabByHeader {
                                             <TextBlock Text="Gere evidências técnicas em HTML ou TXT para anexar em chamados."
                                                        Foreground="#475569" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,12"/>
                                             <Button Name="BtnHomeReports" Content="Gerar Relatório HTML" Style="{StaticResource PrimaryButton}"/>
-                                        </StackPanel>
+</StackPanel>
                                     </Border>
 
                                 </UniformGrid>
@@ -2852,8 +3415,53 @@ function Select-ToolkitTabByHeader {
                         </ScrollViewer>
                     </Border>
                 </TabItem>
-                <TabItem Header="Resultado"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Text="Saída da execução" FontSize="17" FontWeight="Bold" Margin="0,0,0,8"/><TextBox MinHeight="460" Name="TxtOutput" Grid.Row="1"/></Grid></Border></TabItem>
-<TabItem Header="Segurança"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><Button Name="BtnTpm" Content="Verificar TPM"/><Button Name="BtnBitLocker" Content="Verificar BitLocker"/><Button Name="BtnDefender" Content="Windows Defender"/><Button Name="BtnUac" Content="Verificar UAC"/><Button Name="BtnAdmins" Content="Administradores locais"/></StackPanel><TextBox MinHeight="460" Name="TxtSecurityOutput" Grid.Column="1"/></Grid></Border></TabItem>
+                <TabItem Header="Resultado">
+    <Border Background="White" CornerRadius="18" Padding="18" BorderBrush="#E2E8F0" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Saída da execução" FontSize="19" FontWeight="Bold" Foreground="#0F172A"/>
+                    <TextBlock Text="Acompanhe aqui os comandos executados, diagnósticos, evidências e mensagens técnicas." FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <Border Grid.Column="1" Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="999" Padding="10,5" VerticalAlignment="Center">
+                    <TextBlock Text="Console técnico" Foreground="#334155" FontSize="11" FontWeight="Bold"/>
+                </Border>
+            </Grid>
+
+            <Border Grid.Row="1" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,10,0,10">
+                <TextBlock Text="Dica: use o botão 'Copiar resultado' na barra lateral para enviar a saída em chamados ou evidências." Foreground="#475569" FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+
+            <TextBox Name="TxtOutput"
+                     Grid.Row="2"
+                     MinHeight="460"
+                     Background="#F8FAFC"
+                     BorderBrush="#CBD5E1"
+                     BorderThickness="1"
+                     Foreground="#0F172A"
+                     FontFamily="Consolas"
+                     FontSize="12"
+                     Padding="14"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto"
+                     IsReadOnly="True"/>
+        </Grid>
+    </Border>
+</TabItem>
+<TabItem Header="Segurança"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><Button Name="BtnTpm" Content="Verificar TPM"/><Button Name="BtnBitLocker" Content="Verificar BitLocker"/><Button Name="BtnDefender" Content="Windows Defender"/><Button Name="BtnUac" Content="Verificar UAC"/><Button Name="BtnAdmins" Content="Administradores locais"/></StackPanel><TextBox MinHeight="460" Name="TxtSecurityOutput" Grid.Column="1"/></Grid></Border></TabItem>
                 <TabItem Header="Rede Avançada">
                     <Border Background="White" CornerRadius="18" Padding="18">
                         <Grid>
@@ -3149,14 +3757,16 @@ function Select-ToolkitTabByHeader {
                         </Grid>
                     </Border>
                 </TabItem>
-<TabItem Header="TPM / Office"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Ajustes TPM / Office" Foreground="#667085" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/><Button Name="BtnTpmOfficeFix" Content="Ajuste TPM 2"/><Button Name="BtnTpmBrokenPlugin" Content="Limpar BrokenPlugin"/><Button Name="BtnDismSfcRepair" Content="Reparo DISM + SFC" Style="{StaticResource DangerButton}"/><Button Name="BtnTpmOfficeStatus" Content="Status TPM / Office"/><TextBlock Text="Observação: alguns ajustes exigem reinício do computador." Foreground="#667085" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel><TextBox MinHeight="460" Name="TxtTpmOfficeOutput" Grid.Column="1"/></Grid></Border></TabItem>
-<TabItem Header="GPO / Sistema"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><Button Name="BtnGpUpdate" Content="Executar gpupdate /force"/><Button Name="BtnGpResult" Content="Gerar gpresult HTML"/><Button Name="BtnStoppedServices" Content="Serviços automáticos parados"/><Button Name="BtnCriticalEvents" Content="Eventos últimas 24h"/></StackPanel><TextBox MinHeight="460" Name="TxtSystemOutput" Grid.Column="1"/></Grid></Border></TabItem>
+<TabItem Header="TPM / Office"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><TextBlock Text="Ajustes TPM / Office" Foreground="#667085" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/><Button Name="BtnTpmOfficeFix" Content="Ajuste TPM 2"/><Button Name="BtnTpmBrokenPlugin" Content="Limpar BrokenPlugin"/><Button Name="BtnDismSfcRepair" Content="Reparo DISM + SFC" Style="{StaticResource DangerButton}"/><Button Name="BtnTpmOfficeStatus" Content="Status TPM / Office"/><TextBlock Text="Observação: alguns ajustes exigem reinício do computador." Foreground="#667085" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0"/></StackPanel><TextBox MinHeight="460" Name="TxtTpmOfficeOutput" Grid.Column="1"/></Grid></Border></TabItem>
+<TabItem Header="GPO / Sistema"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Margin="0,0,18,0"><Button Name="BtnGpUpdate" Content="Executar gpupdate /force"/><Button Name="BtnGpResult" Content="Gerar gpresult HTML"/><Button Name="BtnStoppedServices" Content="Serviços automáticos parados"/><Button Name="BtnCriticalEvents" Content="Eventos últimas 24h"/></StackPanel><TextBox MinHeight="460" Name="TxtSystemOutput" Grid.Column="1"/></Grid></Border></TabItem>
 <TabItem Header="Teste TCP"><Border Background="White" CornerRadius="16" Padding="18"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><StackPanel Orientation="Horizontal" Margin="0,0,0,10"><StackPanel Width="220" Margin="0,0,12,0"><TextBlock Text="Host ou IP" Foreground="#667085"/><TextBox Name="InputTcpHost" IsReadOnly="False" Height="30" Text="google.com"/></StackPanel><StackPanel Width="120" Margin="0,0,12,0"><TextBlock Text="Porta" Foreground="#667085"/><TextBox Name="InputTcpPort" IsReadOnly="False" Height="30" Text="443"/></StackPanel><Button Name="BtnTcpTest" Content="Testar porta" Width="120" Margin="0,18,0,0"/></StackPanel><TextBox MinHeight="460" Name="TxtTcpOutput" Grid.Row="1"/></Grid></Border></TabItem>
 </TabControl></Grid></Grid></Window>
 "@
 
 $reader=New-Object System.Xml.XmlNodeReader $xaml
-$window=[Windows.Markup.XamlReader]::Load($reader)
+$window=[Windows.Markup.XamlReader]::Load($reader)
+
+
 
 # Visão Geral - Base de Conhecimento
 $script:MainTabs = $window.FindName("MainTabs")
@@ -3253,62 +3863,852 @@ $TxtPrintersOutput = $window.FindName("TxtPrintersOutput")
 
 
 # Find names
-$names='BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
+$names='BtnSidebarQuickInternet','BtnSidebarQuickAppgate','BtnSidebarQuickTeams','BtnSidebarQuickPrinter','BtnSidebarQuickFullReport','BtnInventory','BtnNetwork','BtnFlushDns','BtnRenewIp','BtnTimeSync','BtnSpooler','BtnWindowsUpdate','BtnPrograms','BtnDeviceManager','BtnNetworkConnections','BtnMaintenanceStatus','BtnMaintenanceSfc','BtnMaintenanceDism','BtnMaintenanceTemp','BtnMaintenanceWuServices','BtnMaintenanceNetworkQuick','BtnAppgateFix','BtnAppgateRestart','BtnAppgateStatus','BtnReportHtml','BtnReportTxt','BtnOpenReports','BtnToolkitDiagnostic','BtnValidateToolkitInstalled','BtnToolkitStatus','BtnRunToolkitUpdate','BtnRunRollbackDryRun','BtnOpenUpdateRollbackLogs','BtnShowToolkitLogSummary','BtnOpenLatestUpdateSummary','BtnExportToolkitSupportPackage','BtnOpenBackups','BtnCopyOutput','TxtOutput','TxtAdminStatus','CardHostname','CardUser','CardWindows','CardIp','BtnTpm','BtnBitLocker','BtnDefender','BtnUac','BtnAdmins','TxtSecurityOutput','BtnWinRepairStatus','BtnOpenWindowsUpdateRepair','BtnRestartWU','BtnClearWUCache','BtnDismOnly','BtnSfcOnly','BtnClearUserTemp','BtnTimeSyncRepair','TxtWindowsRepairOutput','BtnTpmOfficeFix','BtnTpmBrokenPlugin','BtnDismSfcRepair','BtnTpmOfficeStatus','TxtTpmOfficeOutput','BtnGpUpdate','BtnGpResult','BtnStoppedServices','BtnCriticalEvents','TxtSystemOutput','InputTcpHost','InputTcpPort','BtnTcpTest','TxtTcpOutput'
 foreach($n in $names){ Set-Variable -Name $n -Value ($window.FindName($n)) -Scope Script }
 
 if(Test-Admin){$TxtAdminStatus.Text='Executando como administrador.'}else{$TxtAdminStatus.Text='Atenção: não está como administrador. Algumas funções podem falhar.'}
 try{$i=Get-InventoryObj;if($i -isnot [string]){$CardHostname.Text=$i.Hostname;$CardUser.Text=$i.Usuario;$CardWindows.Text=$i.Windows;$CardIp.Text=$i.IP}}catch{}
 
+# sidebar quick support events
+if ($null -ne $BtnSidebarQuickInternet) {
+    $BtnSidebarQuickInternet.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickInternet" -Status "Started" -Message "Atendimento rapido de internet solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickInternet)
+    })
+}
+
+if ($null -ne $BtnSidebarQuickAppgate) {
+    $BtnSidebarQuickAppgate.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickAppgate" -Status "Started" -Message "Atendimento rapido de Appgate solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickAppgate)
+    })
+}
+
+if ($null -ne $BtnSidebarQuickTeams) {
+    $BtnSidebarQuickTeams.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickTeams" -Status "Started" -Message "Atendimento rapido de Teams solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickTeams)
+    })
+}
+
+if ($null -ne $BtnSidebarQuickPrinter) {
+    $BtnSidebarQuickPrinter.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickPrinter" -Status "Started" -Message "Atendimento rapido de impressora solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickPrinter)
+    })
+}
+
+if ($null -ne $BtnSidebarQuickFullReport) {
+    $BtnSidebarQuickFullReport.Add_Click({
+        try { Write-ToolkitActionLog -Module "QuickSupport" -Action "SidebarQuickFullReport" -Status "Started" -Message "Relatorio rapido geral solicitado pela sidebar." } catch {}
+        OutText (Invoke-ToolkitQuickFullReport)
+    })
+}
 # main events
-$BtnInventory.Add_Click({OutText (Get-InventoryText)})
-$BtnNetwork.Add_Click({OutText (Test-NetworkBasic)})
-$BtnFlushDns.Add_Click({OutText (Invoke-FlushDns)})
-$BtnRenewIp.Add_Click({if([System.Windows.MessageBox]::Show('Renovar IP pode derrubar a conexão temporariamente. Continuar?','Renovar IP','YesNo','Warning') -eq 'Yes'){OutText (Invoke-RenewIp)}})
-$BtnTimeSync.Add_Click({OutText (Invoke-TimeSync)})
-$BtnSpooler.Add_Click({OutText (Invoke-SpoolerRestart)})
-$BtnWindowsUpdate.Add_Click({Start-Process 'ms-settings:windowsupdate';OutText 'Windows Update aberto.'})
-$BtnPrograms.Add_Click({Start-Process 'appwiz.cpl';OutText 'Programas e Recursos aberto.'})
-$BtnDeviceManager.Add_Click({Start-Process 'devmgmt.msc';OutText 'Gerenciador de Dispositivos aberto.'})
-$BtnNetworkConnections.Add_Click({Start-Process 'ncpa.cpl';OutText 'Conexões de Rede aberto.'})
-$BtnAppgateFix.Add_Click({if([System.Windows.MessageBox]::Show('Alterar config do Appgate e UAC para 5?','Corrigir Appgate','YesNo','Warning') -eq 'Yes'){OutText (Invoke-ToolkitProtectedAppgateFix)}})
-$BtnAppgateRestart.Add_Click({if([System.Windows.MessageBox]::Show('Reiniciar processos/serviços Appgate? A VPN pode cair.','Reiniciar Appgate','YesNo','Warning') -eq 'Yes'){OutText (Restart-Appgate)}})
-$BtnAppgateStatus.Add_Click({OutText (Get-AppgateStatus)})
-$BtnReportHtml.Add_Click({OutText (Export-ReportHtml)})
-$BtnReportTxt.Add_Click({OutText (Export-ReportTxt)})
-$BtnOpenReports.Add_Click({Start-Process $Reports;OutText "Pasta aberta: $Reports"})
+$BtnInventory.Add_Click({
+    try { Write-ToolkitActionLog -Module "Overview" -Action "Inventory" -Status "Started" -Message "Inventario da maquina solicitado." } catch {}OutText (Get-InventoryText)})
+$BtnNetwork.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "BasicNetworkTest" -Status "Started" -Message "Teste basico de rede iniciado." } catch {}OutText (Test-NetworkBasic)})
+$BtnFlushDns.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "FlushDns" -Status "Started" -Message "Flush DNS iniciado." } catch {}OutText (Invoke-FlushDns)})
+$BtnRenewIp.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "RenewIp" -Status "Started" -Message "Renovacao de IP solicitada." } catch {}if([System.Windows.MessageBox]::Show('Renovar IP pode derrubar a conexão temporariamente. Continuar?','Renovar IP','YesNo','Warning') -eq 'Yes'){OutText (Invoke-RenewIp)}})
+$BtnTimeSync.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "TimeSync" -Status "Started" -Message "Sincronizacao de horario iniciada." } catch {}OutText (Invoke-TimeSync)})
+$BtnSpooler.Add_Click({
+    try { Write-ToolkitActionLog -Module "Printers" -Action "RestartSpooler" -Status "Started" -Message "Reinicio do spooler solicitado." } catch {}OutText (Invoke-SpoolerRestart)})
+$BtnWindowsUpdate.Add_Click({
+    try { Write-ToolkitActionLog -Module "Windows" -Action "OpenWindowsUpdate" -Status "Started" -Message "Abertura do Windows Update solicitada." } catch {}Start-Process 'ms-settings:windowsupdate';OutText 'Windows Update aberto.'})
+$BtnPrograms.Add_Click({
+    try { Write-ToolkitActionLog -Module "Windows" -Action "OpenProgramsAndFeatures" -Status "Started" -Message "Abertura de Programas e Recursos solicitada." } catch {}Start-Process 'appwiz.cpl';OutText 'Programas e Recursos aberto.'})
+$BtnDeviceManager.Add_Click({
+    try { Write-ToolkitActionLog -Module "Windows" -Action "OpenDeviceManager" -Status "Started" -Message "Abertura do Gerenciador de Dispositivos solicitada." } catch {}Start-Process 'devmgmt.msc';OutText 'Gerenciador de Dispositivos aberto.'})
+$BtnNetworkConnections.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "OpenNetworkConnections" -Status "Started" -Message "Abertura de Conexoes de Rede solicitada." } catch {}Start-Process 'ncpa.cpl';OutText 'Conexões de Rede aberto.'})
+if ($null -ne $BtnMaintenanceStatus) {
+    $BtnMaintenanceStatus.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "MaintenanceStatus" -Status "Started" -Message "Status de manutencao Windows solicitado." } catch {}
+        OutText (Get-WindowsRepairStatus)
+    })
+}
+
+if ($null -ne $BtnMaintenanceSfc) {
+    $BtnMaintenanceSfc.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "StartSfc" -Status "Started" -Message "Verificacao SFC solicitada." } catch {}
+        if ([System.Windows.MessageBox]::Show('Executar SFC /scannow em uma janela elevada? Pode demorar alguns minutos.','Verificar sistema com SFC','YesNo','Warning') -eq 'Yes') {
+            OutText (Start-SfcOnly)
+        }
+    })
+}
+
+if ($null -ne $BtnMaintenanceDism) {
+    $BtnMaintenanceDism.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "StartDism" -Status "Started" -Message "Reparo DISM solicitado." } catch {}
+        if ([System.Windows.MessageBox]::Show('Executar DISM /RestoreHealth em uma janela elevada? Pode demorar alguns minutos.','Reparar imagem com DISM','YesNo','Warning') -eq 'Yes') {
+            OutText (Start-DismOnly)
+        }
+    })
+}
+
+if ($null -ne $BtnMaintenanceTemp) {
+    $BtnMaintenanceTemp.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "ClearTemp" -Status "Started" -Message "Limpeza de temporarios solicitada pela sidebar." } catch {}
+        if ([System.Windows.MessageBox]::Show('Limpar arquivos temporários do usuário atual?','Limpar temporários','YesNo','Warning') -eq 'Yes') {
+            OutText (Clear-UserTemp)
+        }
+    })
+}
+
+if ($null -ne $BtnMaintenanceWuServices) {
+    $BtnMaintenanceWuServices.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "RestartWUServices" -Status "Started" -Message "Reinicio dos servicos Windows Update solicitado." } catch {}
+        if ([System.Windows.MessageBox]::Show('Reiniciar serviços do Windows Update?','Windows Update','YesNo','Warning') -eq 'Yes') {
+            OutText (Restart-WUServices)
+        }
+    })
+}
+
+if ($null -ne $BtnMaintenanceNetworkQuick) {
+    $BtnMaintenanceNetworkQuick.Add_Click({
+        try { Write-ToolkitActionLog -Module "WindowsMaintenance" -Action "QuickNetworkRepair" -Status "Started" -Message "Reparo rapido de rede solicitado." } catch {}
+        if ([System.Windows.MessageBox]::Show('Executar limpeza de DNS e diagnóstico rápido de rede?','Reparo rápido de rede','YesNo','Warning') -eq 'Yes') {
+            OutText ((Invoke-FlushDns) + "`n`n" + (Test-NetworkBasic))
+        }
+    })
+}
+$BtnAppgateFix.Add_Click({
+    try { Write-ToolkitActionLog -Module "Appgate" -Action "AppgateFix" -Status "Started" -Message "Correcao Appgate/UAC solicitada." } catch {}if([System.Windows.MessageBox]::Show('Alterar config do Appgate e UAC para 5?','Corrigir Appgate','YesNo','Warning') -eq 'Yes'){OutText (Invoke-ToolkitProtectedAppgateFix)}})
+$BtnAppgateRestart.Add_Click({
+    try { Write-ToolkitActionLog -Module "Appgate" -Action "AppgateRestart" -Status "Started" -Message "Reinicio de processos e servicos Appgate solicitado." } catch {}if([System.Windows.MessageBox]::Show('Reiniciar processos/serviços Appgate? A VPN pode cair.','Reiniciar Appgate','YesNo','Warning') -eq 'Yes'){OutText (Restart-Appgate)}})
+$BtnAppgateStatus.Add_Click({
+    try { Write-ToolkitActionLog -Module "Appgate" -Action "AppgateStatus" -Status "Started" -Message "Consulta de status Appgate solicitada." } catch {}OutText (Get-AppgateStatus)})
+$BtnReportHtml.Add_Click({
+    try { Write-ToolkitActionLog -Module "Reports" -Action "ExportReportHtml" -Status "Started" -Message "Exportacao de relatorio HTML solicitada." } catch {}OutText (Export-ReportHtml)})
+$BtnReportTxt.Add_Click({
+    try { Write-ToolkitActionLog -Module "Reports" -Action "ExportReportTxt" -Status "Started" -Message "Exportacao de relatorio TXT solicitada." } catch {}OutText (Export-ReportTxt)})
+$BtnOpenReports.Add_Click({
+    try { Write-ToolkitActionLog -Module "Reports" -Action "OpenReportsFolder" -Status "Started" -Message "Abertura da pasta de relatorios solicitada." } catch {}Start-Process $Reports;OutText "Pasta aberta: $Reports"})
+if ($null -ne $BtnToolkitDiagnostic) {
+    $BtnToolkitDiagnostic.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Reports" `
+                -Action "GenerateToolkitDiagnostic" `
+                -Status "Started" `
+                -Message "Diagnostico automatico do Toolkit solicitado."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = Get-ToolkitRootPath
+            $diagnosticReports = Join-Path $toolkitRoot "reports"
+            $diagnosticScript = Join-Path $toolkitRoot "tools\Get-ToolkitDiagnostic.ps1"
+
+            if (!(Test-Path $diagnosticScript)) {
+                OutText "Ferramenta de diagnostico não encontrada.`r`n`r`nArquivo esperado:`r`n$diagnosticScript"
+                return
+            }
+
+            $psExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+
+            if (!(Test-Path $psExe)) {
+                $psExe = "powershell.exe"
+            }
+
+            $diagnosticOutput = & $psExe `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -File $diagnosticScript `
+                -ToolkitRoot $toolkitRoot `
+                -OpenReport 2>&1 | Out-String
+
+            $latestDiagnostic = Get-ChildItem $diagnosticReports -Filter "diagnostic-*.txt" -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+
+            if ($null -ne $latestDiagnostic) {
+                OutText "Diagnostico gerado com sucesso.`r`n`r`nArquivo:`r`n$($latestDiagnostic.FullName)`r`n`r`nSaida:`r`n$diagnosticOutput"
+            }
+            else {
+                OutText "Comando de diagnostico executado, mas nenhum TXT foi encontrado em:`r`n$diagnosticReports`r`n`r`nSaida:`r`n$diagnosticOutput"
+            }
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Reports" `
+                    -Action "GenerateToolkitDiagnostic" `
+                    -Status "Failed" `
+                    -Message "Falha ao gerar diagnostico automatico do Toolkit." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao gerar diagnostico do Toolkit:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+
+if ($null -ne $BtnToolkitStatus) {
+    $BtnToolkitStatus.Add_Click({
+        $toolkitRoot = "C:\ServiceDeskToolkit"
+        $versionPath = Join-Path $toolkitRoot "version.json"
+        $sourceRefPath = Join-Path $toolkitRoot "config\source-ref.json"
+
+        $status = "APROVADO"
+
+        $versionName = "Não encontrado"
+        $versionNumber = "Não encontrado"
+        $versionChannel = "Não encontrado"
+        $versionBranch = "Não encontrado"
+        $versionStable = "Não encontrado"
+
+        $sourceRepository = "Não encontrado"
+        $sourceRef = "Não encontrado"
+        $sourceInstalledAt = "Não encontrado"
+
+        $latestUpdateLogText = "Não encontrado"
+        $latestUpdateSummaryText = "Não encontrado"
+        $latestBackupText = "Não encontrado"
+        $latestSupportPackageText = "Não encontrado"
+
+        if (Test-Path $versionPath) {
+            $versionInfo = Get-Content $versionPath -Raw -ErrorAction Stop | ConvertFrom-Json
+
+            $versionName = $versionInfo.name
+            $versionNumber = $versionInfo.version
+            $versionChannel = $versionInfo.channel
+            $versionBranch = $versionInfo.branch
+            $versionStable = $versionInfo.stableVersion
+        }
+        else {
+            $status = "VERIFICAR"
+        }
+
+        if (Test-Path $sourceRefPath) {
+            $sourceInfo = Get-Content $sourceRefPath -Raw -ErrorAction Stop | ConvertFrom-Json
+
+            $sourceRepository = $sourceInfo.repository
+            $sourceRef = $sourceInfo.ref
+            $sourceInstalledAt = $sourceInfo.installedAt
+
+            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
+                $sourceInstalledAt = $sourceInfo.updatedAt
+            }
+            if ([string]::IsNullOrWhiteSpace($sourceInstalledAt)) {
+                $sourceInstalledAt = (Get-Item $sourceRefPath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+        }
+        else {
+            $status = "VERIFICAR"
+        }
+
+        $logsPath = Join-Path $toolkitRoot "logs"
+        $reportsPath = Join-Path $toolkitRoot "reports"
+
+        $latestUpdateLog = Get-ChildItem $logsPath -Filter "update-*.log" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestUpdateLog) {
+            $latestUpdateLogText = $latestUpdateLog.FullName
+        }
+
+        $latestUpdateSummary = Get-ChildItem $reportsPath -Filter "update-summary-*.txt" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestUpdateSummary) {
+            $latestUpdateSummaryText = $latestUpdateSummary.FullName
+        }
+
+        $backupsPath = Join-Path $toolkitRoot "backups"
+
+        $latestBackup = Get-ChildItem $backupsPath -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "update-*" } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestBackup) {
+            $latestBackupText = $latestBackup.FullName
+        }
+
+        $supportPackagesPath = Join-Path $reportsPath "support-packages"
+
+        $latestSupportPackage = Get-ChildItem $supportPackagesPath -Filter "ServiceDeskToolkit-SupportPackage-*.zip" -File -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+        if ($null -ne $latestSupportPackage) {
+            $latestSupportPackageText = $latestSupportPackage.FullName
+        }
+        $output = @"
+PAINEL DE STATUS DO TOOLKIT
+===========================
+
+Status geral:
+$status
+
+Versão instalada
+----------------
+Nome: $versionName
+Versão: $versionNumber
+Canal: $versionChannel
+Branch declarada: $versionBranch
+Versão estável base: $versionStable
+
+Origem instalada
+----------------
+Repositório: $sourceRepository
+Referência instalada: $sourceRef
+Instalado em: $sourceInstalledAt
+Arquivo:
+$sourceRefPath
+
+Último update
+-------------
+$latestUpdateLogText
+
+Último resumo do update
+-----------------------
+$latestUpdateSummaryText
+
+Último backup
+-------------
+$($latestBackupText)
+
+Último pacote de suporte
+------------------------
+$($latestSupportPackageText)
+"@
+
+        OutText $output
+    })
+}
+if ($null -ne $BtnValidateToolkitInstalled) {
+    $BtnValidateToolkitInstalled.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "ValidateToolkitInstalled" `
+                -Status "Started" `
+                -Message "Validacao da integridade instalada solicitada pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = "C:\ServiceDeskToolkit"
+            $validatorScript = Join-Path $toolkitRoot "tools\Test-ToolkitInstalled.ps1"
+
+            if (!(Test-Path $validatorScript)) {
+                OutText "Validador de instalacao não encontrado.`r`n`r`nArquivo esperado:`r`n$validatorScript"
+                return
+            }
+
+            $psExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+
+            if (!(Test-Path $psExe)) {
+                $psExe = "powershell.exe"
+            }
+
+            $validationOutput = & $psExe `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -File $validatorScript 2>&1 | Out-String
+
+            $reportsPath = Join-Path $toolkitRoot "reports"
+
+            $latestValidation = Get-ChildItem $reportsPath -Filter "installed-validation-*.txt" -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+
+            if ($null -ne $latestValidation) {
+                OutText "Validacao da instalacao executada.`r`n`r`nRelatorio:`r`n$($latestValidation.FullName)`r`n`r`nSaida:`r`n$validationOutput"
+            }
+            else {
+                OutText "Validacao executada, mas nenhum relatorio TXT foi encontrado em:`r`n$reportsPath`r`n`r`nSaida:`r`n$validationOutput"
+            }
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Administration" `
+                    -Action "ValidateToolkitInstalled" `
+                    -Status "Failed" `
+                    -Message "Falha ao validar integridade instalada pela interface." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao validar instalacao do Toolkit:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+if ($null -ne $BtnRunToolkitUpdate) {
+    $BtnRunToolkitUpdate.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "RunToolkitUpdate" `
+                -Status "Started" `
+                -Message "Atualizacao segura do Toolkit solicitada pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = Get-ToolkitRootPath
+            $updateScript = Join-Path $toolkitRoot "update.ps1"
+
+            if (!(Test-Path $updateScript)) {
+                OutText "Atualizador não encontrado.`r`n`r`nArquivo esperado:`r`n$updateScript"
+                return
+            }
+
+            $psExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+
+            if (!(Test-Path $psExe)) {
+                $psExe = "powershell.exe"
+            }
+
+            Start-Process `
+                -FilePath $psExe `
+                -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $updateScript) `
+                -WorkingDirectory $toolkitRoot
+
+            OutText "Atualizacao iniciada em processo separado.`r`n`r`nScript:`r`n$updateScript`r`n`r`nAcompanhe em:`r`n$(Join-Path $toolkitRoot "logs")"
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Administration" `
+                    -Action "RunToolkitUpdate" `
+                    -Status "Failed" `
+                    -Message "Falha ao iniciar update pela interface." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao iniciar update:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+
+if ($null -ne $BtnRunRollbackDryRun) {
+    $BtnRunRollbackDryRun.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "RunRollbackDryRun" `
+                -Status "Started" `
+                -Message "Rollback dry-run solicitado pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = Get-ToolkitRootPath
+            $rollbackScript = Join-Path $toolkitRoot "rollback.ps1"
+
+            if (!(Test-Path $rollbackScript)) {
+                OutText "Rollback não encontrado.`r`n`r`nArquivo esperado:`r`n$rollbackScript"
+                return
+            }
+
+            Remove-Item Env:\SDTK_ROLLBACK_CONFIRM -ErrorAction SilentlyContinue
+
+            $psExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+
+            if (!(Test-Path $psExe)) {
+                $psExe = "powershell.exe"
+            }
+
+            Start-Process `
+                -FilePath $psExe `
+                -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $rollbackScript) `
+                -WorkingDirectory $toolkitRoot
+
+            OutText "Rollback DRY-RUN iniciado em processo separado.`r`n`r`nNenhum arquivo sera alterado.`r`n`r`nScript:`r`n$rollbackScript`r`n`r`nAcompanhe em:`r`n$(Join-Path $toolkitRoot "logs")"
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Administration" `
+                    -Action "RunRollbackDryRun" `
+                    -Status "Failed" `
+                    -Message "Falha ao iniciar rollback dry-run pela interface." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao iniciar rollback dry-run:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+
+if ($null -ne $BtnExportToolkitSupportPackage) {
+    $BtnExportToolkitSupportPackage.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "ExportToolkitSupportPackage" `
+                -Status "Started" `
+                -Message "Exportacao de pacote de suporte solicitada pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = "C:\ServiceDeskToolkit"
+            $exportScript = Join-Path $toolkitRoot "tools\Export-ToolkitSupportPackage.ps1"
+
+            if (!(Test-Path $exportScript)) {
+                OutText "Exportador de pacote de suporte não encontrado.`r`n`r`nArquivo esperado:`r`n$exportScript"
+                return
+            }
+
+            $psExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+
+            if (!(Test-Path $psExe)) {
+                $psExe = "powershell.exe"
+            }
+
+            $exportOutput = & $psExe `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -File $exportScript 2>&1 | Out-String
+
+            $packagesPath = Join-Path $toolkitRoot "reports\support-packages"
+
+            $latestPackage = Get-ChildItem $packagesPath -Filter "*.zip" -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+
+            if ($null -ne $latestPackage) {
+                OutText "Pacote de suporte gerado com sucesso.`r`n`r`nArquivo:`r`n$($latestPackage.FullName)`r`n`r`nSaida:`r`n$exportOutput"
+            }
+            else {
+                OutText "Exportacao executada, mas nenhum ZIP foi encontrado em:`r`n$packagesPath`r`n`r`nSaida:`r`n$exportOutput"
+            }
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Administration" `
+                    -Action "ExportToolkitSupportPackage" `
+                    -Status "Failed" `
+                    -Message "Falha ao exportar pacote de suporte pela interface." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao gerar pacote de suporte:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+if ($null -ne $BtnOpenLatestUpdateSummary) {
+    $BtnOpenLatestUpdateSummary.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "OpenLatestUpdateSummary" `
+                -Status "Started" `
+                -Message "Abertura do ultimo resumo do update solicitada pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = "C:\ServiceDeskToolkit"
+            $reportsPath = Join-Path $toolkitRoot "reports"
+
+            if (!(Test-Path $reportsPath)) {
+                OutText "Pasta de reports não encontrada:`r`n$reportsPath"
+                return
+            }
+
+            $latestSummary = Get-ChildItem $reportsPath -Filter "update-summary-*.txt" -File -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+
+            if ($null -eq $latestSummary) {
+                OutText "Nenhum resumo de update foi encontrado.`r`n`r`nPasta analisada:`r`n$reportsPath`r`n`r`nExecute o update.ps1 novamente para gerar o primeiro resumo."
+                return
+            }
+
+            $summaryContent = Get-Content $latestSummary.FullName -Raw -ErrorAction Stop
+
+            $jsonPath = [System.IO.Path]::ChangeExtension($latestSummary.FullName, ".json")
+            $jsonInfo = ""
+
+            if (Test-Path $jsonPath) {
+                $jsonInfo = "`r`nJSON correspondente:`r`n$jsonPath`r`n"
+            }
+            else {
+                $jsonInfo = "`r`nJSON correspondente: não encontrado.`r`n"
+            }
+
+
+        $output = @"
+ULTIMO RESUMO DO UPDATE
+=======================
+
+Arquivo TXT:
+$($latestSummary.FullName)
+
+Ultima alteracao:
+$($latestSummary.LastWriteTime)
+
+$jsonInfo
+Conteudo:
+---------
+
+$summaryContent
+"@
+
+            OutText $output
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Administration" `
+                    -Action "OpenLatestUpdateSummary" `
+                    -Status "Failed" `
+                    -Message "Falha ao abrir ultimo resumo do update pela interface." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao abrir ultimo resumo do update:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+if ($null -ne $BtnShowToolkitLogSummary) {
+    $BtnShowToolkitLogSummary.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "ShowToolkitLogSummary" `
+                -Status "Started" `
+                -Message "Resumo dos logs solicitado pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = "C:\ServiceDeskToolkit"
+            $logsPath = Join-Path $toolkitRoot "logs"
+
+            if (!(Test-Path $logsPath)) {
+                OutText "Pasta de logs não encontrada:`r`n$logsPath"
+                return
+            }
+
+            $patterns = @(
+                @{
+                    Title = "Runtime estruturado"
+                    Filter = "runtime-*.jsonl"
+                    Tail = 5
+                },
+                @{
+                    Title = "Acoes estruturadas"
+                    Filter = "actions-*.jsonl"
+                    Tail = 5
+                },
+                @{
+                    Title = "Erros estruturados"
+                    Filter = "errors-*.jsonl"
+                    Tail = 8
+                },
+                @{
+                    Title = "Install"
+                    Filter = "install-*.log"
+                    Tail = 8
+                },
+                @{
+                    Title = "Update"
+                    Filter = "update-*.log"
+                    Tail = 8
+                },
+                @{
+                    Title = "Rollback"
+                    Filter = "rollback-*.log"
+                    Tail = 8
+                }
+            )
+
+            $sb = New-Object System.Text.StringBuilder
+
+            [void]$sb.AppendLine("RESUMO DOS LOGS DO TOOLKIT")
+            [void]$sb.AppendLine("==========================")
+            [void]$sb.AppendLine("Pasta: $logsPath")
+            [void]$sb.AppendLine("Gerado em: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
+            [void]$sb.AppendLine("")
+
+            foreach ($pattern in $patterns) {
+                $files = @(Get-ChildItem $logsPath -Filter $pattern.Filter -File -ErrorAction SilentlyContinue |
+                    Sort-Object LastWriteTime -Descending)
+
+                [void]$sb.AppendLine("[$($pattern.Title)]")
+                [void]$sb.AppendLine("Filtro: $($pattern.Filter)")
+                [void]$sb.AppendLine("Arquivos encontrados: $($files.Count)")
+
+                if ($files.Count -gt 0) {
+                    $latest = $files | Select-Object -First 1
+
+                    [void]$sb.AppendLine("Ultimo arquivo: $($latest.FullName)")
+                    [void]$sb.AppendLine("Ultima alteracao: $($latest.LastWriteTime)")
+                    [void]$sb.AppendLine("Tamanho: $([math]::Round(($latest.Length / 1KB), 2)) KB")
+                    [void]$sb.AppendLine("")
+                    [void]$sb.AppendLine("Ultimas linhas:")
+
+                    try {
+                        $tailLines = Get-Content $latest.FullName -Tail $pattern.Tail -ErrorAction Stop
+
+                        if ($null -ne $tailLines) {
+                            foreach ($line in $tailLines) {
+                                [void]$sb.AppendLine("  $line")
+                            }
+                        }
+                        else {
+                            [void]$sb.AppendLine("  Nenhum conteudo encontrado.")
+                        }
+                    }
+                    catch {
+                        [void]$sb.AppendLine("  Nao foi possivel ler o arquivo: $($_.Exception.Message)")
+                    }
+                }
+                else {
+                    [void]$sb.AppendLine("Nenhum arquivo encontrado para este tipo de log.")
+                }
+
+                [void]$sb.AppendLine("")
+                [void]$sb.AppendLine("----------------------------------------")
+                [void]$sb.AppendLine("")
+            }
+
+            OutText $sb.ToString()
+        }
+        catch {
+            try {
+                Write-ToolkitErrorLog `
+                    -Module "Administration" `
+                    -Action "ShowToolkitLogSummary" `
+                    -Status "Failed" `
+                    -Message "Falha ao gerar resumo dos logs pela interface." `
+                    -ErrorRecord $_
+            }
+            catch {}
+
+            OutText "Erro ao gerar resumo dos logs:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+if ($null -ne $BtnOpenUpdateRollbackLogs) {
+    $BtnOpenUpdateRollbackLogs.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "OpenUpdateRollbackLogs" `
+                -Status "Started" `
+                -Message "Abertura da pasta de logs solicitada pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = Get-ToolkitRootPath
+            $logsFolder = Join-Path $toolkitRoot "logs"
+
+            if (!(Test-Path $logsFolder)) {
+                New-Item -Path $logsFolder -ItemType Directory -Force | Out-Null
+            }
+
+            Start-Process $logsFolder
+            OutText "Pasta de logs aberta:`r`n$logsFolder"
+        }
+        catch {
+            OutText "Erro ao abrir pasta de logs:`r`n$($_.Exception.Message)"
+        }
+    })
+}
+
+if ($null -ne $BtnOpenBackups) {
+    $BtnOpenBackups.Add_Click({
+        try {
+            Write-ToolkitActionLog `
+                -Module "Administration" `
+                -Action "OpenBackupsFolder" `
+                -Status "Started" `
+                -Message "Abertura da pasta de backups solicitada pela interface."
+        }
+        catch {}
+
+        try {
+            $toolkitRoot = Get-ToolkitRootPath
+            $backupsFolder = Join-Path $toolkitRoot "backups"
+
+            if (!(Test-Path $backupsFolder)) {
+                New-Item -Path $backupsFolder -ItemType Directory -Force | Out-Null
+            }
+
+            Start-Process $backupsFolder
+            OutText "Pasta de backups aberta:`r`n$backupsFolder"
+        }
+        catch {
+            OutText "Erro ao abrir pasta de backups:`r`n$($_.Exception.Message)"
+        }
+    })
+}
 $BtnCopyOutput.Add_Click({try{[System.Windows.Clipboard]::SetText($TxtOutput.Text);[System.Windows.MessageBox]::Show('Copiado.','ServiceDesk Toolkit','OK','Information')|Out-Null}catch{}})
 
 # security
-$BtnTpm.Add_Click({$TxtSecurityOutput.Text=Get-TpmBasic})
-$BtnBitLocker.Add_Click({$TxtSecurityOutput.Text=Get-BitlockerBasic})
-$BtnDefender.Add_Click({$TxtSecurityOutput.Text=Get-DefenderBasic})
-$BtnUac.Add_Click({$TxtSecurityOutput.Text=Get-UacBasic})
-$BtnAdmins.Add_Click({$TxtSecurityOutput.Text=Get-AdminsBasic})
+$BtnTpm.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "TpmStatus" -Status "Started" -Message "Consulta TPM solicitada." } catch {}$TxtSecurityOutput.Text=Get-TpmBasic})
+$BtnBitLocker.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "BitLockerStatus" -Status "Started" -Message "Consulta BitLocker solicitada." } catch {}$TxtSecurityOutput.Text=Get-BitlockerBasic})
+$BtnDefender.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "DefenderStatus" -Status "Started" -Message "Consulta Defender solicitada." } catch {}$TxtSecurityOutput.Text=Get-DefenderBasic})
+$BtnUac.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "UacStatus" -Status "Started" -Message "Consulta UAC solicitada." } catch {}$TxtSecurityOutput.Text=Get-UacBasic})
+$BtnAdmins.Add_Click({
+    try { Write-ToolkitActionLog -Module "Security" -Action "LocalAdmins" -Status "Started" -Message "Consulta de administradores locais solicitada." } catch {}$TxtSecurityOutput.Text=Get-AdminsBasic})
 
 # Windows repair
-$BtnWinRepairStatus.Add_Click({$TxtWindowsRepairOutput.Text=Get-WindowsRepairStatus})
-$BtnOpenWindowsUpdateRepair.Add_Click({$TxtWindowsRepairOutput.Text=Invoke-ToolkitOpenWindowsUpdate})
-$BtnRestartWU.Add_Click({if([System.Windows.MessageBox]::Show('Reiniciar serviços do Windows Update?','Windows Update','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text=Restart-WUServices}})
-$BtnClearWUCache.Add_Click({if([System.Windows.MessageBox]::Show('Limpar cache do Windows Update renomeando SoftwareDistribution e catroot2?','Limpar cache WU','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedClearWUCache}})
-$BtnDismOnly.Add_Click({if([System.Windows.MessageBox]::Show('Executar DISM RestoreHealth? Pode demorar.','DISM','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedDismOnly}})
-$BtnSfcOnly.Add_Click({if([System.Windows.MessageBox]::Show('Executar SFC Scannow? Pode demorar.','SFC','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedSfcOnly}})
-$BtnClearUserTemp.Add_Click({if([System.Windows.MessageBox]::Show('Limpar temporários do usuário atual?','Temporários','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text=Clear-UserTemp}})
-$BtnTimeSyncRepair.Add_Click({$TxtWindowsRepairOutput.Text=Invoke-TimeSync})
+$BtnWinRepairStatus.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "RepairStatus" -Status "Started" -Message "Consulta de status de reparo Windows solicitada." } catch {}$TxtWindowsRepairOutput.Text=Get-WindowsRepairStatus})
+$BtnOpenWindowsUpdateRepair.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "OpenWindowsUpdateRepair" -Status "Started" -Message "Abertura do Windows Update pela aba de reparo solicitada." } catch {}$TxtWindowsRepairOutput.Text=Invoke-ToolkitOpenWindowsUpdate})
+$BtnRestartWU.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "RestartWindowsUpdateServices" -Status "Started" -Message "Reinicio dos servicos Windows Update solicitado." } catch {}if([System.Windows.MessageBox]::Show('Reiniciar serviços do Windows Update?','Windows Update','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text=Restart-WUServices}})
+$BtnClearWUCache.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "ClearWindowsUpdateCache" -Status "Started" -Message "Limpeza do cache Windows Update solicitada." } catch {}if([System.Windows.MessageBox]::Show('Limpar cache do Windows Update renomeando SoftwareDistribution e catroot2?','Limpar cache WU','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedClearWUCache}})
+$BtnDismOnly.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "DismRestoreHealth" -Status "Started" -Message "Execucao DISM RestoreHealth solicitada." } catch {}if([System.Windows.MessageBox]::Show('Executar DISM RestoreHealth? Pode demorar.','DISM','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedDismOnly}})
+$BtnSfcOnly.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "SfcScannow" -Status "Started" -Message "Execucao SFC Scannow solicitada." } catch {}if([System.Windows.MessageBox]::Show('Executar SFC Scannow? Pode demorar.','SFC','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text = Invoke-ToolkitProtectedSfcOnly}})
+$BtnClearUserTemp.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "ClearUserTemp" -Status "Started" -Message "Limpeza de temporarios do usuario solicitada." } catch {}if([System.Windows.MessageBox]::Show('Limpar temporários do usuário atual?','Temporários','YesNo','Warning') -eq 'Yes'){$TxtWindowsRepairOutput.Text=Clear-UserTemp}})
+$BtnTimeSyncRepair.Add_Click({
+    try { Write-ToolkitActionLog -Module "WindowsRepair" -Action "TimeSyncRepair" -Status "Started" -Message "Sincronizacao de horario pela aba de reparo solicitada." } catch {}$TxtWindowsRepairOutput.Text=Invoke-TimeSync})
 
 # TPM/Office
-$BtnTpmOfficeFix.Add_Click({if([System.Windows.MessageBox]::Show('Aplicar ajuste TPM 2? Reinício recomendado.','TPM 2','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedTpmOfficeFix}})
-$BtnTpmBrokenPlugin.Add_Click({if([System.Windows.MessageBox]::Show('Remover BrokenPlugin? Reinício recomendado.','BrokenPlugin','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedBrokenPluginFix}})
-$BtnDismSfcRepair.Add_Click({if([System.Windows.MessageBox]::Show('Executar DISM + SFC? Pode demorar.','DISM + SFC','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedDismSfc}})
-$BtnTpmOfficeStatus.Add_Click({$TxtTpmOfficeOutput.Text=Get-TpmOfficeStatus})
+$BtnTpmOfficeFix.Add_Click({
+    try { Write-ToolkitActionLog -Module "TpmOffice" -Action "TpmOfficeFix" -Status "Started" -Message "Ajuste TPM Office solicitado." } catch {}if([System.Windows.MessageBox]::Show('Aplicar ajuste TPM 2? Reinício recomendado.','TPM 2','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedTpmOfficeFix}})
+$BtnTpmBrokenPlugin.Add_Click({
+    try { Write-ToolkitActionLog -Module "TpmOffice" -Action "RemoveBrokenPlugin" -Status "Started" -Message "Remocao de BrokenPlugin solicitada." } catch {}if([System.Windows.MessageBox]::Show('Remover BrokenPlugin? Reinício recomendado.','BrokenPlugin','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedBrokenPluginFix}})
+$BtnDismSfcRepair.Add_Click({
+    try { Write-ToolkitActionLog -Module "TpmOffice" -Action "DismSfcRepair" -Status "Started" -Message "Execucao DISM mais SFC solicitada." } catch {}if([System.Windows.MessageBox]::Show('Executar DISM + SFC? Pode demorar.','DISM + SFC','YesNo','Warning') -eq 'Yes'){$TxtTpmOfficeOutput.Text = Invoke-ToolkitProtectedDismSfc}})
+$BtnTpmOfficeStatus.Add_Click({
+    try { Write-ToolkitActionLog -Module "TpmOffice" -Action "TpmOfficeStatus" -Status "Started" -Message "Consulta de status TPM Office solicitada." } catch {}$TxtTpmOfficeOutput.Text=Get-TpmOfficeStatus})
 
 # system
-$BtnGpUpdate.Add_Click({$TxtSystemOutput.Text=Invoke-GpUpdate})
-$BtnGpResult.Add_Click({$TxtSystemOutput.Text=Invoke-GpResult})
-$BtnStoppedServices.Add_Click({$TxtSystemOutput.Text=Get-StoppedAutoServices})
-$BtnCriticalEvents.Add_Click({$TxtSystemOutput.Text=Get-CriticalEvents})
+$BtnGpUpdate.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "GpUpdate" -Status "Started" -Message "Execucao GPUpdate solicitada." } catch {}$TxtSystemOutput.Text=Invoke-GpUpdate})
+$BtnGpResult.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "GpResult" -Status "Started" -Message "Execucao GPResult solicitada." } catch {}$TxtSystemOutput.Text=Invoke-GpResult})
+$BtnStoppedServices.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "StoppedAutoServices" -Status "Started" -Message "Consulta de servicos automaticos parados solicitada." } catch {}$TxtSystemOutput.Text=Get-StoppedAutoServices})
+$BtnCriticalEvents.Add_Click({
+    try { Write-ToolkitActionLog -Module "System" -Action "CriticalEvents" -Status "Started" -Message "Consulta de eventos criticos solicitada." } catch {}$TxtSystemOutput.Text=Get-CriticalEvents})
 
 # tcp
-$BtnTcpTest.Add_Click({[int]$p=0;if(![int]::TryParse($InputTcpPort.Text,[ref]$p)){$TxtTcpOutput.Text='Porta inválida.';return};$TxtTcpOutput.Text=Test-TcpPort $InputTcpHost.Text $p})
+$BtnTcpTest.Add_Click({
+    try { Write-ToolkitActionLog -Module "Network" -Action "TcpTest" -Status "Started" -Message "Teste TCP solicitado." } catch {}[int]$p=0;if(![int]::TryParse($InputTcpPort.Text,[ref]$p)){$TxtTcpOutput.Text='Porta inválida.';return};$TxtTcpOutput.Text=Test-TcpPort $InputTcpHost.Text $p})
 
 
 # Eventos - Impressoras
@@ -3658,6 +5058,17 @@ $BtnQuickFullReport.Add_Click({
 # Eventos - Base de Conhecimento
 $BtnKnowledgeSearch.Add_Click({
     try {
+        Write-ToolkitActionLog `
+            -Module "KnowledgeBase" `
+            -Action "KnowledgeSearch" `
+            -Status "Started" `
+            -Message "Busca realizada na Base de Conhecimento." `
+            -Data @{
+                query = $TxtKnowledgeQuery.Text
+            }
+    }
+    catch {}
+    try {
         $query = $TxtKnowledgeQuery.Text
 
         $TxtKnowledgeOutput.Text = "Buscando resolução na Base de Conhecimento...`r`n`r`nAguarde..."
@@ -3685,6 +5096,14 @@ $BtnKnowledgeSearch.Add_Click({
 
 $BtnKnowledgeSummary.Add_Click({
     try {
+        Write-ToolkitActionLog `
+            -Module "KnowledgeBase" `
+            -Action "KnowledgeSummary" `
+            -Status "Started" `
+            -Message "Listagem de artigos cadastrados solicitada."
+    }
+    catch {}
+    try {
         $resultado = Get-ToolkitKnowledgeBaseSummary
 
         if (Get-Command Set-ToolkitResultText -ErrorAction SilentlyContinue) {
@@ -3708,6 +5127,14 @@ $BtnKnowledgeSummary.Add_Click({
 
 $BtnOpenKnowledgeBaseFile.Add_Click({
     try {
+        Write-ToolkitActionLog `
+            -Module "KnowledgeBase" `
+            -Action "OpenKnowledgeBaseJson" `
+            -Status "Started" `
+            -Message "Abertura do arquivo JSON da Base de Conhecimento solicitada."
+    }
+    catch {}
+    try {
         $TxtKnowledgeOutput.Text = Invoke-ToolkitOpenKnowledgeBaseFile
     }
     catch {
@@ -3721,51 +5148,347 @@ $BtnHomeKnowledge.Add_Click({
     Select-ToolkitTabByHeader "Base de Conhecimento" | Out-Null
 })
 
+
+
+# ============================================================
+# Action Logs - Lote 2
+# Instrumentacao isolada: nao altera handlers originais
+# ============================================================
+
+function Register-ToolkitActionLogHandlersLote2 {
+    function Add-ToolkitButtonActionLog {
+        param(
+            [string]$ButtonName,
+            [string]$Module,
+            [string]$Action,
+            [string]$Message
+        )
+
+        try {
+            $buttonVariable = Get-Variable -Name $ButtonName -Scope Script -ErrorAction SilentlyContinue
+
+            if ($null -eq $buttonVariable) {
+                return
+            }
+
+            $button = $buttonVariable.Value
+
+            if ($null -eq $button) {
+                return
+            }
+
+            $button.Add_Click({
+                try {
+                    Write-ToolkitActionLog `
+                        -Module $Module `
+                        -Action $Action `
+                        -Status "Clicked" `
+                        -Message $Message
+                }
+                catch {}
+            }.GetNewClosure())
+        }
+        catch {}
+    }
+
+    # Impressoras
+    Add-ToolkitButtonActionLog -ButtonName "BtnPrinterStatus" -Module "Printers" -Action "PrinterStatus" -Message "Consulta de status de impressoras solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnPrinterList" -Module "Printers" -Action "PrinterList" -Message "Listagem de impressoras solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnPrintJobs" -Module "Printers" -Action "PrintJobs" -Message "Consulta de fila de impressao solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnRestartSpoolerAdvanced" -Module "Printers" -Action "RestartSpoolerAdvanced" -Message "Reinicio avancado do spooler solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnClearPrintQueue" -Module "Printers" -Action "ClearPrintQueue" -Message "Limpeza da fila de impressao solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnDefaultPrinter" -Module "Printers" -Action "DefaultPrinter" -Message "Consulta de impressora padrao solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOfflinePrinters" -Module "Printers" -Action "OfflinePrinters" -Message "Consulta de impressoras offline solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenPrintersSettings" -Module "Printers" -Action "OpenPrintersSettings" -Message "Abertura das configuracoes de impressoras solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenPrintManagement" -Module "Printers" -Action "OpenPrintManagement" -Message "Abertura do gerenciamento de impressao solicitada."
+
+    # Teams e Office
+    Add-ToolkitButtonActionLog -ButtonName "BtnTeamsOfficeStatus" -Module "TeamsOffice" -Action "TeamsOfficeStatus" -Message "Consulta de status Teams e Office solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnCloseTeamsOffice" -Module "TeamsOffice" -Action "CloseTeamsOffice" -Message "Fechamento de processos Teams e Office solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnClearClassicTeamsCache" -Module "TeamsOffice" -Action "ClearClassicTeamsCache" -Message "Limpeza de cache do Teams classico solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnClearNewTeamsCache" -Module "TeamsOffice" -Action "ClearNewTeamsCache" -Message "Limpeza de cache do novo Teams solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenTeamsFolder" -Module "TeamsOffice" -Action "OpenTeamsFolder" -Message "Abertura da pasta do Teams solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenCredentialManager" -Module "TeamsOffice" -Action "OpenCredentialManager" -Message "Abertura do Gerenciador de Credenciais solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenAccountsSettings" -Module "TeamsOffice" -Action "OpenAccountsSettings" -Message "Abertura das configuracoes de contas solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenOfficeRepair" -Module "TeamsOffice" -Action "OpenOfficeRepair" -Message "Abertura do reparo do Office solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOfficeIdentityKeys" -Module "TeamsOffice" -Action "OfficeIdentityKeys" -Message "Consulta de chaves de identidade do Office solicitada."
+
+    # Microsoft Store e Apps
+    Add-ToolkitButtonActionLog -ButtonName "BtnStoreAppsStatus" -Module "StoreApps" -Action "StoreAppsStatus" -Message "Consulta de status Microsoft Store e Apps solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnRestartMicrosoftStore" -Module "StoreApps" -Action "RestartMicrosoftStore" -Message "Reinicio da Microsoft Store solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnResetMicrosoftStore" -Module "StoreApps" -Action "ResetMicrosoftStore" -Message "Reset da Microsoft Store solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnRepairMicrosoftStore" -Module "StoreApps" -Action "RepairMicrosoftStore" -Message "Reparo da Microsoft Store solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnRepairWindowsApps" -Module "StoreApps" -Action "RepairWindowsApps" -Message "Reparo de apps Windows solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenInstalledApps" -Module "StoreApps" -Action "OpenInstalledApps" -Message "Abertura de apps instalados solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenMicrosoftStore" -Module "StoreApps" -Action "OpenMicrosoftStore" -Message "Abertura da Microsoft Store solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenOfficeTeamsRepair" -Module "StoreApps" -Action "OpenOfficeTeamsRepair" -Message "Abertura do reparo Office Teams solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenStoreTroubleshoot" -Module "StoreApps" -Action "OpenStoreTroubleshoot" -Message "Abertura do solucionador da Store solicitada."
+
+    # Rede Avancada
+    Add-ToolkitButtonActionLog -ButtonName "BtnAdvancedNetworkStatus" -Module "AdvancedNetwork" -Action "AdvancedNetworkStatus" -Message "Consulta avancada de rede solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnDnsConfiguration" -Module "AdvancedNetwork" -Action "DnsConfiguration" -Message "Consulta de configuracao DNS solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnNetworkRoutes" -Module "AdvancedNetwork" -Action "NetworkRoutes" -Message "Consulta de rotas de rede solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnTestGateway" -Module "AdvancedNetwork" -Action "TestGateway" -Message "Teste de gateway solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnTestInternetAdvanced" -Module "AdvancedNetwork" -Action "TestInternetAdvanced" -Message "Teste avancado de internet solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnFlushDnsAdvanced" -Module "AdvancedNetwork" -Action "FlushDnsAdvanced" -Message "Flush DNS avancado solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnReleaseRenewAdvanced" -Module "AdvancedNetwork" -Action "ReleaseRenewAdvanced" -Message "Release Renew avancado solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnResetWinsock" -Module "AdvancedNetwork" -Action "ResetWinsock" -Message "Reset Winsock solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnResetTcpIp" -Module "AdvancedNetwork" -Action "ResetTcpIp" -Message "Reset TCP IP solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenNetworkConnectionsAdvanced" -Module "AdvancedNetwork" -Action "OpenNetworkConnectionsAdvanced" -Message "Abertura avancada de conexoes de rede solicitada."
+
+    # Apps Corporativos
+    Add-ToolkitButtonActionLog -ButtonName "BtnCorporateAppsStatus" -Module "CorporateApps" -Action "CorporateAppsStatus" -Message "Consulta de status de apps corporativos solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnAllCorporateAppErrors" -Module "CorporateApps" -Action "AllCorporateAppErrors" -Message "Consulta de erros de apps corporativos solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOutlookErrors" -Module "CorporateApps" -Action "OutlookErrors" -Message "Consulta de erros do Outlook solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnTeamsErrors" -Module "CorporateApps" -Action "TeamsErrors" -Message "Consulta de erros do Teams solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOneDriveErrors" -Module "CorporateApps" -Action "OneDriveErrors" -Message "Consulta de erros do OneDrive solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnScreenshotErrors" -Module "CorporateApps" -Action "ScreenshotErrors" -Message "Consulta de erros de captura de tela solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnWhatsAppErrors" -Module "CorporateApps" -Action "WhatsAppErrors" -Message "Consulta de erros do WhatsApp solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenReliabilityMonitor" -Module "CorporateApps" -Action "OpenReliabilityMonitor" -Message "Abertura do Monitor de Confiabilidade solicitada."
+    Add-ToolkitButtonActionLog -ButtonName "BtnOpenEventViewerApplication" -Module "CorporateApps" -Action "OpenEventViewerApplication" -Message "Abertura do Event Viewer Application solicitada."
+
+    # Atendimento Rapido
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickInternet" -Module "QuickSupport" -Action "QuickInternet" -Message "Atendimento rapido de internet solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickTeams" -Module "QuickSupport" -Action "QuickTeams" -Message "Atendimento rapido de Teams solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickOutlook" -Module "QuickSupport" -Action "QuickOutlook" -Message "Atendimento rapido de Outlook solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickOneDrive" -Module "QuickSupport" -Action "QuickOneDrive" -Message "Atendimento rapido de OneDrive solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickPrinter" -Module "QuickSupport" -Action "QuickPrinter" -Message "Atendimento rapido de impressora solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickWindowsUpdate" -Module "QuickSupport" -Action "QuickWindowsUpdate" -Message "Atendimento rapido de Windows Update solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickAppgate" -Module "QuickSupport" -Action "QuickAppgate" -Message "Atendimento rapido de Appgate solicitado."
+    Add-ToolkitButtonActionLog -ButtonName "BtnQuickFullReport" -Module "QuickSupport" -Action "QuickFullReport" -Message "Atendimento rapido de relatorio completo solicitado."
+}
+
+try {
+    Register-ToolkitActionLogHandlersLote2
+}
+catch {
+    try {
+        Write-ToolkitErrorLog `
+            -Module "Instrumentation" `
+            -Action "RegisterActionLogHandlersLote2" `
+            -Status "Failed" `
+            -Message "Falha ao registrar action logs do lote 2." `
+            -ErrorRecord $_
+    }
+    catch {}
+}
+
+
+# ============================================================
+# Action Logs e Error Handlers - Lote 3
+# Instrumentacao isolada: botoes restantes e erros globais
+# ============================================================
+
+function Register-ToolkitActionLogHandlersLote3 {
+    function Add-ToolkitButtonActionLogLote3 {
+        param(
+            [string]$ButtonName,
+            [string]$Module,
+            [string]$Action,
+            [string]$Message
+        )
+
+        try {
+            $buttonVariable = Get-Variable -Name $ButtonName -Scope Script -ErrorAction SilentlyContinue
+
+            if ($null -eq $buttonVariable) {
+                return
+            }
+
+            $button = $buttonVariable.Value
+
+            if ($null -eq $button) {
+                return
+            }
+
+            $button.Add_Click({
+                try {
+                    Write-ToolkitActionLog `
+                        -Module $Module `
+                        -Action $Action `
+                        -Status "Clicked" `
+                        -Message $Message
+                }
+                catch {}
+            }.GetNewClosure())
+        }
+        catch {}
+    }
+
+    Add-ToolkitButtonActionLogLote3 -ButtonName "BtnCopyOutput" -Module "Output" -Action "CopyOutput" -Message "Copia da saida para area de transferencia solicitada."
+    Add-ToolkitButtonActionLogLote3 -ButtonName "BtnHomeKnowledge" -Module "KnowledgeBase" -Action "HomeKnowledgeShortcut" -Message "Atalho da Base de Conhecimento na tela inicial solicitado."
+}
+
+function Register-ToolkitGlobalErrorHandlersLote3 {
+    try {
+        if ($null -ne $window -and $null -ne $window.Dispatcher) {
+            $window.Dispatcher.Add_UnhandledException({
+                param($sender, $eventArgs)
+
+                try {
+                    $exceptionMessage = ""
+                    $exceptionType = ""
+                    $exceptionStack = ""
+
+                    if ($null -ne $eventArgs -and $null -ne $eventArgs.Exception) {
+                        $exceptionMessage = [string]$eventArgs.Exception.Message
+                        $exceptionType = [string]$eventArgs.Exception.GetType().FullName
+                        $exceptionStack = [string]$eventArgs.Exception.StackTrace
+                    }
+
+                    Write-ToolkitStructuredLog `
+                        -LogType "errors" `
+                        -Level "ERROR" `
+                        -Module "WPF" `
+                        -Action "DispatcherUnhandledException" `
+                        -Status "Unhandled" `
+                        -Message "Erro nao tratado capturado no dispatcher WPF." `
+                        -Data @{
+                            exceptionMessage = $exceptionMessage
+                            exceptionType = $exceptionType
+                            stackTrace = $exceptionStack
+                        }
+                }
+                catch {}
+            }.GetNewClosure())
+        }
+    }
+    catch {
+        try {
+            Write-ToolkitErrorLog `
+                -Module "Instrumentation" `
+                -Action "RegisterWpfErrorHandler" `
+                -Status "Failed" `
+                -Message "Falha ao registrar handler de erro WPF." `
+                -ErrorRecord $_
+        }
+        catch {}
+    }
+
+    try {
+        [System.AppDomain]::CurrentDomain.Add_UnhandledException({
+            param($sender, $eventArgs)
+
+            try {
+                $exceptionMessage = ""
+                $exceptionType = ""
+                $exceptionStack = ""
+
+                if ($null -ne $eventArgs -and $null -ne $eventArgs.ExceptionObject) {
+                    $exceptionObject = $eventArgs.ExceptionObject
+
+                    if ($exceptionObject -is [System.Exception]) {
+                        $exceptionMessage = [string]$exceptionObject.Message
+                        $exceptionType = [string]$exceptionObject.GetType().FullName
+                        $exceptionStack = [string]$exceptionObject.StackTrace
+                    }
+                    else {
+                        $exceptionMessage = [string]$exceptionObject
+                        $exceptionType = [string]$exceptionObject.GetType().FullName
+                    }
+                }
+
+                Write-ToolkitStructuredLog `
+                    -LogType "errors" `
+                    -Level "CRITICAL" `
+                    -Module "Application" `
+                    -Action "UnhandledException" `
+                    -Status "Unhandled" `
+                    -Message "Erro critico nao tratado capturado no AppDomain." `
+                    -Data @{
+                        exceptionMessage = $exceptionMessage
+                        exceptionType = $exceptionType
+                        stackTrace = $exceptionStack
+                        isTerminating = [string]$eventArgs.IsTerminating
+                    }
+            }
+            catch {}
+        }.GetNewClosure())
+    }
+    catch {
+        try {
+            Write-ToolkitErrorLog `
+                -Module "Instrumentation" `
+                -Action "RegisterAppDomainErrorHandler" `
+                -Status "Failed" `
+                -Message "Falha ao registrar handler de erro do AppDomain." `
+                -ErrorRecord $_
+        }
+        catch {}
+    }
+
+    try {
+        Write-ToolkitRuntimeLog `
+            -Module "Instrumentation" `
+            -Action "RegisterGlobalErrorHandlers" `
+            -Status "Registered" `
+            -Message "Handlers globais de erro registrados."
+    }
+    catch {}
+}
+
+try {
+    Register-ToolkitActionLogHandlersLote3
+}
+catch {
+    try {
+        Write-ToolkitErrorLog `
+            -Module "Instrumentation" `
+            -Action "RegisterActionLogHandlersLote3" `
+            -Status "Failed" `
+            -Message "Falha ao registrar action logs do lote 3." `
+            -ErrorRecord $_
+    }
+    catch {}
+}
+
+try {
+    Register-ToolkitGlobalErrorHandlersLote3
+}
+catch {
+    try {
+        Write-ToolkitErrorLog `
+            -Module "Instrumentation" `
+            -Action "RegisterGlobalErrorHandlersLote3" `
+            -Status "Failed" `
+            -Message "Falha ao registrar handlers globais de erro do lote 3." `
+            -ErrorRecord $_
+    }
+    catch {}
+}
+
+# Runtime log - abertura do Toolkit
+try {
+    Write-ToolkitRuntimeLog `
+        -Module "Application" `
+        -Action "Start" `
+        -Status "Started" `
+        -Message "Toolkit iniciado com logs estruturados." `
+        -Data @{
+            rootPath = Get-ToolkitRootPath
+            scriptPath = $PSCommandPath
+        }
+
+    if ($null -ne $window) {
+        $window.Add_Closed({
+            try {
+                Write-ToolkitRuntimeLog `
+                    -Module "Application" `
+                    -Action "Close" `
+                    -Status "Closed" `
+                    -Message "Toolkit encerrado pelo usuario."
+            }
+            catch {}
+        })
+    }
+}
+catch {
+    Write-ToolkitErrorLog `
+        -Module "Application" `
+        -Action "Start" `
+        -Status "LogFailed" `
+        -Message "Falha ao registrar inicializacao do Toolkit." `
+        -ErrorRecord $_
+}
+
 $window.ShowDialog()|Out-Null
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

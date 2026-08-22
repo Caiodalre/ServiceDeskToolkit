@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - v2.3-functional
+      - v2.4-functional
+      - v3-corporate-redesign
+      - v3.1.0-office-tpm-preview
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-powershell:
+    name: Windows PowerShell 5.1
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare Pester for Windows PowerShell
+        shell: pwsh
+        run: |
+          $modulePath = Join-Path $env:RUNNER_TEMP "PowerShellModules"
+          Save-Module -Name Pester -RequiredVersion 5.7.1 -Path $modulePath -Force
+          "PSModulePath=$modulePath;$env:PSModulePath" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Run repository standards
+        run: ./tools/Test-RepositoryStandards.ps1
+
+      - name: Validate checksum manifest
+        run: ./tools/New-ToolkitChecksumManifest.ps1 -Check
+
+      - name: Run repository tests
+        run: |
+          New-Item -Path "./reports" -ItemType Directory -Force | Out-Null
+          $configuration = New-PesterConfiguration
+          $configuration.Run.Path = "./tests"
+          $configuration.Run.Exit = $true
+          $configuration.Output.Verbosity = "Detailed"
+          $configuration.TestResult.Enabled = $true
+          $configuration.TestResult.OutputPath = "reports/pester-powershell.xml"
+          $configuration.TestResult.OutputFormat = "NUnitXml"
+          Invoke-Pester -Configuration $configuration
+
+      - name: Run V2 quality gate
+        run: ./tools/Test-ToolkitQuality.ps1
+
+      - name: Run release validator
+        run: ./tools/Test-ToolkitRelease.ps1
+
+      - name: Run V3 validator
+        run: ./tools/Test-ToolkitV3.ps1
+
+      - name: Upload validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-reports-powershell
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14
+
+  powershell-7:
+    name: PowerShell 7
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Pester
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Run repository standards
+        run: ./tools/Test-RepositoryStandards.ps1
+
+      - name: Validate checksum manifest
+        run: ./tools/New-ToolkitChecksumManifest.ps1 -Check
+
+      - name: Run repository tests
+        run: |
+          New-Item -Path "./reports" -ItemType Directory -Force | Out-Null
+          $configuration = New-PesterConfiguration
+          $configuration.Run.Path = "./tests"
+          $configuration.Run.Exit = $true
+          $configuration.Output.Verbosity = "Detailed"
+          $configuration.TestResult.Enabled = $true
+          $configuration.TestResult.OutputPath = "reports/pester-pwsh.xml"
+          $configuration.TestResult.OutputFormat = "NUnitXml"
+          Invoke-Pester -Configuration $configuration
+
+      - name: Run V2 quality gate
+        run: ./tools/Test-ToolkitQuality.ps1
+
+      - name: Run release validator
+        run: ./tools/Test-ToolkitRelease.ps1
+
+      - name: Run V3 validator
+        run: ./tools/Test-ToolkitV3.ps1
+
+      - name: Upload validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-reports-pwsh
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14

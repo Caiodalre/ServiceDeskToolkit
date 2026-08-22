@@ -135,24 +135,28 @@
   },
   {
     "id": "erro-tpm-office",
-    "titulo": "Erro TPM / Office",
+    "titulo": "Office solicita login ou apresenta erro TPM",
     "categoria": "TPM / Office",
-    "palavrasChave": ["tpm", "office", "trusted platform", "módulo", "modulo", "autenticação", "autenticacao", "erro tpm"],
-    "causaProvavel": "Política de proteção TPM ou identidade do Office corrompida.",
-    "resumo": "Validar status TPM/Office e aplicar ajuste TPM/Office somente com permissão administrativa.",
+    "palavrasChave": ["tpm", "office", "80090016", "80090030", "trusted platform", "wam", "aad broker", "login", "ativação", "ativacao", "autenticação", "autenticacao"],
+    "causaProvavel": "TPM indisponível, WAM/AAD Broker danificado no perfil, credencial antiga, licença do Office, PRT ou identidade do dispositivo no Microsoft Entra.",
+    "resumo": "Diagnosticar TPM, WAM, licenciamento e Entra antes de alterar credenciais ou executar ações críticas.",
     "passos": [
-      "Consultar Status TPM / Office.",
-      "Validar Office Identity.",
-      "Aplicar Ajuste TPM / Office se o erro for compatível.",
-      "Reiniciar aplicativos Office.",
-      "Solicitar novo login do usuário."
+      "Registrar o código completo, aplicativo e usuário afetado.",
+      "Executar Office / TPM no contexto do usuário afetado.",
+      "Se houver reinicialização pendente, reiniciar antes de alterar a autenticação.",
+      "Se o WAM estiver ausente ou com eventos de erro, fechar o Office e usar Reparar login Office.",
+      "Se persistir, usar vnextdiag no Microsoft 365 Apps ou OSPP nas edições 2016/2019/2021 por volume.",
+      "Escalar identidade do dispositivo, firmware ou limpeza do TPM somente após validar Entra, BitLocker e Windows Hello."
     ],
     "acoesToolkit": [
-      "Status TPM / Office",
-      "Office Identity",
-      "Ajuste TPM / Office"
+      "Office / TPM",
+      "Reparar login Office",
+      "Gerenciador de Credenciais",
+      "Acessar trabalho ou escola",
+      "vnextdiag",
+      "tpm.msc"
     ],
-    "risco": "Médio"
+    "risco": "Alto"
   },
   {
     "id": "impressora-offline",
