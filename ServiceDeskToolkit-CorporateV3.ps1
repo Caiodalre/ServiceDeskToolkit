@@ -818,7 +818,7 @@ function Get-V3HomeText {
 ServiceDesk Toolkit Corporate V3
 ================================
 
-Nova experiência visual limpa.
+Escolha um tema no índice à esquerda para iniciar o atendimento.
 
 Objetivo:
 - Guiar o atendimento técnico
@@ -834,7 +834,9 @@ Ambiente:
 - Versão: $(Get-V3VersionInfo)
 
 Próximo passo recomendado:
-Use Atendimento Guiado para iniciar uma triagem.
+Comece por Saúde da máquina em Visão geral ou selecione o tema do problema.
+Busque pelo nome da ação ou role a lista para ver as demais opções.
+Arraste a divisória para ampliar o resultado e use Copiar resultado para coletar a evidência.
 "@
 }
 
@@ -2124,249 +2126,501 @@ function Open-V3ExternalLink {
     }
 }
 $xaml = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ServiceDesk Toolkit Corporate V3"
-        Height="760"
-        Width="1180"
-        WindowStartupLocation="CenterScreen"
-        Background="#F3F6FA"
-        FontFamily="Segoe UI">
-
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate V3 | Temas" Height="820" Width="1180" WindowStartupLocation="CenterScreen" Background="#F3F6FA" FontFamily="Segoe UI" MinWidth="980" MinHeight="640">
     <Window.Resources>
         <Style x:Key="NavButton" TargetType="Button">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Margin" Value="0,4,0,0"/>
-            <Setter Property="Padding" Value="12,0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Background" Value="#162033"/>
-            <Setter Property="Foreground" Value="#E5E7EB"/>
-            <Setter Property="BorderBrush" Value="#263449"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Background" Value="#162033" />
+            <Setter Property="Foreground" Value="#E5E7EB" />
+            <Setter Property="BorderBrush" Value="#263449" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#60A5FA" />
+                                <Setter TargetName="ButtonSurface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.65" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-
         <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Margin" Value="0,6,8,0"/>
-            <Setter Property="Padding" Value="14,0"/>
-            <Setter Property="Background" Value="#1D4ED8"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#1D4ED8"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0,6,8,0" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Background" Value="#1D4ED8" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#1D4ED8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
-
-    <Style x:Key="ActionGridButton" TargetType="Button">
-        <Setter Property="Height" Value="38"/>
-        <Setter Property="Margin" Value="4,4,4,4"/>
-        <Setter Property="Padding" Value="8,0"/>
-        <Setter Property="HorizontalAlignment" Value="Stretch"/>
-        <Setter Property="VerticalAlignment" Value="Stretch"/>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Background" Value="#FFFFFF"/>
-        <Setter Property="Foreground" Value="#0F172A"/>
-        <Setter Property="BorderBrush" Value="#CBD5E1"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-
-    <Style x:Key="SoftButton" TargetType="Button">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Margin" Value="0,6,8,0"/>
-            <Setter Property="Padding" Value="14,0"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#0F172A"/>
-            <Setter Property="BorderBrush" Value="#CBD5E1"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+        <Style x:Key="ActionGridButton" TargetType="Button">
+            <Setter Property="MinHeight" Value="82" />
+            <Setter Property="Margin" Value="4,4,4,4" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#60A5FA" />
+                                <Setter TargetName="ButtonSurface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.65" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-
+        <Style x:Key="SoftButton" TargetType="Button">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0,6,8,0" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
         <Style x:Key="DangerButton" TargetType="Button">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Margin" Value="0,6,8,0"/>
-            <Setter Property="Padding" Value="14,0"/>
-            <Setter Property="Background" Value="#FEF2F2"/>
-            <Setter Property="Foreground" Value="#991B1B"/>
-            <Setter Property="BorderBrush" Value="#FCA5A5"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0,6,8,0" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Background" Value="#FEF2F2" />
+            <Setter Property="Foreground" Value="#991B1B" />
+            <Setter Property="BorderBrush" Value="#FCA5A5" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
-
         <Style x:Key="FooterLinkButton" TargetType="Button">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="8,0,0,0"/>
-            <Setter Property="Padding" Value="12,0"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#1D4ED8"/>
-            <Setter Property="BorderBrush" Value="#BFDBFE"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="Foreground" Value="#1D4ED8" />
+            <Setter Property="BorderBrush" Value="#BFDBFE" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="11" />
         </Style>
     </Window.Resources>
-
-    <Grid>
+    <Grid Background="#F3F6FA">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="260" />
+            <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-
         <Border Grid.Column="0" Background="#0F172A">
-            <StackPanel Margin="18">
-                <TextBlock Text="ServiceDesk" Foreground="White" FontSize="24" FontWeight="Bold"/>
-                <TextBlock Text="Corporate V3" Foreground="#60A5FA" FontSize="18" FontWeight="Bold"/>
-                <TextBlock Text="Central guiada de atendimento" Foreground="#CBD5E1" FontSize="12" Margin="0,4,0,18"/>
-
-                <Button Name="BtnV3NavHome" Content="Início" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavGuided" Content="Atendimento Guiado" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavEvidence" Content="Evidências" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavSafeFix" Content="Correções Seguras" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavAdvanced" Content="Avançado" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavToolkit" Content="Toolkit" Style="{StaticResource NavButton}"/>
-            </StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="18,24">
+                    <TextBlock Text="ServiceDesk" Foreground="White" FontSize="24" FontWeight="Bold" />
+                    <TextBlock Text="Corporate V3" Foreground="#60A5FA" FontSize="18" FontWeight="Bold" Margin="0,0,0,24" />
+                    <TextBlock Text="ÍNDICE POR TEMAS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" Margin="0,0,0,12" />
+                    <Button Name="NavAll" Tag="All" Content="Todos os temas" Style="{StaticResource NavButton}" />
+                    <Button Name="NavOverview" Tag="Overview" Content="Visão geral" Style="{StaticResource NavButton}" />
+                    <Button Name="NavNetwork" Tag="Network" Content="Rede e internet" Style="{StaticResource NavButton}" />
+                    <Button Name="NavVpn" Tag="Vpn" Content="VPN / Appgate" Style="{StaticResource NavButton}" />
+                    <Button Name="NavPrinters" Tag="Printers" Content="Impressoras" Style="{StaticResource NavButton}" />
+                    <Button Name="NavOffice" Tag="Office" Content="Office / TPM" Style="{StaticResource NavButton}" />
+                    <Button Name="NavWindows" Tag="Windows" Content="Windows" Style="{StaticResource NavButton}" />
+                </StackPanel>
+            </ScrollViewer>
         </Border>
-
         <Grid Grid.Column="1" Margin="24">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="2*" MinHeight="150" />
+                <RowDefinition Height="12" />
+                <RowDefinition Height="2*" MinHeight="170" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-
-            <Border Grid.Row="0" Background="White" CornerRadius="18" Padding="22" BorderBrush="#E2E8F0" BorderThickness="1">
+            <Border Grid.Row="0" Background="White" CornerRadius="18" Padding="18" BorderBrush="#E2E8F0" BorderThickness="1">
                 <StackPanel>
-                    <TextBlock Text="Central de Atendimento Técnico" FontSize="26" FontWeight="Bold" Foreground="#0F172A"/>
-                    <TextBlock Text="Experiência limpa, guiada e com menos botões para triagem corporativa." FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
+                    <TextBlock Text="Central de Atendimento Técnico" FontSize="26" FontWeight="Bold" Foreground="#0F172A" />
+                    <TextBlock Text="Escolha um tema, consulte o diagnóstico e acompanhe o resultado." FontSize="13" Foreground="#64748B" Margin="0,4,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
-
-            <UniformGrid Grid.Row="1" Columns="4" Margin="0,14,0,14">
-                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
+            <ScrollViewer Name="ActionsScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,10">
+                <Border Background="White" CornerRadius="18" Padding="18" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,14">
                     <StackPanel>
-                        <TextBlock Text="HOSTNAME" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
-                        <TextBlock Name="CardV3Host" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
+                        <StackPanel Name="TopicOverview" Margin="0,0,0,20">
+                            <UniformGrid Columns="4" Margin="0,0,0,18">
+                                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
+                                    <StackPanel>
+                                        <TextBlock Text="HOSTNAME" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Name="CardV3Host" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
+                                    <StackPanel>
+                                        <TextBlock Text="USUÁRIO" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Name="CardV3User" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
+                                    <StackPanel>
+                                        <TextBlock Text="ADMIN" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Name="CardV3Admin" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="VERSÃO" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Name="CardV3Version" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+                            <TextBlock Text="Visão geral" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Comece pela saúde e pelo inventário." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3Health" Style="{StaticResource ActionGridButton}" Tag="Visão geral Saúde da máquina Avalia memória, disco e reinicialização pendente." ToolTip="Avalia memória, disco e reinicialização pendente.">
+                                        <StackPanel>
+                                            <TextBlock Text="Saúde da máquina" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Avalia memória, disco e reinicialização pendente." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Inventory" Style="{StaticResource ActionGridButton}" Tag="Visão geral Inventário Consulta hardware e sistema operacional." ToolTip="Consulta hardware e sistema operacional.">
+                                        <StackPanel>
+                                            <TextBlock Text="Inventário" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta hardware e sistema operacional." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicNetwork" Margin="0,0,0,20">
+                            <TextBlock Text="Rede e internet" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Investigue conectividade, DNS e rotas." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3QuickInternet" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Sem internet Conduz a triagem de falhas de internet." ToolTip="Conduz a triagem de falhas de internet.">
+                                        <StackPanel>
+                                            <TextBlock Text="Sem internet" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Conduz a triagem de falhas de internet." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Network" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Diagnóstico de rede Reúne os principais indicadores de conectividade." ToolTip="Reúne os principais indicadores de conectividade.">
+                                        <StackPanel>
+                                            <TextBlock Text="Diagnóstico de rede" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Reúne os principais indicadores de conectividade." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3NetworkAdvanced" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Rede: adaptadores e IP Exibe adaptadores, endereços e configuração IP." ToolTip="Exibe adaptadores, endereços e configuração IP.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: adaptadores e IP" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Exibe adaptadores, endereços e configuração IP." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3DnsDetails" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Rede: DNS detalhado Consulta servidores DNS e resolução de nomes." ToolTip="Consulta servidores DNS e resolução de nomes.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: DNS detalhado" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta servidores DNS e resolução de nomes." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Routes" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Rede: rotas Exibe caminhos e rotas configuradas." ToolTip="Exibe caminhos e rotas configuradas.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: rotas" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Exibe caminhos e rotas configuradas." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Gateway" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Rede: testar gateway Verifica a resposta do gateway padrão." ToolTip="Verifica a resposta do gateway padrão.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: testar gateway" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Verifica a resposta do gateway padrão." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3NetworkConnections" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Abrir conexões de rede Abre os adaptadores nas configurações do Windows." ToolTip="Abre os adaptadores nas configurações do Windows.">
+                                        <StackPanel>
+                                            <TextBlock Text="Abrir conexões de rede" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Abre os adaptadores nas configurações do Windows." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3FlushDns" Style="{StaticResource ActionGridButton}" Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Rede e internet Limpar DNS Limpa o cache DNS e verifica o resultado." ToolTip="Limpa o cache DNS e verifica o resultado.">
+                                        <StackPanel>
+                                            <TextBlock Text="Limpar DNS" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Limpa o cache DNS e verifica o resultado." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3RenewIp" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a conexão temporariamente e exige confirmação." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Rede e internet Rede: renovar IP Renova o IP; interrompe a conexão temporariamente.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: renovar IP" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Renova o IP; interrompe a conexão temporariamente." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Winsock" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Rede e internet Rede: reset Winsock Redefine Winsock; exige administrador e reinício.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: reset Winsock" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Redefine Winsock; exige administrador e reinício." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3TcpIp" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Rede e internet Rede: reset TCP/IP Redefine TCP/IP; exige administrador e reinício.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: reset TCP/IP" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Redefine TCP/IP; exige administrador e reinício." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicVpn" Margin="0,0,0,20">
+                            <TextBlock Text="VPN / Appgate" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Confira o cliente e os serviços antes de corrigir." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3QuickVpn" Style="{StaticResource ActionGridButton}" Tag="VPN / Appgate VPN / Appgate Conduz a triagem de acesso pela VPN." ToolTip="Conduz a triagem de acesso pela VPN.">
+                                        <StackPanel>
+                                            <TextBlock Text="VPN / Appgate" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Conduz a triagem de acesso pela VPN." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3AppgateStatus" Style="{StaticResource ActionGridButton}" Tag="VPN / Appgate Appgate: status Consulta configuração, serviços e processos." ToolTip="Consulta configuração, serviços e processos.">
+                                        <StackPanel>
+                                            <TextBlock Text="Appgate: status" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta configuração, serviços e processos." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3AppgateRestart" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a VPN temporariamente e exige confirmação." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="VPN / Appgate Appgate: reiniciar Reinicia o cliente; interrompe a VPN temporariamente.">
+                                        <StackPanel>
+                                            <TextBlock Text="Appgate: reiniciar" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Reinicia o cliente; interrompe a VPN temporariamente." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3AppgateFix" Style="{StaticResource ActionGridButton}" ToolTip="Cria backup, ajusta RunScriptTimeout e UAC com confirmação." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="VPN / Appgate Appgate: ajustar Cria backup e ajusta timeout e configuração UAC.">
+                                        <StackPanel>
+                                            <TextBlock Text="Appgate: ajustar" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Cria backup e ajusta timeout e configuração UAC." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicPrinters" Margin="0,0,0,20">
+                            <TextBlock Text="Impressoras" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Consulte impressoras, filas e serviço de impressão." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3Printers" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressoras Conduz a triagem de uma impressora que não imprime." ToolTip="Conduz a triagem de uma impressora que não imprime.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressoras" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Conduz a triagem de uma impressora que não imprime." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3PrinterList" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressoras: listar Lista as impressoras instaladas." ToolTip="Lista as impressoras instaladas.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressoras: listar" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Lista as impressoras instaladas." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3PrintJobs" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressoras: filas Consulta documentos pendentes nas filas." ToolTip="Consulta documentos pendentes nas filas.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressoras: filas" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta documentos pendentes nas filas." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3DefaultPrinter" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressora padrão Identifica a impressora padrão." ToolTip="Identifica a impressora padrão.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressora padrão" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Identifica a impressora padrão." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3OfflinePrinters" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressoras offline Consulta impressoras offline ou com alertas." ToolTip="Consulta impressoras offline ou com alertas.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressoras offline" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta impressoras offline ou com alertas." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3PrinterSettings" Style="{StaticResource ActionGridButton}" Tag="Impressoras Abrir impressoras Abre as configurações de impressoras do Windows." ToolTip="Abre as configurações de impressoras do Windows.">
+                                        <StackPanel>
+                                            <TextBlock Text="Abrir impressoras" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Abre as configurações de impressoras do Windows." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3PrintManagement" Style="{StaticResource ActionGridButton}" Tag="Impressoras Gerenciar impressão Abre o console de gerenciamento de impressão." ToolTip="Abre o console de gerenciamento de impressão.">
+                                        <StackPanel>
+                                            <TextBlock Text="Gerenciar impressão" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Abre o console de gerenciamento de impressão." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3Spooler" Style="{StaticResource ActionGridButton}" Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Impressoras Reiniciar spooler Reinicia o serviço de impressão e verifica o estado." ToolTip="Reinicia o serviço de impressão e verifica o estado.">
+                                        <StackPanel>
+                                            <TextBlock Text="Reiniciar spooler" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Reinicia o serviço de impressão e verifica o estado." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3ClearPrintQueue" Style="{StaticResource ActionGridButton}" ToolTip="Remove trabalhos pendentes e exige confirmação administrativa." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Impressoras Limpar fila de impressão Remove documentos pendentes; exige confirmação.">
+                                        <StackPanel>
+                                            <TextBlock Text="Limpar fila de impressão" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Remove documentos pendentes; exige confirmação." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicOffice" Margin="0,0,0,20">
+                            <TextBlock Text="Office / TPM" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Investigue autenticação, licenças e proteção." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3OfficeTpm" Style="{StaticResource ActionGridButton}" ToolTip="Diagnostica Office, TPM, WAM, licenciamento e estado Entra sem executar correcao." Tag="Office / TPM Office / TPM Consulta Office, TPM, WAM, licenças e Entra.">
+                                        <StackPanel>
+                                            <TextBlock Text="Office / TPM" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta Office, TPM, WAM, licenças e Entra." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3OfficeWam" Style="{StaticResource ActionGridButton}" ToolTip="Repara o login WAM de Microsoft 365 e Office 2016, 2019 e 2021. Nao limpa TPM nem credenciais." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Office / TPM Reparar login Office Registra componentes WAM novamente no perfil atual.">
+                                        <StackPanel>
+                                            <TextBlock Text="Reparar login Office" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Registra componentes WAM novamente no perfil atual." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicWindows" Margin="0,0,0,20">
+                            <TextBlock Text="Windows" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Horário e manutenção dos componentes do Windows." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3TimeSync" Style="{StaticResource ActionGridButton}" Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Windows Sincronizar horário Sincroniza o horário e verifica antes e depois." ToolTip="Sincroniza o horário e verifica antes e depois.">
+                                        <StackPanel>
+                                            <TextBlock Text="Sincronizar horário" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Sincroniza o horário e verifica antes e depois." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Sfc" Style="{StaticResource ActionGridButton}" ToolTip="Verifica e tenta reparar arquivos protegidos do Windows. Exige permissão administrativa." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Windows SFC: verificar arquivos Verifica e pode reparar arquivos do Windows.">
+                                        <StackPanel>
+                                            <TextBlock Text="SFC: verificar arquivos" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Verifica e pode reparar arquivos do Windows." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Dism" Style="{StaticResource ActionGridButton}" ToolTip="Repara a imagem de componentes do Windows. Exige permissão administrativa e pode depender do Windows Update." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Windows DISM: reparar imagem Repara componentes; pode depender do Windows Update.">
+                                        <StackPanel>
+                                            <TextBlock Text="DISM: reparar imagem" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Repara componentes; pode depender do Windows Update." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <TextBlock Name="NoActions" Visibility="Collapsed" Text="Nenhuma ação encontrada neste tema. Limpe a busca ou selecione Todos os temas." TextWrapping="Wrap" FontSize="14" Foreground="#64748B" Margin="0,12" />
                     </StackPanel>
                 </Border>
-
-                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
-                    <StackPanel>
-                        <TextBlock Text="USUÁRIO" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
-                        <TextBlock Name="CardV3User" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
-                    <StackPanel>
-                        <TextBlock Text="ADMIN" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
-                        <TextBlock Name="CardV3Admin" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1">
-                    <StackPanel>
-                        <TextBlock Text="VERSÃO" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
-                        <TextBlock Name="CardV3Version" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                    </StackPanel>
-                </Border>
-            </UniformGrid>
-
-            <Border Grid.Row="2" Background="White" CornerRadius="18" Padding="18" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,14">
-                <StackPanel>
-                    <TextBlock Text="Ações principais da V3" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
-                    <TextBlock Text="Poucas ações visíveis. O restante fica protegido ou avançado." FontSize="12" Foreground="#64748B" Margin="0,2,0,10"/>
-
-                    <UniformGrid Columns="4" Margin="0,14,0,0">
-    <Button Name="BtnV3QuickInternet" Content="Sem internet" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3QuickVpn" Content="VPN / Appgate" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Inventory" Content="Inventário" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Network" Content="Diagnóstico de rede" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Printers" Content="Impressoras" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3OfficeTpm" Content="Office / TPM" Style="{StaticResource ActionGridButton}" ToolTip="Diagnostica Office, TPM, WAM, licenciamento e estado Entra sem executar correcao."/>
-    <Button Name="BtnV3OfficeWam" Content="Reparar login Office" Style="{StaticResource ActionGridButton}" ToolTip="Repara o login WAM de Microsoft 365 e Office 2016, 2019 e 2021. Nao limpa TPM nem credenciais."/>
-
-    <Button Name="BtnV3FlushDns" Content="Limpar DNS" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3TimeSync" Content="Sincronizar horário" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Spooler" Content="Reiniciar spooler" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Health" Content="Saúde da máquina" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Sfc" Content="SFC: verificar arquivos" Style="{StaticResource ActionGridButton}" ToolTip="Verifica e tenta reparar arquivos protegidos do Windows. Exige permissão administrativa."/>
-    <Button Name="BtnV3Dism" Content="DISM: reparar imagem" Style="{StaticResource ActionGridButton}" ToolTip="Repara a imagem de componentes do Windows. Exige permissão administrativa e pode depender do Windows Update."/>
-    <Button Name="BtnV3NetworkAdvanced" Content="Rede: adaptadores e IP" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3DnsDetails" Content="Rede: DNS detalhado" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Routes" Content="Rede: rotas" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Gateway" Content="Rede: testar gateway" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3RenewIp" Content="Rede: renovar IP" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a conexão temporariamente e exige confirmação."/>
-    <Button Name="BtnV3Winsock" Content="Rede: reset Winsock" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização."/>
-    <Button Name="BtnV3TcpIp" Content="Rede: reset TCP/IP" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização."/>
-    <Button Name="BtnV3NetworkConnections" Content="Abrir conexões de rede" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3PrinterList" Content="Impressoras: listar" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3PrintJobs" Content="Impressoras: filas" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3DefaultPrinter" Content="Impressora padrão" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3OfflinePrinters" Content="Impressoras offline" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3ClearPrintQueue" Content="Limpar fila de impressão" Style="{StaticResource ActionGridButton}" ToolTip="Remove trabalhos pendentes e exige confirmação administrativa."/>
-    <Button Name="BtnV3PrinterSettings" Content="Abrir impressoras" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3PrintManagement" Content="Gerenciar impressão" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3AppgateStatus" Content="Appgate: status" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3AppgateRestart" Content="Appgate: reiniciar" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a VPN temporariamente e exige confirmação."/>
-    <Button Name="BtnV3AppgateFix" Content="Appgate: ajustar" Style="{StaticResource ActionGridButton}" ToolTip="Cria backup, ajusta RunScriptTimeout e UAC com confirmação."/>
-</UniformGrid>
-                </StackPanel>
-            </Border>
-
-            <Border Grid.Row="3" Background="White" CornerRadius="18" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
+            </ScrollViewer>
+            <Border Grid.Row="4" Background="White" CornerRadius="18" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-
-                    <TextBlock Text="Resultado e andamento" FontSize="16" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10"/>
-
-                    <TextBox Name="TxtV3Output"
-                             Grid.Row="1"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto"
-                             HorizontalScrollBarVisibility="Auto"
-                             FontFamily="Consolas"
-                             FontSize="12"
-                             Background="#F8FAFC"
-                             BorderBrush="#CBD5E1"
-                             BorderThickness="1"/>
+                    <DockPanel Margin="0,0,0,10">
+                        <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource FooterLinkButton}" DockPanel.Dock="Right" />
+                        <TextBlock Text="Resultado e andamento" FontSize="16" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10" />
+                    </DockPanel>
+                    <TextBox Name="TxtV3Output" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="13" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" IsReadOnly="True" Padding="12" />
                 </Grid>
             </Border>
-            <Border Grid.Row="4" Background="Transparent" Margin="0,10,0,0">
+            <Border Grid.Row="5" Background="Transparent" Margin="0,10,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Column="0"
-                               Text="ServiceDesk Toolkit Corporate V3 - Made by Caio Dal Re"
-                               Foreground="#64748B"
-                               FontSize="11"
-                               VerticalAlignment="Center"/>
-
+                    <TextBlock Grid.Column="0" Text="ServiceDesk Toolkit Corporate V3 - Made by Caio Dal Re" Foreground="#64748B" FontSize="11" VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Name="BtnV3LinkedIn"
-                                Content="LinkedIn"
-                                Style="{StaticResource FooterLinkButton}"
-                                ToolTip="Abrir LinkedIn de Caio Dal Re"/>
-
-                        <Button Name="BtnV3GitHub"
-                                Content="GitHub"
-                                Style="{StaticResource FooterLinkButton}"
-                                ToolTip="Abrir GitHub de Caio Dal Re"/>
+                        <Button Name="BtnV3LinkedIn" Content="LinkedIn" Style="{StaticResource FooterLinkButton}" ToolTip="Abrir LinkedIn de Caio Dal Re" />
+                        <Button Name="BtnV3GitHub" Content="GitHub" Style="{StaticResource FooterLinkButton}" ToolTip="Abrir GitHub de Caio Dal Re" />
                     </StackPanel>
                 </Grid>
             </Border>
+            <GridSplitter Grid.Row="3" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#CBD5E1" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ToolTip="Arraste para ajustar o espaço de ações e resultado." />
+            <Grid Grid.Row="1" Margin="0,12,0,14">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Buscar ações neste tema" FontSize="12" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,6" />
+                <TextBlock Name="ActionCount" Grid.Column="1" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" />
+                <TextBox Name="SearchActions" Grid.Row="1" Height="34" Padding="10,6" VerticalContentAlignment="Center" FontSize="13" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" ToolTip="Digite o nome da ação ou uma palavra como DNS, fila ou licença." />
+                <Button Name="BtnV3ClearSearch" Grid.Row="1" Grid.Column="1" Content="Limpar busca" Style="{StaticResource FooterLinkButton}" Height="34" ToolTip="Exibe novamente todas as ações do tema atual." />
+            </Grid>
         </Grid>
     </Grid>
 </Window>
@@ -2388,12 +2642,115 @@ $CardV3User.Text = "$env:USERDOMAIN\$env:USERNAME"
 $CardV3Admin.Text = if (Test-V3Admin) { "Sim" } else { "Não" }
 $CardV3Version.Text = Get-V3VersionInfo
 
-$window.FindName("BtnV3NavHome").Add_Click({ Set-V3Output (Get-V3HomeText) })
-$window.FindName("BtnV3NavGuided").Add_Click({ Set-V3Output (Get-V3GuidedHomeText) })
-$window.FindName("BtnV3NavEvidence").Add_Click({ Set-V3Output "Evidências:`r`n- Inventário`r`n- Diagnóstico de rede`r`n- Relatório`r`n- Pacote de suporte`r`n- Copiar resultado" })
-$window.FindName("BtnV3NavSafeFix").Add_Click({ Set-V3Output "Correções Seguras:`r`n- Limpar DNS`r`n- Renovar IP`r`n- Sincronizar horário`r`n- Reiniciar spooler`r`n- Reparar login Office (WAM)`r`n- Limpar temporários" })
-$window.FindName("BtnV3NavAdvanced").Add_Click({ Set-V3Output "Área avançada:`r`nAções críticas protegidas por confirmação, elevação administrativa e log.`r`n`r`nDisponíveis agora:`r`n- SFC /scannow: verifica e repara arquivos protegidos do Windows.`r`n- DISM RestoreHealth: repara a imagem de componentes do Windows.`r`n- Office / TPM: diagnóstico de TPM, WAM, licenciamento e Entra ID.`r`n`r`nO toolkit não limpa TPM nem remove o dispositivo do Entra automaticamente.`r`n`r`nOrdem recomendada quando o SFC não consegue reparar:`r`n1. Execute o DISM.`r`n2. Reinicie se solicitado.`r`n3. Execute o SFC novamente." })
-$window.FindName("BtnV3NavToolkit").Add_Click({ Set-V3Output "Toolkit:`r`n- Status`r`n- Atualização`r`n- Rollback`r`n- Logs`r`n- Validação`r`n`r`nEssas funções serão conectadas ao motor atual em etapas futuras." })
+function ConvertTo-V3SearchText {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return ""
+    }
+    $normalized = $Text.Normalize([System.Text.NormalizationForm]::FormD)
+    return ([regex]::Replace($normalized, '\p{Mn}', '')).Trim().ToLowerInvariant()
+}
+
+function Update-V3ActionFilter {
+    $query = ConvertTo-V3SearchText -Text $window.FindName("SearchActions").Text
+    $tokens = @($query -split '\s+' | Where-Object { $_ })
+    $total = 0
+    foreach ($key in @("Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
+        $section = $window.FindName("Topic$key")
+        $inTopic = $script:V3SelectedTopic -eq "All" -or $script:V3SelectedTopic -eq $key
+        $sectionMatches = 0
+        foreach ($group in @($section.Children | Where-Object {
+            $_ -is [System.Windows.Controls.StackPanel] -and $_.Tag -eq "ActionsGroup"
+        })) {
+            $groupMatches = 0
+            foreach ($grid in @($group.Children | Where-Object {
+                $_ -is [System.Windows.Controls.Primitives.UniformGrid]
+            })) {
+                foreach ($button in $grid.Children) {
+                    $searchText = ConvertTo-V3SearchText -Text ([string]$button.Tag)
+                    $matches = $inTopic
+                    foreach ($token in $tokens) {
+                        if (-not $searchText.Contains($token)) {
+                            $matches = $false
+                        }
+                    }
+                    $button.Visibility = if ($matches) {
+                        [System.Windows.Visibility]::Visible
+                    }
+                    else {
+                        [System.Windows.Visibility]::Collapsed
+                    }
+                    if ($matches) {
+                        $groupMatches++
+                    }
+                }
+            }
+            $group.Visibility = if ($groupMatches -gt 0) {
+                [System.Windows.Visibility]::Visible
+            }
+            else {
+                [System.Windows.Visibility]::Collapsed
+            }
+            $sectionMatches += $groupMatches
+        }
+        $section.Visibility = if ($inTopic -and $sectionMatches -gt 0) {
+            [System.Windows.Visibility]::Visible
+        }
+        else {
+            [System.Windows.Visibility]::Collapsed
+        }
+        $total += $sectionMatches
+    }
+    $window.FindName("NoActions").Visibility = if ($total -eq 0) {
+        [System.Windows.Visibility]::Visible
+    }
+    else {
+        [System.Windows.Visibility]::Collapsed
+    }
+    $window.FindName("ActionCount").Text = if ($total -eq 1) {
+        "1 ação disponível"
+    }
+    elseif ($total -eq 0) {
+        "Nenhuma ação disponível"
+    }
+    else {
+        "$total ações disponíveis"
+    }
+    $window.FindName("ActionsScroll").ScrollToTop()
+}
+
+function Set-V3Topic {
+    param(
+        [ValidateSet("All", "Overview", "Network", "Vpn", "Printers", "Office", "Windows")]
+        [string]$Topic = "All"
+    )
+
+    $script:V3SelectedTopic = $Topic
+    foreach ($key in @("All", "Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
+        $button = $window.FindName("Nav$key")
+        $button.Background = if ($key -eq $Topic) {
+            [System.Windows.Media.Brushes]::RoyalBlue
+        }
+        else {
+            [System.Windows.Media.Brushes]::Transparent
+        }
+    }
+    Update-V3ActionFilter
+}
+
+foreach ($key in @("All", "Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
+    $window.FindName("Nav$key").Add_Click({
+        param($sender, $eventArgs)
+        Set-V3Topic -Topic ([string]$sender.Tag)
+    })
+}
+$window.FindName("SearchActions").Add_TextChanged({ Update-V3ActionFilter })
+$window.FindName("BtnV3ClearSearch").Add_Click({
+    $window.FindName("SearchActions").Clear()
+    [void]$window.FindName("SearchActions").Focus()
+})
+Set-V3Topic -Topic "Overview"
 
 $window.FindName("BtnV3QuickInternet").Add_Click({ Set-V3Output (Invoke-V3WorkflowNoInternet) })
 $window.FindName("BtnV3QuickVpn").Add_Click({ Set-V3Output (Invoke-V3WorkflowVpn) })

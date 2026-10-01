@@ -1,4 +1,4 @@
-﻿# ServiceDesk Toolkit Corporate
+# ServiceDesk Toolkit Corporate
 
 [![CI](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/Caiodalre/ServiceDeskToolkit/actions/workflows/ci.yml)
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4)
@@ -168,3 +168,13 @@ Não publique dados corporativos, credenciais ou pacotes de suporte em issues.
 O repositório ainda não possui uma licença pública definida. Uso, cópia e
 redistribuição dependem da autorização do proprietário até que uma licença seja
 formalmente escolhida.
+
+## Candidata visual V3.1 em homologação
+
+A branch `v3.1.0-ui-homologation` contém o índice por temas, a busca por ações,
+as descrições e a rolagem da nova interface. A identificação continua
+`3.1.0-preview.2 / preview`; a candidata inclui mudanças adicionais à base
+original e ainda não foi promovida. A versão estável permanece `v3.0.1`.
+
+O instalador desta branch usa `v3.1.0-ui-homologation` como referência.
+Consulte o [roteiro de homologação](docs/V3.1.0-UI-HOMOLOGACAO.md).

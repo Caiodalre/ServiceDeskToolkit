@@ -1,4 +1,4 @@
-﻿# ServiceDesk Toolkit Corporate V3
+# ServiceDesk Toolkit Corporate V3
 
 ## Status
 
@@ -56,6 +56,31 @@ Pelo CMD:
 Ou pelo PowerShell:
 
     powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File ".\ServiceDeskToolkit-CorporateV3.ps1"
+
+## Navegação por temas — candidata em homologação
+
+A interface organiza as ações em Visão geral, Rede e internet, VPN / Appgate,
+Impressoras, Office / TPM e Windows. O índice destaca o tema selecionado e
+filtra as ações; **Todos os temas** exibe o catálogo completo.
+
+A busca filtra as ações do tema atual por nome ou descrição, aceita termos
+com ou sem acentos e mantém o resultado anterior. **Limpar busca** restaura
+a lista. Cada cartão explica o que a ação faz antes de sua execução.
+
+Os dados da estação ficam em Visão geral. Diagnósticos e consultas aparecem
+antes das correções, que têm destaque visual próprio. Cada botão mantém seu
+comportamento e as confirmações existentes.
+
+A lista de ações e o resultado têm rolagem independente. Arraste a divisória
+entre as duas áreas para ajustar o espaço de leitura. **Copiar resultado**
+permanece disponível no cabeçalho do relatório, que é somente leitura.
+
+A candidata visual está na branch `v3.1.0-ui-homologation`. O instalador
+desta branch usa essa mesma referência e seu manifesto SHA-256.
+O roteiro está em [Homologação da interface](V3.1.0-UI-HOMOLOGACAO.md).
+
+Esta mudança ainda precisa de homologação visual e operacional. As evidências
+anteriores da preview.2 não aprovam automaticamente a interface modificada.
 
 ## Como validar
 

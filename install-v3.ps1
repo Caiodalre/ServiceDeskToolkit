@@ -1,5 +1,5 @@
 ﻿param(
-    [string]$Branch = "v3.1.0-office-tpm-preview",
+    [string]$Branch = "v3.1.0-ui-homologation",
     [string]$Repo = "Caiodalre/ServiceDeskToolkit",
     [string]$InstallRoot,
     [switch]$NoShortcut,

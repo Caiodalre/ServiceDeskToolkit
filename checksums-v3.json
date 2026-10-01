@@ -2,20 +2,20 @@
   "schemaVersion": 1,
   "product": "ServiceDesk Toolkit Corporate V3",
   "version": "3.1.0-preview.2",
-  "sourceRef": "v3.1.0-office-tpm-preview",
+  "sourceRef": "v3.1.0-ui-homologation",
   "algorithm": "SHA256",
   "files": [
     {
       "path": "docs/V3-README.md",
-      "sha256": "a7683c225945adf7e671acd3ccde2bb49c39eb1df03e6a3557c09023287f716b"
+      "sha256": "635ccd683ffd726e44350f08bf8712d0125659be95f7bf1f1a8240ac09783a18"
     },
     {
       "path": "install-v3.ps1",
-      "sha256": "09d8c5f38dd858742393c87cb3d12a5c838862b01c4a1bb5833024f7a18f7b1a"
+      "sha256": "dcbaf47d54f9bad16fb2c673f196e75e7ce66c73338ad5cafd5fb820e9cef80d"
     },
     {
       "path": "ServiceDeskToolkit-CorporateV3.ps1",
-      "sha256": "65810cfd5f948e0a058e66f4decfc089ef1ae354e8cf1c9fea66faf602cff6cf"
+      "sha256": "470d4c5595f9e588d566b9e3d8b62e27ed9d7542537802380977cc1153d3c245"
     },
     {
       "path": "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
@@ -55,7 +55,7 @@
     },
     {
       "path": "version-v3.json",
-      "sha256": "ecb8228088d39f9e1c4ef6e3aaa14e029726c3351046aaef07dbc4c31f976c57"
+      "sha256": "8e468cb0a8a9364fb2090025d39235881cb3634a02932b0c66054fc5d7a51d08"
     }
   ]
 }
