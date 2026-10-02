@@ -431,8 +431,16 @@ function Format-ToolkitPrinterReport {
                 Select-Object -First 1
 
             if ($driverInfo) {
+                $driverVersion = "Nao informada"
+                $versionProperty = $driverInfo.PSObject.Properties["DriverVersion"]
+                if (
+                    $null -ne $versionProperty -and
+                    -not [string]::IsNullOrWhiteSpace([string]$versionProperty.Value)
+                ) {
+                    $driverVersion = [string]$versionProperty.Value
+                }
                 [void]$sb.AppendLine(
-                    "Driver: $driverName | Versao: $(if ($driverInfo.DriverVersion) { $driverInfo.DriverVersion } else { 'Nao informada' })"
+                    "Driver: $driverName | Versao: $driverVersion"
                 )
             }
             else {

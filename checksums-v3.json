@@ -35,7 +35,7 @@
     },
     {
       "path": "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
-      "sha256": "c6986fbda27e49044aa34afe1b100ac356e3a5a0e766a443614779a00f9f7ebd"
+      "sha256": "1a201054b2172b0708327e1d96a7481f16d39e5437bf06ce4894505056496c47"
     },
     {
       "path": "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",

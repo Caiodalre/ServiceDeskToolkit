@@ -995,3 +995,27 @@ Describe "Protected printer operations" {
             Should -Match "IMPRESSORA PADRAO"
     }
 }
+
+Describe "Printer driver metadata compatibility" {
+    It "formats a driver without an optional DriverVersion property" {
+        $snapshot = New-PrinterSnapshot
+        $snapshot.Drivers = [object[]]@([pscustomobject]@{
+            Name = "Driver de teste"
+            Version = 3
+        })
+        $assessment = Get-ToolkitPrinterAssessment -Snapshot $snapshot
+        $report = Format-ToolkitPrinterReport -Snapshot $snapshot -Assessment $assessment
+        $report | Should -Match 'Driver: Driver de teste \| Versao: Nao informada'
+    }
+
+    It "preserves an available driver version in the report" {
+        $snapshot = New-PrinterSnapshot
+        $snapshot.Drivers = [object[]]@([pscustomobject]@{
+            Name = "Driver de teste"
+            DriverVersion = "10.2.3"
+        })
+        $assessment = Get-ToolkitPrinterAssessment -Snapshot $snapshot
+        $report = Format-ToolkitPrinterReport -Snapshot $snapshot -Assessment $assessment
+        $report | Should -Match 'Versao: 10\.2\.3'
+    }
+}
