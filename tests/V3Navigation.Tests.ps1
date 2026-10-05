@@ -115,6 +115,32 @@ Describe "V3 reading and responsive layout" {
         $window.FindName("SearchActions").Text | Should -Be "licença"
         $script:TxtV3Output.Text | Should -Be "Resultado preservado"
     }
+    It "combines maintenance filtering with the theme and preserves the report" {
+        $window.FindName("SearchActions").Clear()
+        $window.FindName("ActionKind").SelectedIndex = 2
+        $script:TxtV3Output.Text = "Relatório preservado ao filtrar"
+        Set-V3Topic -Topic Network
+        $groups = @($window.FindName("TopicNetwork").Children | Where-Object {
+            $_ -is [Windows.Controls.StackPanel] -and $_.Tag -eq "ActionsGroup"
+        })
+        ($groups | Where-Object Uid -eq "Consultation").Visibility | Should -Be "Collapsed"
+        ($groups | Where-Object Uid -eq "Maintenance").Visibility | Should -Be "Visible"
+        $script:TxtV3Output.Text | Should -Be "Relatório preservado ao filtrar"
+        $window.FindName("ActionKind").SelectedIndex = 0
+        Update-V3ActionFilter
+        ($groups | Where-Object Uid -eq "Consultation").Visibility | Should -Be "Visible"
+    }
+
+    It "shows no results when the selected theme has no consultation actions" {
+        $window.FindName("SearchActions").Clear()
+        $window.FindName("ActionKind").SelectedIndex = 1
+        Set-V3Topic -Topic Windows
+        $window.FindName("NoActions").Visibility | Should -Be "Visible"
+        $window.FindName("NoActions").Text | Should -BeLike "*tipo de ação*"
+        $window.FindName("ActionKind").SelectedIndex = 0
+        Update-V3ActionFilter
+        $window.FindName("NoActions").Visibility | Should -Be "Collapsed"
+    }
     It "copies the report without appending feedback to its contents" {
         Mock Set-V3ClipboardText {}
         $script:TxtV3Output.Text = "Relatório original"

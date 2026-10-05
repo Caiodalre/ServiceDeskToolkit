@@ -2284,6 +2284,12 @@ $xaml = @"
                     <Button Name="NavPrinters" Tag="Printers" Content="Impressoras" Style="{StaticResource NavButton}" />
                     <Button Name="NavOffice" Tag="Office" Content="Office / TPM" Style="{StaticResource NavButton}" />
                     <Button Name="NavWindows" Tag="Windows" Content="Windows" Style="{StaticResource NavButton}" />
+                    <TextBlock Text="TIPO DE AÇÃO" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" Margin="0,18,0,6" />
+                    <ComboBox Name="ActionKind" SelectedIndex="0" Height="34" Padding="8,4" FontSize="12" AutomationProperties.Name="Filtrar por tipo de ação" ToolTip="Combina o tipo de ação com o tema e a busca atuais.">
+                        <ComboBoxItem Tag="All" Content="Todas as ações" />
+                        <ComboBoxItem Tag="Consultation" Content="Diagnósticos e consultas" />
+                        <ComboBoxItem Tag="Maintenance" Content="Correções e manutenção" />
+                    </ComboBox>
                     <TextBlock Text="Comece por uma consulta. As ações de manutenção ficam separadas em cada tema." Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,24,0,0" />
                     <TextBlock Text="Ctrl+F  Buscar&#x0a;F6  Busca / resultado&#x0a;Esc  Limpar busca / voltar" Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,18,0,0" />
                 </StackPanel>
@@ -2336,7 +2342,7 @@ $xaml = @"
                             </UniformGrid>
                             <TextBlock Text="Visão geral" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
                             <TextBlock Text="Comece pela saúde e pelo inventário." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
                                 <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <UniformGrid Columns="2">
                                     <Button Name="BtnV3Health" Style="{StaticResource ActionGridButton}" Tag="Visão geral Saúde da máquina Avalia memória, disco e reinicialização pendente." ToolTip="Avalia memória, disco e reinicialização pendente.">
@@ -2357,7 +2363,7 @@ $xaml = @"
                         <StackPanel Name="TopicNetwork" Margin="0,0,0,20">
                             <TextBlock Text="Rede e internet" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
                             <TextBlock Text="Investigue conectividade, DNS e rotas." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
                                 <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <UniformGrid Columns="2">
                                     <Button Name="BtnV3QuickInternet" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Sem internet Conduz a triagem de falhas de internet." ToolTip="Conduz a triagem de falhas de internet.">
@@ -2404,7 +2410,7 @@ $xaml = @"
                                     </Button>
                                 </UniformGrid>
                             </StackPanel>
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
                                 <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
                                 <UniformGrid Columns="2">
@@ -2438,7 +2444,7 @@ $xaml = @"
                         <StackPanel Name="TopicVpn" Margin="0,0,0,20">
                             <TextBlock Text="VPN / Appgate" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
                             <TextBlock Text="Confira o cliente e os serviços antes de corrigir." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
                                 <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <UniformGrid Columns="2">
                                     <Button Name="BtnV3QuickVpn" Style="{StaticResource ActionGridButton}" Tag="VPN / Appgate VPN / Appgate Conduz a triagem de acesso pela VPN." ToolTip="Conduz a triagem de acesso pela VPN.">
@@ -2455,7 +2461,7 @@ $xaml = @"
                                     </Button>
                                 </UniformGrid>
                             </StackPanel>
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
                                 <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
                                 <UniformGrid Columns="2">
@@ -2477,7 +2483,7 @@ $xaml = @"
                         <StackPanel Name="TopicPrinters" Margin="0,0,0,20">
                             <TextBlock Text="Impressoras" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
                             <TextBlock Text="Consulte impressoras, filas e serviço de impressão." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
                                 <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <UniformGrid Columns="2">
                                     <Button Name="BtnV3Printers" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressoras Conduz a triagem de uma impressora que não imprime." ToolTip="Conduz a triagem de uma impressora que não imprime.">
@@ -2524,7 +2530,7 @@ $xaml = @"
                                     </Button>
                                 </UniformGrid>
                             </StackPanel>
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
                                 <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
                                 <UniformGrid Columns="2">
@@ -2546,7 +2552,7 @@ $xaml = @"
                         <StackPanel Name="TopicOffice" Margin="0,0,0,20">
                             <TextBlock Text="Office / TPM" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
                             <TextBlock Text="Investigue autenticação, licenças e proteção." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
                                 <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <UniformGrid Columns="2">
                                     <Button Name="BtnV3OfficeTpm" Style="{StaticResource ActionGridButton}" ToolTip="Diagnostica Office, TPM, WAM, licenciamento e estado Entra sem executar correcao." Tag="Office / TPM Office / TPM Consulta Office, TPM, WAM, licenças e Entra.">
@@ -2557,7 +2563,7 @@ $xaml = @"
                                     </Button>
                                 </UniformGrid>
                             </StackPanel>
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
                                 <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
                                 <UniformGrid Columns="2">
@@ -2573,7 +2579,7 @@ $xaml = @"
                         <StackPanel Name="TopicWindows" Margin="0,0,0,20">
                             <TextBlock Text="Windows" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
                             <TextBlock Text="Horário e manutenção dos componentes do Windows." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
-                            <StackPanel Tag="ActionsGroup">
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
                                 <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
                                 <UniformGrid Columns="2">
@@ -2762,6 +2768,7 @@ function Update-V3ActionFilter {
         [System.Windows.Visibility]::Visible
     }
     $tokens = @($query -split '\s+' | Where-Object { $_ })
+    $kind = [string]$window.FindName("ActionKind").SelectedItem.Tag
     $total = 0
     foreach ($key in @("Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
         $section = $window.FindName("Topic$key")
@@ -2779,7 +2786,7 @@ function Update-V3ActionFilter {
             })) {
                 foreach ($button in $grid.Children) {
                     $searchText = ConvertTo-V3SearchText -Text ([string]$button.Tag)
-                    $matches = $inTopic
+                    $matches = $inTopic -and ($kind -eq "All" -or $kind -eq $group.Uid)
                     foreach ($token in $tokens) {
                         if (-not $searchText.Contains($token)) {
                             $matches = $false
@@ -2813,10 +2820,10 @@ function Update-V3ActionFilter {
         $total += $sectionMatches
     }
     $window.FindName("NoActions").Text = if ($script:V3SelectedTopic -eq "All") {
-        "Nenhuma ação encontrada. Tente outro nome ou limpe a busca."
+        "Nenhuma ação encontrada. Revise o tipo de ação, tente outro nome ou limpe a busca."
     }
     else {
-        "Nenhuma ação encontrada neste tema. Use Buscar em todos ou limpe a busca."
+        "Nenhuma ação encontrada neste tema. Revise o tipo de ação, use Buscar em todos ou limpe a busca."
     }
     $window.FindName("NoActions").Visibility = if ($total -eq 0) {
         [System.Windows.Visibility]::Visible
@@ -2885,6 +2892,7 @@ function Update-V3SearchResults {
     Update-V3ActionFilter
 }
 $window.FindName("SearchActions").Add_TextChanged({ Update-V3SearchResults })
+$window.FindName("ActionKind").Add_SelectionChanged({ Update-V3SearchResults })
 $window.FindName("BtnV3ClearSearch").Add_Click({
     $window.FindName("SearchActions").Clear()
     [void]$window.FindName("SearchActions").Focus()
