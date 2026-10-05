@@ -69,7 +69,7 @@ Describe "V3 reading and responsive layout" {
         $ast = [Management.Automation.Language.Parser]::ParseInput(
             $script:AppText, [ref]$tokens, [ref]$errors
         )
-        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard")) {
+        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults")) {
             $functionAst = $ast.Find({
                 param($node)
                 $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
@@ -104,6 +104,17 @@ Describe "V3 reading and responsive layout" {
         $script:TxtV3Output.Text | Should -Be "Resultado anterior"
     }
 
+    It "reveals matching actions when a search changes during expanded reading" {
+        Set-V3Topic -Topic All
+        $script:TxtV3Output.Text = "Resultado preservado"
+        Set-V3ResultExpanded -Expanded $true
+        $window.FindName("SearchActions").Text = "licença"
+        Update-V3SearchResults
+        $window.FindName("ActionsScroll").Visibility | Should -Be "Visible"
+        $window.FindName("NoActions").Visibility | Should -Be "Collapsed"
+        $window.FindName("SearchActions").Text | Should -Be "licença"
+        $script:TxtV3Output.Text | Should -Be "Resultado preservado"
+    }
     It "copies the report without appending feedback to its contents" {
         Mock Set-V3ClipboardText {}
         $script:TxtV3Output.Text = "Relatório original"

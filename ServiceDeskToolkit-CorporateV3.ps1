@@ -2285,6 +2285,7 @@ $xaml = @"
                     <Button Name="NavOffice" Tag="Office" Content="Office / TPM" Style="{StaticResource NavButton}" />
                     <Button Name="NavWindows" Tag="Windows" Content="Windows" Style="{StaticResource NavButton}" />
                     <TextBlock Text="Comece por uma consulta. As ações de manutenção ficam separadas em cada tema." Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,24,0,0" />
+                    <TextBlock Text="Ctrl+F  Buscar&#x0a;F6  Busca / resultado&#x0a;Esc  Limpar busca / voltar" Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,18,0,0" />
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -2619,7 +2620,7 @@ $xaml = @"
                             <Button Name="BtnV3LargerText" Content="A+" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Aumentar texto do resultado" ToolTip="Aumentar texto do resultado." />
                         </WrapPanel>
                     </StackPanel>
-                    <TextBox Name="TxtV3Output" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" FontFamily="Consolas" FontSize="13" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" IsReadOnly="True" Padding="12" />
+                    <TextBox Name="TxtV3Output" AutomationProperties.Name="Resultado do atendimento" AutomationProperties.HelpText="Relatório somente leitura. F6 alterna entre resultado e busca. Esc retorna às ações quando o resultado está ampliado." Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" FontFamily="Consolas" FontSize="13" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" IsReadOnly="True" Padding="12" />
                 </Grid>
             </Border>
             <Border Grid.Row="5" Background="Transparent" Margin="0,10,0,0">
@@ -2648,7 +2649,7 @@ $xaml = @"
                 <TextBlock Name="SearchScope" Text="Buscar ações neste tema" FontSize="12" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,6" />
                 <TextBlock Name="ActionCount" Grid.Column="1" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" />
                 <Grid Grid.Row="1">
-                    <TextBox Name="SearchActions" Height="34" Padding="10,6" VerticalContentAlignment="Center" FontSize="13" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" AutomationProperties.Name="Buscar ações" ToolTip="Digite o nome da ação ou uma palavra como DNS, fila ou licença. Ctrl+F para buscar; Esc para limpar." />
+                    <TextBox Name="SearchActions" Height="34" Padding="10,6" VerticalContentAlignment="Center" FontSize="13" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" AutomationProperties.Name="Buscar ações" AutomationProperties.HelpText="Busca no tema selecionado. Use Buscar em todos para ampliar a procura. Ctrl+F seleciona o campo; Esc limpa a busca." ToolTip="Digite o nome da ação ou uma palavra como DNS, fila ou licença. Ctrl+F para buscar; Esc para limpar." />
                     <TextBlock Name="SearchHint" Text="Ex.: DNS, impressora ou licença" IsHitTestVisible="False" Foreground="#64748B" Margin="11,0" VerticalAlignment="Center" />
                 </Grid>
                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
@@ -2703,6 +2704,9 @@ function Set-V3ResultExpanded {
     $window.FindName("ActionsScroll").Visibility = if ($Expanded) { "Collapsed" } else { "Visible" }
     $window.FindName("ResultSplitter").Visibility = if ($Expanded) { "Collapsed" } else { "Visible" }
     $window.FindName("BtnV3ExpandResult").Content = if ($Expanded) { "Voltar às ações" } else { "Ampliar resultado" }
+    if ($Expanded) {
+        [void]$script:TxtV3Output.Focus()
+    }
 }
 
 function Update-V3ResponsiveLayout {
@@ -2808,6 +2812,12 @@ function Update-V3ActionFilter {
         }
         $total += $sectionMatches
     }
+    $window.FindName("NoActions").Text = if ($script:V3SelectedTopic -eq "All") {
+        "Nenhuma ação encontrada. Tente outro nome ou limpe a busca."
+    }
+    else {
+        "Nenhuma ação encontrada neste tema. Use Buscar em todos ou limpe a busca."
+    }
     $window.FindName("NoActions").Visibility = if ($total -eq 0) {
         [System.Windows.Visibility]::Visible
     }
@@ -2851,6 +2861,7 @@ function Set-V3Topic {
     }
     foreach ($key in @("All", "Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
         $button = $window.FindName("Nav$key")
+        [System.Windows.Automation.AutomationProperties]::SetItemStatus($button, $(if ($key -eq $Topic) { "Tema selecionado" } else { "" }))
         $button.Background = if ($key -eq $Topic) {
             [System.Windows.Media.Brushes]::RoyalBlue
         }
@@ -2867,7 +2878,13 @@ foreach ($key in @("All", "Overview", "Network", "Vpn", "Printers", "Office", "W
         Set-V3Topic -Topic ([string]$sender.Tag)
     })
 }
-$window.FindName("SearchActions").Add_TextChanged({ Update-V3ActionFilter })
+function Update-V3SearchResults {
+    if ($script:V3ResultExpanded) {
+        Set-V3ResultExpanded -Expanded $false
+    }
+    Update-V3ActionFilter
+}
+$window.FindName("SearchActions").Add_TextChanged({ Update-V3SearchResults })
 $window.FindName("BtnV3ClearSearch").Add_Click({
     $window.FindName("SearchActions").Clear()
     [void]$window.FindName("SearchActions").Focus()
@@ -2884,10 +2901,26 @@ $window.Add_PreviewKeyDown({
         $window.FindName("SearchActions").SelectAll()
         $eventArgs.Handled = $true
     }
-    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::Escape -and
-        $window.FindName("SearchActions").IsKeyboardFocusWithin) {
-        $window.FindName("SearchActions").Clear()
+    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::F6) {
+        if ($script:TxtV3Output.IsKeyboardFocusWithin) {
+            [void]$window.FindName("SearchActions").Focus()
+        }
+        else {
+            [void]$script:TxtV3Output.Focus()
+        }
         $eventArgs.Handled = $true
+    }
+    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::Escape) {
+        if ($window.FindName("SearchActions").IsKeyboardFocusWithin -and
+            -not [string]::IsNullOrEmpty($window.FindName("SearchActions").Text)) {
+            $window.FindName("SearchActions").Clear()
+            $eventArgs.Handled = $true
+        }
+        elseif ($script:V3ResultExpanded) {
+            Set-V3ResultExpanded -Expanded $false
+            [void]$window.FindName("BtnV3ExpandResult").Focus()
+            $eventArgs.Handled = $true
+        }
     }
 })
 Set-V3Topic -Topic "Overview"
