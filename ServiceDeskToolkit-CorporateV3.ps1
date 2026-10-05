@@ -2616,10 +2616,16 @@ $xaml = @"
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="Buscar ações neste tema" FontSize="12" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,6" />
+                <TextBlock Name="SearchScope" Text="Buscar ações neste tema" FontSize="12" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,6" />
                 <TextBlock Name="ActionCount" Grid.Column="1" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" />
-                <TextBox Name="SearchActions" Grid.Row="1" Height="34" Padding="10,6" VerticalContentAlignment="Center" FontSize="13" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" ToolTip="Digite o nome da ação ou uma palavra como DNS, fila ou licença." />
-                <Button Name="BtnV3ClearSearch" Grid.Row="1" Grid.Column="1" Content="Limpar busca" Style="{StaticResource FooterLinkButton}" Height="34" ToolTip="Exibe novamente todas as ações do tema atual." />
+                <Grid Grid.Row="1">
+                    <TextBox Name="SearchActions" Height="34" Padding="10,6" VerticalContentAlignment="Center" FontSize="13" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" AutomationProperties.Name="Buscar ações" ToolTip="Digite o nome da ação ou uma palavra como DNS, fila ou licença. Ctrl+F para buscar; Esc para limpar." />
+                    <TextBlock Name="SearchHint" Text="Ex.: DNS, impressora ou licença" IsHitTestVisible="False" Foreground="#64748B" Margin="11,0" VerticalAlignment="Center" />
+                </Grid>
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                    <Button Name="BtnV3SearchAll" Content="Buscar em todos" Style="{StaticResource FooterLinkButton}" Height="34" ToolTip="Mantém o texto da busca e procura em todos os temas." />
+                    <Button Name="BtnV3ClearSearch" Content="Limpar busca" Style="{StaticResource FooterLinkButton}" Height="34" ToolTip="Exibe novamente todas as ações do tema atual. Esc para limpar." />
+                </StackPanel>
             </Grid>
         </Grid>
     </Grid>
@@ -2654,6 +2660,19 @@ function ConvertTo-V3SearchText {
 
 function Update-V3ActionFilter {
     $query = ConvertTo-V3SearchText -Text $window.FindName("SearchActions").Text
+    $window.FindName("SearchHint").Visibility = if ([string]::IsNullOrEmpty($query)) {
+        [System.Windows.Visibility]::Visible
+    }
+    else {
+        [System.Windows.Visibility]::Collapsed
+    }
+    $window.FindName("BtnV3ClearSearch").IsEnabled = -not [string]::IsNullOrEmpty($window.FindName("SearchActions").Text)
+    $window.FindName("BtnV3SearchAll").Visibility = if ($script:V3SelectedTopic -eq "All") {
+        [System.Windows.Visibility]::Collapsed
+    }
+    else {
+        [System.Windows.Visibility]::Visible
+    }
     $tokens = @($query -split '\s+' | Where-Object { $_ })
     $total = 0
     foreach ($key in @("Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
@@ -2727,6 +2746,8 @@ function Set-V3Topic {
     )
 
     $script:V3SelectedTopic = $Topic
+    $topicLabel = [string]$window.FindName("Nav$Topic").Content
+    $window.FindName("SearchScope").Text = "Buscar ações · $topicLabel"
     foreach ($key in @("All", "Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
         $button = $window.FindName("Nav$key")
         $button.Background = if ($key -eq $Topic) {
@@ -2749,6 +2770,24 @@ $window.FindName("SearchActions").Add_TextChanged({ Update-V3ActionFilter })
 $window.FindName("BtnV3ClearSearch").Add_Click({
     $window.FindName("SearchActions").Clear()
     [void]$window.FindName("SearchActions").Focus()
+})
+$window.FindName("BtnV3SearchAll").Add_Click({
+    Set-V3Topic -Topic "All"
+    [void]$window.FindName("SearchActions").Focus()
+})
+$window.Add_PreviewKeyDown({
+    param($sender, $eventArgs)
+    if ($eventArgs.Key -eq [System.Windows.Input.Key]::F -and
+        [System.Windows.Input.Keyboard]::Modifiers -eq [System.Windows.Input.ModifierKeys]::Control) {
+        [void]$window.FindName("SearchActions").Focus()
+        $window.FindName("SearchActions").SelectAll()
+        $eventArgs.Handled = $true
+    }
+    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::Escape -and
+        $window.FindName("SearchActions").IsKeyboardFocusWithin) {
+        $window.FindName("SearchActions").Clear()
+        $eventArgs.Handled = $true
+    }
 })
 Set-V3Topic -Topic "Overview"
 
