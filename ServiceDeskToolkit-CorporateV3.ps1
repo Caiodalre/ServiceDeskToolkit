@@ -2122,7 +2122,7 @@ function Open-V3ExternalLink {
     }
 }
 $xaml = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate V3 | Temas" Height="820" Width="1180" WindowStartupLocation="CenterScreen" Background="#F3F6FA" FontFamily="Segoe UI" MinWidth="820" MinHeight="640">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate V3 | Temas" Height="820" Width="1180" WindowStartupLocation="CenterScreen" Background="#F3F6FA" FontFamily="Segoe UI" MinWidth="820" MinHeight="480">
     <Window.Resources>
         <Style x:Key="NavButton" TargetType="Button">
             <Setter Property="Height" Value="44" />
@@ -2630,7 +2630,7 @@ $xaml = @"
                     <TextBox Name="TxtV3Output" AutomationProperties.Name="Resultado do atendimento" AutomationProperties.HelpText="Relatório somente leitura. F6 alterna entre resultado e busca. Esc retorna às ações quando o resultado está ampliado." Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" FontFamily="Consolas" FontSize="13" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" IsReadOnly="True" Padding="12" />
                 </Grid>
             </Border>
-            <Border Grid.Row="5" Background="Transparent" Margin="0,10,0,0">
+            <Border Name="WorkspaceFooter" Grid.Row="5" Background="Transparent" Margin="0,10,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -2673,6 +2673,8 @@ $xaml = @"
 $reader = New-Object System.Xml.XmlNodeReader $xml
 $window = [Windows.Markup.XamlReader]::Load($reader)
 
+$window.Width = [Math]::Min($window.Width, [System.Windows.SystemParameters]::WorkArea.Width)
+$window.Height = [Math]::Min($window.Height, [System.Windows.SystemParameters]::WorkArea.Height)
 $script:TxtV3Output = $window.FindName("TxtV3Output")
 
 $CardV3Host = $window.FindName("CardV3Host")
@@ -2686,6 +2688,7 @@ $CardV3Admin.Text = if (Test-V3Admin) { "Sim" } else { "Não" }
 $CardV3Version.Text = Get-V3VersionInfo
 
 $script:V3ResultExpanded = $false
+$script:V3CompactLayout = $false
 function Set-V3ResultExpanded {
     param([bool]$Expanded)
 
@@ -2695,7 +2698,7 @@ function Set-V3ResultExpanded {
         $script:V3ResultHeight = $grid.RowDefinitions[4].Height
     }
     $script:V3ResultExpanded = $Expanded
-    $grid.RowDefinitions[2].MinHeight = if ($Expanded) { 0 } else { 100 }
+    $grid.RowDefinitions[2].MinHeight = if ($Expanded) { 0 } elseif ($script:V3CompactLayout) { 80 } else { 100 }
     $grid.RowDefinitions[2].Height = if ($Expanded) {
         [System.Windows.GridLength]::new(0)
     }
@@ -2716,6 +2719,42 @@ function Set-V3ResultExpanded {
     }
 }
 
+function Update-V3CompactLayout {
+    $surface = $window.FindName("AppSurface")
+    $compact = $surface.ActualHeight -lt 660
+    $grid = $window.FindName("WorkspaceGrid")
+    $margin = if ($compact) { 12 } else { 20 }
+    $grid.Margin = [System.Windows.Thickness]::new($margin)
+    $grid.MaxHeight = [Math]::Max(0, $surface.ActualHeight - 2 * $margin)
+    $window.FindName("WorkspaceDescription").Visibility = if ($compact) { "Collapsed" } else { "Visible" }
+    $window.FindName("WorkspaceFooter").Visibility = if ($compact) { "Collapsed" } else { "Visible" }
+    $grid.RowDefinitions[2].MinHeight = if ($script:V3ResultExpanded) { 0 } elseif ($compact) { 80 } else { 100 }
+    $grid.RowDefinitions[4].MinHeight = if ($compact) { 170 } else { 200 }
+    if ($compact -ne $script:V3CompactLayout) {
+        if ($compact) {
+            $script:V3BeforeCompactActionsHeight = if ($script:V3ResultExpanded) { $script:V3ActionsHeight } else { $grid.RowDefinitions[2].Height }
+            $actionsHeight = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+        }
+        else {
+            $actionsHeight = $script:V3BeforeCompactActionsHeight
+        }
+        if ($script:V3ResultExpanded) {
+            $script:V3ActionsHeight = $actionsHeight
+        }
+        else {
+            $grid.RowDefinitions[2].Height = $actionsHeight
+        }
+        $readingHeight = [System.Windows.GridLength]::new($(if ($compact) { 180 } else { 230 }))
+        if ($script:V3ResultExpanded) {
+            $script:V3ResultHeight = $readingHeight
+        }
+        else {
+            $grid.RowDefinitions[4].Height = $readingHeight
+        }
+    }
+    $script:V3CompactLayout = $compact
+}
+
 function Update-V3ResponsiveLayout {
     $columns = if ($window.FindName("ActionsScroll").ActualWidth -lt 670) { 1 } else { 2 }
     foreach ($key in @("Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
@@ -2732,7 +2771,7 @@ function Update-V3ResponsiveLayout {
     $window.FindName("StationCards").Columns = if ($columns -eq 1) { 2 } else { 4 }
 }
 $window.FindName("AppSurface").Add_SizeChanged({
-    $window.FindName("WorkspaceGrid").MaxHeight = [Math]::Max(0, $window.FindName("AppSurface").ActualHeight - 40)
+    Update-V3CompactLayout
 })
 $window.FindName("ActionsScroll").Add_SizeChanged({ Update-V3ResponsiveLayout })
 $window.FindName("BtnV3ExpandResult").Add_Click({ Set-V3ResultExpanded -Expanded (-not $script:V3ResultExpanded) })

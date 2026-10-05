@@ -64,12 +64,13 @@ Describe "V3 reading and responsive layout" {
         $window = [Windows.Markup.XamlReader]::Load($reader)
         $script:TxtV3Output = $window.FindName("TxtV3Output")
         $script:V3ResultExpanded = $false
+        $script:V3CompactLayout = $false
         $tokens = $null
         $errors = $null
         $ast = [Management.Automation.Language.Parser]::ParseInput(
             $script:AppText, [ref]$tokens, [ref]$errors
         )
-        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults", "Reset-V3ActionFilters")) {
+        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults", "Reset-V3ActionFilters", "Update-V3CompactLayout")) {
             $functionAst = $ast.Find({
                 param($node)
                 $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
@@ -154,6 +155,28 @@ Describe "V3 reading and responsive layout" {
         $window.FindName("NoActions").Visibility | Should -Be "Collapsed"
         $window.FindName("BtnV3ResetFilters").Visibility | Should -Be "Collapsed"
         $script:TxtV3Output.Text | Should -Be "Diagnóstico anterior"
+    }
+    It "keeps the reading area inside a short viewport and restores the full header" {
+        $surface = $window.Content
+        $window.FindName("SearchActions").Clear()
+        Set-V3Topic -Topic Printers
+        $script:TxtV3Output.Text = "Relatório preservado durante redimensionamento"
+        foreach ($height in @(450, 760)) {
+            $surface.Width = 910
+            $surface.Height = $height
+            $surface.Measure([Windows.Size]::new(910, $height))
+            $surface.Arrange([Windows.Rect]::new(0, 0, 910, $height))
+            $surface.UpdateLayout()
+            Update-V3CompactLayout
+            $surface.Measure([Windows.Size]::new(910, $height))
+            $surface.Arrange([Windows.Rect]::new(0, 0, 910, $height))
+            $surface.UpdateLayout()
+            $grid = $window.FindName("WorkspaceGrid")
+            ($grid.ActualHeight + $grid.Margin.Top + $grid.Margin.Bottom) | Should -BeLessOrEqual $height
+            $window.FindName("TxtV3Output").ActualHeight | Should -BeGreaterThan 60
+            $window.FindName("WorkspaceFooter").Visibility | Should -Be $(if ($height -eq 450) { "Collapsed" } else { "Visible" })
+            $script:TxtV3Output.Text | Should -Be "Relatório preservado durante redimensionamento"
+        }
     }
     It "copies the report without appending feedback to its contents" {
         Mock Set-V3ClipboardText {}
