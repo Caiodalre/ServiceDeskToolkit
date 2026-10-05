@@ -15,7 +15,7 @@
     },
     {
       "path": "ServiceDeskToolkit-CorporateV3.ps1",
-      "sha256": "725b79bc66767cd6590a4a2079473b99e3a63b40a3ede529f88b8c8a0daecb9b"
+      "sha256": "b661fd4a49d6bc022044c94344ec3b0da641908167bb0516607e039c9c791420"
     },
     {
       "path": "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",

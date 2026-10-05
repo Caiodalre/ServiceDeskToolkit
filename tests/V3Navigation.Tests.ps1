@@ -57,3 +57,85 @@ Describe "V3 action search" {
         ConvertTo-V3SearchText "   " | Should -Be ""
     }
 }
+Describe "V3 reading and responsive layout" {
+    BeforeAll {
+        Add-Type -AssemblyName PresentationFramework
+        $reader = [System.Xml.XmlNodeReader]::new($script:LayoutXml)
+        $window = [Windows.Markup.XamlReader]::Load($reader)
+        $script:TxtV3Output = $window.FindName("TxtV3Output")
+        $script:V3ResultExpanded = $false
+        $tokens = $null
+        $errors = $null
+        $ast = [Management.Automation.Language.Parser]::ParseInput(
+            $script:AppText, [ref]$tokens, [ref]$errors
+        )
+        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard")) {
+            $functionAst = $ast.Find({
+                param($node)
+                $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
+                $node.Name -eq $name
+            }, $true)
+            . ([scriptblock]::Create($functionAst.Extent.Text))
+        }
+    }
+
+    It "restores a resized reading area without losing the report" {
+        $grid = $window.FindName("WorkspaceGrid")
+        $grid.RowDefinitions[2].Height = [Windows.GridLength]::new(260)
+        $grid.RowDefinitions[4].Height = [Windows.GridLength]::new(290)
+        $script:TxtV3Output.Text = "Relatório que deve permanecer disponível."
+        Set-V3ResultExpanded -Expanded $true
+        $window.FindName("ActionsScroll").Visibility | Should -Be "Collapsed"
+        Set-V3ResultExpanded -Expanded $false
+        $grid.RowDefinitions[2].Height.Value | Should -Be 260
+        $grid.RowDefinitions[4].Height.Value | Should -Be 290
+        $window.FindName("ActionsScroll").Visibility | Should -Be "Visible"
+        $script:TxtV3Output.Text | Should -Be "Relatório que deve permanecer disponível."
+    }
+
+    It "finds an action outside the current theme while preserving the search and report" {
+        $window.FindName("SearchActions").Text = "licença"
+        $script:TxtV3Output.Text = "Resultado anterior"
+        Set-V3Topic -Topic Network
+        $window.FindName("NoActions").Visibility | Should -Be "Visible"
+        Set-V3Topic -Topic All
+        $window.FindName("NoActions").Visibility | Should -Be "Collapsed"
+        $window.FindName("SearchActions").Text | Should -Be "licença"
+        $script:TxtV3Output.Text | Should -Be "Resultado anterior"
+    }
+
+    It "copies the report without appending feedback to its contents" {
+        Mock Set-V3ClipboardText {}
+        $script:TxtV3Output.Text = "Relatório original"
+        Copy-V3OutputToClipboard
+        Should -Invoke Set-V3ClipboardText -Times 1 -ParameterFilter { $Text -eq "Relatório original" }
+        $script:TxtV3Output.Text | Should -Be "Relatório original"
+        $window.FindName("ResultStatus").Text | Should -BeLike "Resultado copiado*"
+    }
+
+    It "preserves the report when the clipboard is unavailable" {
+        Mock Set-V3ClipboardText { throw "Clipboard busy" }
+        $script:TxtV3Output.Text = "Relatório para tentar novamente"
+        Copy-V3OutputToClipboard
+        $script:TxtV3Output.Text | Should -Be "Relatório para tentar novamente"
+        $window.FindName("ResultStatus").Text | Should -Be "Cópia indisponível. Tente novamente."
+    }
+    It "uses one card column in a narrow window and two in a wider window" {
+        $window.FindName("SearchActions").Clear()
+        Set-V3Topic -Topic Network
+        foreach ($width in @(820, 1180)) {
+            $surface = $window.Content
+            $surface.Width = $width
+            $surface.Height = 640
+            $surface.Measure([Windows.Size]::new($width, 640))
+            $surface.Arrange([Windows.Rect]::new(0, 0, $width, 640))
+            $surface.UpdateLayout()
+            Update-V3ResponsiveLayout
+            $groups = @($window.FindName("TopicNetwork").Children | Where-Object {
+                $_ -is [Windows.Controls.StackPanel] -and $_.Tag -eq "ActionsGroup"
+            })
+            $cards = @($groups[0].Children | Where-Object { $_ -is [Windows.Controls.Primitives.UniformGrid] })
+            $cards[0].Columns | Should -Be $(if ($width -eq 820) { 1 } else { 2 })
+        }
+    }
+}

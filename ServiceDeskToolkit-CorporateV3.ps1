@@ -151,6 +151,10 @@ function Set-V3Output {
 
     if ($null -ne $script:TxtV3Output) {
         $script:TxtV3Output.Text = $Text
+        $script:TxtV3Output.ScrollToHome()
+        if ($null -ne $window -and $null -ne $window.FindName("ResultStatus")) {
+            $window.FindName("ResultStatus").Text = "Atualizado às " + (Get-Date -Format "HH:mm")
+        }
     }
 }
 
@@ -2065,34 +2069,26 @@ function Invoke-V3WorkflowPrinter {
 
     return New-V3WorkflowResult @workflowParameters
 }
+function Set-V3ClipboardText {
+    param([string]$Text)
+
+    [System.Windows.Clipboard]::SetText($Text)
+}
+
 function Copy-V3OutputToClipboard {
+    if ($null -eq $script:TxtV3Output) {
+        return
+    }
+    if ([string]::IsNullOrWhiteSpace($script:TxtV3Output.Text)) {
+        $window.FindName("ResultStatus").Text = "Nenhum resultado para copiar"
+        return
+    }
     try {
-        if ($null -eq $script:TxtV3Output) {
-            return
-        }
-
-        $currentText = $script:TxtV3Output.Text
-
-        if ([string]::IsNullOrWhiteSpace($currentText)) {
-            Set-V3Output "Nenhum resultado disponível para copiar."
-            return
-        }
-
-        $cleanText = [regex]::Replace(
-            $currentText,
-            "(\r?\n){2}\[COPIADO\].*$",
-            ""
-        )
-
-        [System.Windows.Clipboard]::SetText($cleanText)
-
-        $feedback = "[COPIADO] Resultado copiado para a área de transferência em $(Get-Date -Format 'HH:mm:ss')."
-
-        $script:TxtV3Output.Text = $cleanText.TrimEnd() + "`r`n`r`n" + $feedback
-        $script:TxtV3Output.ScrollToEnd()
+        Set-V3ClipboardText -Text $script:TxtV3Output.Text
+        $window.FindName("ResultStatus").Text = "Resultado copiado às " + (Get-Date -Format "HH:mm")
     }
     catch {
-        Set-V3Output "Não foi possível copiar o resultado para a área de transferência.`r`n`r`nDetalhe: $($_.Exception.Message)"
+        $window.FindName("ResultStatus").Text = "Cópia indisponível. Tente novamente."
     }
 }
 function Open-V3ExternalLink {
@@ -2126,7 +2122,7 @@ function Open-V3ExternalLink {
     }
 }
 $xaml = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate V3 | Temas" Height="820" Width="1180" WindowStartupLocation="CenterScreen" Background="#F3F6FA" FontFamily="Segoe UI" MinWidth="980" MinHeight="640">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate V3 | Temas" Height="820" Width="1180" WindowStartupLocation="CenterScreen" Background="#F3F6FA" FontFamily="Segoe UI" MinWidth="820" MinHeight="640">
     <Window.Resources>
         <Style x:Key="NavButton" TargetType="Button">
             <Setter Property="Height" Value="44" />
@@ -2147,7 +2143,7 @@ $xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.8" />
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#2563EB" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#60A5FA" />
@@ -2197,7 +2193,7 @@ $xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.8" />
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#2563EB" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#60A5FA" />
@@ -2244,11 +2240,35 @@ $xaml = @"
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="11" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#2563EB" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#60A5FA" />
+                                <Setter TargetName="ButtonSurface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.65" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
-    <Grid Background="#F3F6FA">
+    <Grid Name="AppSurface" Background="#F3F6FA">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260" />
+            <ColumnDefinition Width="220" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Border Grid.Column="0" Background="#0F172A">
@@ -2256,7 +2276,7 @@ $xaml = @"
                 <StackPanel Margin="18,24">
                     <TextBlock Text="ServiceDesk" Foreground="White" FontSize="24" FontWeight="Bold" />
                     <TextBlock Text="Corporate V3" Foreground="#60A5FA" FontSize="18" FontWeight="Bold" Margin="0,0,0,24" />
-                    <TextBlock Text="ÍNDICE POR TEMAS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" Margin="0,0,0,12" />
+                    <TextBlock Text="EXPLORAR TEMAS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" Margin="0,0,0,12" />
                     <Button Name="NavAll" Tag="All" Content="Todos os temas" Style="{StaticResource NavButton}" />
                     <Button Name="NavOverview" Tag="Overview" Content="Visão geral" Style="{StaticResource NavButton}" />
                     <Button Name="NavNetwork" Tag="Network" Content="Rede e internet" Style="{StaticResource NavButton}" />
@@ -2264,32 +2284,33 @@ $xaml = @"
                     <Button Name="NavPrinters" Tag="Printers" Content="Impressoras" Style="{StaticResource NavButton}" />
                     <Button Name="NavOffice" Tag="Office" Content="Office / TPM" Style="{StaticResource NavButton}" />
                     <Button Name="NavWindows" Tag="Windows" Content="Windows" Style="{StaticResource NavButton}" />
+                    <TextBlock Text="Comece por uma consulta. As ações de manutenção ficam separadas em cada tema." Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,24,0,0" />
                 </StackPanel>
             </ScrollViewer>
         </Border>
-        <Grid Grid.Column="1" Margin="24">
+        <Grid Name="WorkspaceGrid" Grid.Column="1" Margin="20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="2*" MinHeight="150" />
+                <RowDefinition Height="*" MinHeight="100" />
                 <RowDefinition Height="12" />
-                <RowDefinition Height="2*" MinHeight="170" />
+                <RowDefinition Height="230" MinHeight="200" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Border Grid.Row="0" Background="White" CornerRadius="18" Padding="18" BorderBrush="#E2E8F0" BorderThickness="1">
+            <Border Grid.Row="0" Background="White" CornerRadius="12" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
                 <StackPanel>
-                    <TextBlock Text="Central de Atendimento Técnico" FontSize="26" FontWeight="Bold" Foreground="#0F172A" />
-                    <TextBlock Text="Escolha um tema, consulte o diagnóstico e acompanhe o resultado." FontSize="13" Foreground="#64748B" Margin="0,4,0,0" TextWrapping="Wrap" />
+                    <TextBlock Name="WorkspaceTitle" Text="Central de Atendimento Técnico" FontSize="24" FontWeight="Bold" Foreground="#0F172A" />
+                    <TextBlock Name="WorkspaceDescription" Text="Escolha um tema, consulte o diagnóstico e acompanhe o resultado." FontSize="13" Foreground="#64748B" Margin="0,4,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
             <ScrollViewer Name="ActionsScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,10">
-                <Border Background="White" CornerRadius="18" Padding="18" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,14">
+                <Border Background="White" CornerRadius="12" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,14">
                     <StackPanel>
                         <StackPanel Name="TopicOverview" Margin="0,0,0,20">
-                            <UniformGrid Columns="4" Margin="0,0,0,18">
+                            <UniformGrid Name="StationCards" Columns="4" Margin="0,0,0,18">
                                 <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
                                     <StackPanel>
-                                        <TextBlock Text="HOSTNAME" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Text="COMPUTADOR" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
                                         <TextBlock Name="CardV3Host" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                                     </StackPanel>
                                 </Border>
@@ -2301,7 +2322,7 @@ $xaml = @"
                                 </Border>
                                 <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
                                     <StackPanel>
-                                        <TextBlock Text="ADMIN" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Text="ADMINISTRADOR" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
                                         <TextBlock Name="CardV3Admin" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                                     </StackPanel>
                                 </Border>
@@ -2580,17 +2601,25 @@ $xaml = @"
                     </StackPanel>
                 </Border>
             </ScrollViewer>
-            <Border Grid.Row="4" Background="White" CornerRadius="18" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
+            <Border Grid.Row="4" Background="White" CornerRadius="12" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <DockPanel Margin="0,0,0,10">
-                        <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource FooterLinkButton}" DockPanel.Dock="Right" />
-                        <TextBlock Text="Resultado e andamento" FontSize="16" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10" />
-                    </DockPanel>
-                    <TextBox Name="TxtV3Output" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="13" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" IsReadOnly="True" Padding="12" />
+                    <StackPanel Margin="0,0,0,10">
+                        <DockPanel>
+                            <TextBlock Name="ResultStatus" DockPanel.Dock="Right" Text="Pronto para consultar" FontSize="11" Foreground="#475569" VerticalAlignment="Center" />
+                            <TextBlock Text="Resultado e andamento" FontSize="16" FontWeight="Bold" Foreground="#0F172A" />
+                        </DockPanel>
+                        <WrapPanel Margin="-8,8,0,0">
+                            <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Copiar o relatório exibido." />
+                            <Button Name="BtnV3ExpandResult" Content="Ampliar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Usar o espaço das ações para ler o relatório. Clique novamente para voltar." />
+                            <Button Name="BtnV3SmallerText" Content="A−" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Diminuir texto do resultado" ToolTip="Diminuir texto do resultado." />
+                            <Button Name="BtnV3LargerText" Content="A+" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Aumentar texto do resultado" ToolTip="Aumentar texto do resultado." />
+                        </WrapPanel>
+                    </StackPanel>
+                    <TextBox Name="TxtV3Output" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" FontFamily="Consolas" FontSize="13" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" IsReadOnly="True" Padding="12" />
                 </Grid>
             </Border>
             <Border Grid.Row="5" Background="Transparent" Margin="0,10,0,0">
@@ -2606,7 +2635,7 @@ $xaml = @"
                     </StackPanel>
                 </Grid>
             </Border>
-            <GridSplitter Grid.Row="3" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#CBD5E1" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ToolTip="Arraste para ajustar o espaço de ações e resultado." />
+            <GridSplitter Name="ResultSplitter" Grid.Row="3" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#CBD5E1" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ToolTip="Arraste para ajustar o espaço de ações e resultado." />
             <Grid Grid.Row="1" Margin="0,12,0,14">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -2648,6 +2677,61 @@ $CardV3User.Text = "$env:USERDOMAIN\$env:USERNAME"
 $CardV3Admin.Text = if (Test-V3Admin) { "Sim" } else { "Não" }
 $CardV3Version.Text = Get-V3VersionInfo
 
+$script:V3ResultExpanded = $false
+function Set-V3ResultExpanded {
+    param([bool]$Expanded)
+
+    $grid = $window.FindName("WorkspaceGrid")
+    if ($Expanded -and -not $script:V3ResultExpanded) {
+        $script:V3ActionsHeight = $grid.RowDefinitions[2].Height
+        $script:V3ResultHeight = $grid.RowDefinitions[4].Height
+    }
+    $script:V3ResultExpanded = $Expanded
+    $grid.RowDefinitions[2].MinHeight = if ($Expanded) { 0 } else { 100 }
+    $grid.RowDefinitions[2].Height = if ($Expanded) {
+        [System.Windows.GridLength]::new(0)
+    }
+    else {
+        $script:V3ActionsHeight
+    }
+    $grid.RowDefinitions[4].Height = if ($Expanded) {
+        [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+    }
+    else {
+        $script:V3ResultHeight
+    }
+    $window.FindName("ActionsScroll").Visibility = if ($Expanded) { "Collapsed" } else { "Visible" }
+    $window.FindName("ResultSplitter").Visibility = if ($Expanded) { "Collapsed" } else { "Visible" }
+    $window.FindName("BtnV3ExpandResult").Content = if ($Expanded) { "Voltar às ações" } else { "Ampliar resultado" }
+}
+
+function Update-V3ResponsiveLayout {
+    $columns = if ($window.FindName("ActionsScroll").ActualWidth -lt 670) { 1 } else { 2 }
+    foreach ($key in @("Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
+        foreach ($group in $window.FindName("Topic$key").Children) {
+            if ($group -is [System.Windows.Controls.StackPanel] -and $group.Tag -eq "ActionsGroup") {
+                foreach ($child in $group.Children) {
+                    if ($child -is [System.Windows.Controls.Primitives.UniformGrid]) {
+                        $child.Columns = $columns
+                    }
+                }
+            }
+        }
+    }
+    $window.FindName("StationCards").Columns = if ($columns -eq 1) { 2 } else { 4 }
+}
+$window.FindName("AppSurface").Add_SizeChanged({
+    $window.FindName("WorkspaceGrid").MaxHeight = [Math]::Max(0, $window.FindName("AppSurface").ActualHeight - 40)
+})
+$window.FindName("ActionsScroll").Add_SizeChanged({ Update-V3ResponsiveLayout })
+$window.FindName("BtnV3ExpandResult").Add_Click({ Set-V3ResultExpanded -Expanded (-not $script:V3ResultExpanded) })
+$window.FindName("BtnV3SmallerText").Add_Click({
+    $script:TxtV3Output.FontSize = [Math]::Max(11, $script:TxtV3Output.FontSize - 1)
+})
+$window.FindName("BtnV3LargerText").Add_Click({
+    $script:TxtV3Output.FontSize = [Math]::Min(22, $script:TxtV3Output.FontSize + 1)
+})
+
 function ConvertTo-V3SearchText {
     param([string]$Text)
 
@@ -2678,6 +2762,9 @@ function Update-V3ActionFilter {
     foreach ($key in @("Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
         $section = $window.FindName("Topic$key")
         $inTopic = $script:V3SelectedTopic -eq "All" -or $script:V3SelectedTopic -eq $key
+        foreach ($heading in @($section.Children | Where-Object { $_ -is [System.Windows.Controls.TextBlock] })) {
+            $heading.Visibility = if ($script:V3SelectedTopic -eq "All") { "Visible" } else { "Collapsed" }
+        }
         $sectionMatches = 0
         foreach ($group in @($section.Children | Where-Object {
             $_ -is [System.Windows.Controls.StackPanel] -and $_.Tag -eq "ActionsGroup"
@@ -2748,6 +2835,20 @@ function Set-V3Topic {
     $script:V3SelectedTopic = $Topic
     $topicLabel = [string]$window.FindName("Nav$Topic").Content
     $window.FindName("SearchScope").Text = "Buscar ações · $topicLabel"
+    $window.FindName("WorkspaceTitle").Text = $topicLabel
+    $descriptions = @{
+        All = "Explore as ferramentas ou procure uma ação pelo nome."
+        Overview = "Comece pelo estado da estação e pelo inventário."
+        Network = "Consulte conectividade, DNS e rotas antes de escolher uma correção."
+        Vpn = "Verifique a conexão e o cliente Appgate."
+        Printers = "Consulte impressoras e filas para identificar a causa da falha."
+        Office = "Investigue Office, TPM e autenticação com os diagnósticos disponíveis."
+        Windows = "Consulte o sistema e revise as opções de manutenção."
+    }
+    $window.FindName("WorkspaceDescription").Text = $descriptions[$Topic]
+    if ($script:V3ResultExpanded) {
+        Set-V3ResultExpanded -Expanded $false
+    }
     foreach ($key in @("All", "Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
         $button = $window.FindName("Nav$key")
         $button.Background = if ($key -eq $Topic) {
