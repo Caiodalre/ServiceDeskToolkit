@@ -69,7 +69,7 @@ Describe "V3 reading and responsive layout" {
         $ast = [Management.Automation.Language.Parser]::ParseInput(
             $script:AppText, [ref]$tokens, [ref]$errors
         )
-        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults")) {
+        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults", "Reset-V3ActionFilters")) {
             $functionAst = $ast.Find({
                 param($node)
                 $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
@@ -140,6 +140,20 @@ Describe "V3 reading and responsive layout" {
         $window.FindName("ActionKind").SelectedIndex = 0
         Update-V3ActionFilter
         $window.FindName("NoActions").Visibility | Should -Be "Collapsed"
+    }
+    It "restores all actions from an empty filtered view without clearing the report" {
+        $script:TxtV3Output.Text = "Diagnóstico anterior"
+        $window.FindName("ActionKind").SelectedIndex = 1
+        $window.FindName("SearchActions").Text = "zzzz-inexistente"
+        Set-V3Topic -Topic Windows
+        $window.FindName("BtnV3ResetFilters").Visibility | Should -Be "Visible"
+        Reset-V3ActionFilters
+        $script:V3SelectedTopic | Should -Be "All"
+        $window.FindName("ActionKind").SelectedIndex | Should -Be 0
+        $window.FindName("SearchActions").Text | Should -Be ""
+        $window.FindName("NoActions").Visibility | Should -Be "Collapsed"
+        $window.FindName("BtnV3ResetFilters").Visibility | Should -Be "Collapsed"
+        $script:TxtV3Output.Text | Should -Be "Diagnóstico anterior"
     }
     It "copies the report without appending feedback to its contents" {
         Mock Set-V3ClipboardText {}

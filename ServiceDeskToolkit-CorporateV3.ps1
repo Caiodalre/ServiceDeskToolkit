@@ -2605,6 +2605,7 @@ $xaml = @"
                             </StackPanel>
                         </StackPanel>
                         <TextBlock Name="NoActions" Visibility="Collapsed" Text="Nenhuma ação encontrada neste tema. Limpe a busca ou selecione Todos os temas." TextWrapping="Wrap" FontSize="14" Foreground="#64748B" Margin="0,12" />
+                        <Button Name="BtnV3ResetFilters" Visibility="Collapsed" Content="Exibir todas as ações" Style="{StaticResource FooterLinkButton}" HorizontalAlignment="Left" Height="34" Margin="0,0,0,12" ToolTip="Limpa a busca, seleciona todos os temas e todos os tipos de ação. Preserva o relatório." />
                     </StackPanel>
                 </Border>
             </ScrollViewer>
@@ -2831,6 +2832,7 @@ function Update-V3ActionFilter {
     else {
         [System.Windows.Visibility]::Collapsed
     }
+    $window.FindName("BtnV3ResetFilters").Visibility = $window.FindName("NoActions").Visibility
     $window.FindName("ActionCount").Text = if ($total -eq 1) {
         "1 ação disponível"
     }
@@ -2885,6 +2887,14 @@ foreach ($key in @("All", "Overview", "Network", "Vpn", "Printers", "Office", "W
         Set-V3Topic -Topic ([string]$sender.Tag)
     })
 }
+function Reset-V3ActionFilters {
+    $window.FindName("SearchActions").Clear()
+    $window.FindName("ActionKind").SelectedIndex = 0
+    Set-V3Topic -Topic "All"
+    [void]$window.FindName("SearchActions").Focus()
+}
+$window.FindName("BtnV3ResetFilters").Add_Click({ Reset-V3ActionFilters })
+
 function Update-V3SearchResults {
     if ($script:V3ResultExpanded) {
         Set-V3ResultExpanded -Expanded $false
