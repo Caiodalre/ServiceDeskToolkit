@@ -189,3 +189,28 @@ fallback temporário da linha V3 e a V2.3.0 como fallback legado.
 No tema Windows, use **Espaço em disco: diagnóstico e plano** para uma coleta
 em segundo plano e orientações por categoria. Consulte o
 [guia de atendimento](V3-ESPACO-EM-DISCO.md). Não executa exclusões automáticas.
+
+## Soluções guiadas na candidata V3.1
+
+Em **Visão geral**, abra **Soluções guiadas**. O catálogo inclui DNS, serviço
+de impressão e login WAM do Office. Cada solução explica quando usar,
+pré-condições, impacto, comando e validação do sintoma original.
+
+1. Selecione o problema e execute **Diagnosticar**. A consulta roda em segundo plano.
+2. Confira os achados e a condição de uso. **Aplicar correção** exige diagnóstico
+   registrado e confirmação; o reinício do spooler também exige administrador.
+   Para WAM, use o perfil afetado e feche os aplicativos Office.
+3. Execute **Validar novamente** e teste o sintoma: site/sistema, página de teste
+   ou login do Office. Conclusão da etapa não significa chamado resolvido.
+4. Ao fechar o catálogo, o histórico fica no resultado principal para copiar ou
+   salvar. As etapas geram registros em `logs/solutions/solutions-audit.jsonl`.
+
+**Cancelar consulta** interrompe apenas diagnóstico/validação. Correções devem
+terminar antes de fechar a janela. Trocar de problema exige novo diagnóstico;
+uma correção não é repetida sem nova leitura. Se não for possível gravar o
+registro inicial da etapa, a ação não começa. Relatórios podem conter dados
+corporativos; revise as evidências antes de compartilhar.
+
+O catálogo chama somente funções previstas no programa e não executa comandos
+digitados ou texto da base JSON legada. Esta candidata também limita **Ajustar
+Appgate** ao backup e ao timeout; a ação não modifica a política de UAC.

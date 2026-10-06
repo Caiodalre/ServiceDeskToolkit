@@ -1952,12 +1952,14 @@ function Restart-V3Appgate {
 }
 
 function Repair-V3AppgateConfiguration {
-    param([switch]$Confirmed)
+    param(
+        [switch]$Confirmed,
+        [string]$ConfigPath = "C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config",
+        [string]$BackupDirectory = (Join-Path $script:RootPath 'backup-appgate')
+    )
     if (-not $Confirmed) { throw "Ajuste do Appgate exige confirmacao explicita." }
     if (-not (Test-V3Admin)) { throw "Execute o Toolkit como administrador para ajustar o Appgate." }
-    $configPath = "C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config"
     if (-not (Test-Path $configPath)) { throw "Configuracao do Appgate nao encontrada: $configPath" }
-    $backupDirectory = Join-Path $script:RootPath "backup-appgate"
     if (-not (Test-Path $backupDirectory)) { New-Item $backupDirectory -ItemType Directory -Force | Out-Null }
     $backupPath = Join-Path $backupDirectory ("Appgate-SDP-Service.dll.config.{0}.bak" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
     Copy-Item $configPath $backupPath -Force -ErrorAction Stop
@@ -1967,8 +1969,7 @@ function Repair-V3AppgateConfiguration {
     $oldValue = $node.InnerText
     $node.InnerText = "300000"
     $xml.Save($configPath)
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name ConsentPromptBehaviorAdmin -Value 5 -Type DWord -ErrorAction Stop
-    return "AJUSTE DO APPGATE CONCLUIDO`r`n============================`r`nRunScriptTimeout: $oldValue -> 300000`r`nUAC ConsentPromptBehaviorAdmin: 5`r`nBackup: $backupPath`r`n`r`nReinicie o Appgate e valide a conexao."
+    return "AJUSTE DO APPGATE CONCLUIDO`r`n============================`r`nRunScriptTimeout: $oldValue -> 300000`r`nBackup: $backupPath`r`n`r`nReinicie o Appgate e valide a conexao."
 }
 
 function Invoke-V3MachineHealthPanel {
@@ -2253,6 +2254,247 @@ function Open-V3ExternalLink {
         Set-V3Output "Erro ao abrir $($Label):`r`n$($_.Exception.Message)"
     }
 }
+function Get-V3SolutionCatalog {
+    @(
+        [pscustomobject]@{ Id = 'dns-cache'; Title = 'Site ou sistema com falha de DNS'; Situation = 'Use quando a resolucao de nomes falha ou pode estar usando cache antigo. Nao corrige proxy, VPN ou indisponibilidade do destino.'; Preconditions = 'Confirme o site afetado e confira os servidores DNS no diagnostico. A consulta usa alvos de teste; valide tambem o destino do chamado.'; Impact = 'Limpa o cache DNS local. Os nomes serao consultados novamente; nao altera servidores DNS.'; Command = 'ipconfig /flushdns'; RequiresAdmin = $false; Validate = 'Abra novamente o site ou sistema afetado. Se persistir, investigar rede, VPN, proxy e DNS corporativo.' }
+        [pscustomobject]@{ Id = 'print-spooler'; Title = 'Impressora nao imprime: servico de impressao'; Situation = 'Use quando o diagnostico indicar Spooler parado ou com falha. Impressora offline, driver ou conectividade podem exigir outra solucao.'; Preconditions = 'Confira servico, impressoras e filas. Requer administrador; avise os usuarios com impressao em andamento.'; Impact = 'Inicia ou reinicia o Spooler e interrompe a impressao temporariamente. Esta solucao nao exclui os trabalhos da fila.'; Command = 'Start-Service ou Restart-Service -Name Spooler'; RequiresAdmin = $true; Validate = 'Envie uma pagina de teste e confira a fila. Servico em execucao sozinho nao comprova que a impressora voltou a imprimir.' }
+        [pscustomobject]@{ Id = 'office-wam'; Title = 'Office com falha de login: componentes WAM'; Situation = 'Use em falhas de login compatíveis com componentes WAM. Nao e uma correcao universal para erros TPM, licenca ou conta bloqueada.'; Preconditions = 'Use o perfil do usuario afetado. Feche Word, Excel, Outlook, Teams e demais aplicativos Office; o reparo verifica processos abertos.'; Impact = 'Registra novamente AAD BrokerPlugin e CloudExperienceHost no perfil atual. Nao limpa TPM, credenciais ou vinculo Entra.'; Command = 'Novo registro dos manifestos WAM com Add-AppxPackage'; RequiresAdmin = $false; Validate = 'Abra o Office no perfil afetado e teste o login original. Nao marcar como resolvido apenas por concluir o registro dos componentes.' }
+    )
+}
+
+function Invoke-V3SolutionOperation {
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('dns-cache', 'print-spooler', 'office-wam')][string]$Id,
+        [Parameter(Mandatory = $true)][ValidateSet('Diagnose', 'Repair', 'Validate')][string]$Stage,
+        [switch]$Confirmed
+    )
+    if ($Stage -eq 'Repair') {
+        if (-not $Confirmed) { throw 'Correcao exige confirmacao explicita.' }
+        switch ($Id) {
+            'dns-cache' { return Invoke-V3SafeFlushDns }
+            'print-spooler' {
+                if (-not (Test-V3Admin)) { throw 'Reinicio do Spooler exige administrador.' }
+                return Invoke-V3SafeSpoolerRestart
+            }
+            'office-wam' { return Invoke-V3OfficeWamRepair }
+        }
+    }
+    else {
+        switch ($Id) {
+            'dns-cache' { return Get-ToolkitDnsReport }
+            'print-spooler' { return Invoke-V3PrintersPanel }
+            'office-wam' { return Invoke-V3OfficeTpmPanel }
+        }
+    }
+}
+
+function Get-V3SolutionWorkerText {
+    # Somente definicoes do proprio programa; o catalogo nao fornece codigo executavel.
+    $definitions = foreach ($name in @('Test-V3Admin', 'New-V3OperationalFailureReport', 'Invoke-V3SafeFlushDns', 'Invoke-V3SafeSpoolerRestart', 'Invoke-V3OfficeWamRepair', 'Invoke-V3PrintersPanel', 'Invoke-V3OfficeTpmPanel', 'Invoke-V3SolutionOperation')) {
+        $command = Get-Command -Name $name -CommandType Function -ErrorAction Stop
+        'function ' + $name + ' {' + [Environment]::NewLine + $command.Definition + [Environment]::NewLine + '}'
+    }
+    $setup = @'
+param($rootPath, $id, $stage, $confirmed)
+$ErrorActionPreference = 'Stop'
+$script:RootPath = $rootPath
+$moduleName = switch ($id) {
+    'dns-cache' { 'Network' }
+    'print-spooler' { 'Printers' }
+    'office-wam' { 'Office' }
+    default { throw 'Solucao desconhecida.' }
+}
+Import-Module (Join-Path $rootPath ("src\ServiceDeskToolkit.{0}\ServiceDeskToolkit.{0}.psm1" -f $moduleName)) -Force -ErrorAction Stop
+$script:V3OperationalModulesAvailable = $true
+$script:V3OperationalModuleError = $null
+'@
+    return $setup + [Environment]::NewLine + ($definitions -join [Environment]::NewLine) + [Environment]::NewLine + 'Invoke-V3SolutionOperation -Id $id -Stage $stage -Confirmed:$confirmed'
+}
+
+function Write-V3SolutionAudit {
+    param([string]$Id, [string]$Stage, [string]$Status, [bool]$Confirmed)
+    $folder = Join-Path $script:RootPath 'logs\solutions'
+    [void][IO.Directory]::CreateDirectory($folder)
+    $entry = [ordered]@{ Timestamp = (Get-Date).ToString('o'); Solution = $Id; Stage = $Stage; Status = $Status; Confirmed = $Confirmed }
+    [IO.File]::AppendAllText((Join-Path $folder 'solutions-audit.jsonl'), (($entry | ConvertTo-Json -Compress) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+}
+
+function Confirm-V3SolutionRepair {
+    param($Solution, $Dialog)
+    $message = $Solution.Impact + "`r`n`r`nAntes de executar:`r`n" + $Solution.Preconditions + "`r`n`r`nConfirme que o diagnostico e o sintoma justificam esta correcao. Deseja continuar?"
+    return [Windows.MessageBox]::Show($Dialog, $message, $Solution.Title, 'YesNo', 'Warning') -eq [Windows.MessageBoxResult]::Yes
+}
+
+function Update-V3SolutionControls {
+    param($Session)
+    $busy = $null -ne $Session.Job
+    $Session.Dialog.FindName('SolutionChoice').IsEnabled = -not $busy
+    $Session.Dialog.FindName('SolutionDiagnose').IsEnabled = -not $busy
+    $Session.Dialog.FindName('SolutionRepair').IsEnabled = -not $busy -and $Session.Diagnosed -and -not $Session.RepairAttempted
+    $Session.Dialog.FindName('SolutionValidate').IsEnabled = -not $busy -and $Session.RepairAttempted
+    $Session.Dialog.FindName('SolutionCancel').Visibility = if ($busy -and $Session.Job.Stage -ne 'Repair') { 'Visible' } else { 'Collapsed' }
+    $Session.Dialog.FindName('SolutionCancel').IsEnabled = $busy -and -not $Session.Job.Cancelled
+}
+
+function Add-V3SolutionHistory {
+    param($Session, [string]$Stage, [string]$Report)
+    $Session.EntryCount++
+    [void]$Session.History.AppendLine("[$($Session.EntryCount)] $($Session.Id) - $Stage - $(Get-Date -Format 'HH:mm:ss')")
+    [void]$Session.History.AppendLine($Report)
+    [void]$Session.History.AppendLine('')
+    $text = "ATENDIMENTO POR SOLUCOES GUIDADAS`r`nEtapas registradas; resolucao do chamado depende de testar o sintoma original.`r`n`r`n" + $Session.History.ToString()
+    $Session.Dialog.FindName('SolutionOutput').Text = $text
+    $Session.Dialog.FindName('SolutionOutput').ScrollToEnd()
+    Set-V3Output $text
+}
+
+function Start-V3SolutionStage {
+    param($Session, [ValidateSet('Diagnose', 'Repair', 'Validate')][string]$Stage)
+    if ($null -ne $Session.Job) { return }
+    $solution = @(Get-V3SolutionCatalog | Where-Object Id -eq $Session.Id)
+    if ($solution.Count -ne 1) { throw 'Solucao desconhecida.' }
+    $confirmed = $false
+    if ($Stage -eq 'Repair') {
+        if (-not $Session.Diagnosed -or $Session.RepairAttempted) { $Session.Dialog.FindName('SolutionStatus').Text = 'Execute um novo diagnostico antes da correcao.'; return }
+        if ($solution[0].RequiresAdmin -and -not (Test-V3Admin)) { $Session.Dialog.FindName('SolutionStatus').Text = 'Esta correcao exige administrador. O diagnostico permanece disponivel.'; return }
+        $confirmed = Confirm-V3SolutionRepair -Solution $solution[0] -Dialog $Session.Dialog
+        if (-not $confirmed) { Add-V3SolutionHistory $Session 'Repair' 'Correcao cancelada. Nenhuma acao executada.'; $Session.Dialog.FindName('SolutionStatus').Text = 'Correcao cancelada. Nenhuma acao executada.'; return }
+    }
+    if ($Stage -eq 'Validate' -and -not $Session.RepairAttempted) { return }
+    if ($Stage -eq 'Diagnose') { $Session.Diagnosed = $false; $Session.RepairAttempted = $false }
+    $pipeline = [powershell]::Create()
+    $startedRecorded = $false
+    try {
+        Write-V3SolutionAudit -Id $Session.Id -Stage $Stage -Status 'Started' -Confirmed $confirmed
+        $startedRecorded = $true
+        [void]$pipeline.AddScript((Get-V3SolutionWorkerText)).AddArgument($script:RootPath).AddArgument($Session.Id).AddArgument($Stage).AddArgument($confirmed)
+        $handle = $pipeline.BeginInvoke()
+        $Session.Job = [pscustomobject]@{ Pipeline = $pipeline; Handle = $handle; Stage = $Stage; Confirmed = $confirmed; Cancelled = $false; StopHandle = $null }
+        $Session.Dialog.FindName('SolutionStatus').Text = 'Etapa em andamento. Aguarde; o diagnostico do Office pode demorar.'
+        Update-V3SolutionControls $Session
+        $Session.Timer.Start()
+    }
+    catch {
+        $pipeline.Dispose()
+        if ($startedRecorded) { try { Write-V3SolutionAudit -Id $Session.Id -Stage $Stage -Status 'NotStarted' -Confirmed $confirmed } catch { } }
+        Add-V3SolutionHistory $Session $Stage ("Etapa nao iniciada: $($_.Exception.Message)")
+        $Session.Dialog.FindName('SolutionStatus').Text = 'Etapa nao iniciada. Confira o registro e as permissoes.'
+        Update-V3SolutionControls $Session
+    }
+}
+
+function Stop-V3SolutionConsultation {
+    param($Session)
+    if ($null -eq $Session.Job -or $Session.Job.Stage -eq 'Repair' -or $Session.Job.Cancelled) { return }
+    $Session.Job.Cancelled = $true
+    $Session.Job.StopHandle = $Session.Job.Pipeline.BeginStop($null, $null)
+    $Session.Dialog.FindName('SolutionStatus').Text = 'Cancelando consulta. Aguarde a conclusao.'
+    Update-V3SolutionControls $Session
+}
+
+function Complete-V3SolutionStage {
+    param($Session)
+    if ($null -eq $Session.Job -or -not $Session.Job.Handle.IsCompleted) { return }
+    $job = $Session.Job
+    if ($null -ne $job.StopHandle -and -not $job.StopHandle.IsCompleted) { return }
+    $status = 'Error'
+    try {
+        if ($null -ne $job.StopHandle) { $job.Pipeline.EndStop($job.StopHandle) }
+        if ($job.Cancelled) {
+            Add-V3SolutionHistory $Session $job.Stage 'Consulta cancelada. Esta etapa nao executa correcao.'
+            $status = 'Cancelled'
+            $Session.Dialog.FindName('SolutionStatus').Text = 'Consulta cancelada. Repita quando puder concluir a leitura.'
+            return
+        }
+        $result = $job.Pipeline.EndInvoke($job.Handle)
+        if ($job.Pipeline.HadErrors) { throw 'A etapa apresentou erro de execucao.' }
+        $report = $result -join [Environment]::NewLine
+        if ([string]::IsNullOrWhiteSpace($report)) { throw 'A etapa nao retornou um relatorio.' }
+        if ($job.Stage -eq 'Diagnose') { $Session.Diagnosed = $true }
+        if ($job.Stage -eq 'Repair') { $Session.RepairAttempted = $true }
+        if ($job.Stage -eq 'Validate') {
+            $solution = Get-V3SolutionCatalog | Where-Object Id -eq $Session.Id
+            $report += "`r`n`r`nVALIDACAO DO CHAMADO:`r`n" + $solution.Validate
+        }
+        Add-V3SolutionHistory $Session $job.Stage $report
+        $status = 'Completed'
+        $Session.Dialog.FindName('SolutionStatus').Text = 'Etapa encerrada. Confira o relatorio; conclusao nao significa problema resolvido.'
+    }
+    catch {
+        if ($job.Stage -eq 'Repair') { $Session.RepairAttempted = $true }
+        $guidance = if ($job.Stage -eq 'Repair') { 'Uma correcao iniciada pode ter sido parcialmente aplicada. Valide o estado antes de repetir.' } else { 'A consulta falhou. Um diagnostico inicial incompleto nao libera a correcao.' }
+        Add-V3SolutionHistory $Session $job.Stage ("Falha na etapa: $($_.Exception.Message)`r`n$guidance")
+        $Session.Dialog.FindName('SolutionStatus').Text = 'Falha registrada. Confira o relatorio antes de repetir.'
+    }
+    finally {
+        try { Write-V3SolutionAudit -Id $Session.Id -Stage $job.Stage -Status $status -Confirmed $job.Confirmed }
+        catch { $Session.Dialog.FindName('SolutionStatus').Text += ' Registro em arquivo indisponivel; salve o relatorio.' }
+        $job.Pipeline.Dispose()
+        $Session.Job = $null
+        $Session.Timer.Stop()
+        Update-V3SolutionControls $Session
+    }
+}
+
+function Set-V3SolutionSelection {
+    param($Session)
+    $solution = $Session.Dialog.FindName('SolutionChoice').SelectedItem
+    if ($null -eq $solution -or $null -ne $Session.Job) { return }
+    $Session.Id = $solution.Id
+    $Session.Diagnosed = $false
+    $Session.RepairAttempted = $false
+    $Session.Dialog.FindName('SolutionPlan').Text = "QUANDO USAR`r`n$($solution.Situation)`r`n`r`nANTES DE EXECUTAR`r`n$($solution.Preconditions)`r`n`r`nIMPACTO E COMANDO`r`n$($solution.Impact)`r`n$($solution.Command)`r`n`r`nCOMO VALIDAR`r`n$($solution.Validate)"
+    $Session.Dialog.FindName('SolutionStatus').Text = 'Comece pelo diagnostico. As correcoes exigem confirmacao.'
+    Update-V3SolutionControls $Session
+}
+
+function New-V3SolutionSession {
+    $solutionXaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Solucoes guiadas - ServiceDesk Toolkit" Width="860" Height="700" MinWidth="720" MinHeight="480" WindowStartupLocation="CenterOwner" Background="#F3F6FA" FontFamily="Segoe UI">
+  <Grid Margin="16" Background="#F3F6FA">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel><TextBlock Text="Soluções guiadas" FontSize="22" FontWeight="Bold" Foreground="#0F172A"/><TextBlock Text="Selecione o problema e siga uma etapa por vez." Margin="0,4,0,10"/><ComboBox Name="SolutionChoice" DisplayMemberPath="Title" Height="32" AutomationProperties.Name="Problema do atendimento"/><WrapPanel Margin="0,10,0,8"><Button Name="SolutionDiagnose" Content="1. Diagnosticar" Padding="12,6" Margin="0,0,8,0"/><Button Name="SolutionRepair" Content="2. Aplicar correção" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/><Button Name="SolutionValidate" Content="3. Validar novamente" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/><Button Name="SolutionCancel" Content="Cancelar consulta" Padding="12,6" Visibility="Collapsed"/></WrapPanel></StackPanel>
+    <TextBox Name="SolutionPlan" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="180" Padding="10" Margin="0,0,0,10" AutomationProperties.Name="Condições e impacto da solução"/>
+    <TextBox Name="SolutionOutput" Grid.Row="2" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Padding="10" AutomationProperties.Name="Histórico das etapas do atendimento"/>
+    <StackPanel Grid.Row="3" Margin="0,10,0,0"><TextBlock Name="SolutionStatus" TextWrapping="Wrap" Foreground="#334155" AutomationProperties.LiveSetting="Polite"/><TextBlock Text="Ao fechar, use Salvar relatório na janela principal para guardar o histórico. Durante uma etapa, aguarde a conclusão antes de fechar." FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
+  </Grid>
+</Window>
+'@
+    [xml]$layout = $solutionXaml
+    $dialog = [Windows.Markup.XamlReader]::Load([Xml.XmlNodeReader]::new($layout))
+    if ($window.IsVisible) { $dialog.Owner = $window }
+    $dialog.Width = [math]::Min($dialog.Width, [Windows.SystemParameters]::WorkArea.Width)
+    $dialog.Height = [math]::Min($dialog.Height, [Windows.SystemParameters]::WorkArea.Height)
+    $session = [pscustomobject]@{ Dialog = $dialog; Id = ''; Diagnosed = $false; RepairAttempted = $false; Job = $null; Timer = [Windows.Threading.DispatcherTimer]::new(); History = [Text.StringBuilder]::new(); EntryCount = 0 }
+    foreach ($solution in Get-V3SolutionCatalog) { [void]$dialog.FindName('SolutionChoice').Items.Add($solution) }
+    return $session
+}
+
+function Update-V3SolutionLayout {
+    param($Session)
+    $Session.Dialog.FindName('SolutionPlan').MaxHeight = if ($Session.Dialog.Content.ActualHeight -lt 560) { 110 } else { 180 }
+}
+
+function Open-V3SolutionCatalog {
+    $script:V3SolutionSession = New-V3SolutionSession
+    $session = $script:V3SolutionSession
+    $session.Timer.Interval = [TimeSpan]::FromMilliseconds(300)
+    $session.Timer.Add_Tick({ Complete-V3SolutionStage $script:V3SolutionSession })
+    $session.Dialog.Content.Add_SizeChanged({ Update-V3SolutionLayout $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionChoice').Add_SelectionChanged({ Set-V3SolutionSelection $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionDiagnose').Add_Click({ Start-V3SolutionStage $script:V3SolutionSession 'Diagnose' })
+    $session.Dialog.FindName('SolutionRepair').Add_Click({ Start-V3SolutionStage $script:V3SolutionSession 'Repair' })
+    $session.Dialog.FindName('SolutionValidate').Add_Click({ Start-V3SolutionStage $script:V3SolutionSession 'Validate' })
+    $session.Dialog.FindName('SolutionCancel').Add_Click({ Stop-V3SolutionConsultation $script:V3SolutionSession })
+    $session.Dialog.Add_Closing({
+        param($sender, $eventArgs)
+        if ($null -ne $script:V3SolutionSession.Job) { $eventArgs.Cancel = $true; $script:V3SolutionSession.Dialog.FindName('SolutionStatus').Text = 'Aguarde a etapa em andamento antes de fechar.' }
+    })
+    $session.Dialog.FindName('SolutionChoice').SelectedIndex = 0
+    try { [void]$session.Dialog.ShowDialog() }
+    finally { $session.Timer.Stop(); $script:V3SolutionSession = $null }
+}
+
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate V3 | Temas" Height="820" Width="1180" WindowStartupLocation="CenterScreen" Background="#F3F6FA" FontFamily="Segoe UI" MinWidth="820" MinHeight="480">
     <Window.Resources>
@@ -2489,6 +2731,9 @@ $xaml = @"
                                             <TextBlock Text="Consulta hardware e sistema operacional." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
                                         </StackPanel>
                                     </Button>
+                                    <Button Name="BtnV3Solutions" Style="{StaticResource ActionGridButton}" Tag="Visão geral Soluções guiadas resolver DNS impressora spooler Office login WAM comandos PowerShell" ToolTip="Diagnosticar, avaliar impacto, aplicar correção confirmada e validar o sintoma.">
+                                        <StackPanel><TextBlock Text="Soluções guiadas" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13"/><TextBlock Text="DNS, impressão e login do Office, com etapas e histórico." TextWrapping="Wrap" FontSize="11" Foreground="#64748B" Margin="0,5,0,0"/></StackPanel>
+                                    </Button>
                                 </UniformGrid>
                             </StackPanel>
                         </StackPanel>
@@ -2603,10 +2848,10 @@ $xaml = @"
                                             <TextBlock Text="Reinicia o cliente; interrompe a VPN temporariamente." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Name="BtnV3AppgateFix" Style="{StaticResource ActionGridButton}" ToolTip="Cria backup, ajusta RunScriptTimeout e UAC com confirmação." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="VPN / Appgate Appgate: ajustar Cria backup e ajusta timeout e configuração UAC.">
+                                    <Button Name="BtnV3AppgateFix" Style="{StaticResource ActionGridButton}" ToolTip="Cria backup e ajusta RunScriptTimeout com confirmação." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="VPN / Appgate Appgate: ajustar Cria backup e ajusta timeout.">
                                         <StackPanel>
                                             <TextBlock Text="Appgate: ajustar" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
-                                            <TextBlock Text="Cria backup e ajusta timeout e configuração UAC." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                            <TextBlock Text="Cria backup e ajusta timeout." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
                                         </StackPanel>
                                     </Button>
                                 </UniformGrid>
@@ -3332,11 +3577,12 @@ $window.FindName("BtnV3AppgateRestart").Add_Click({
     }
 })
 $window.FindName("BtnV3AppgateFix").Add_Click({
-    if ([System.Windows.MessageBox]::Show("Sera criado um backup e aplicado RunScriptTimeout=300000 e UAC=5. Deseja continuar?", "Ajustar Appgate", "YesNo", "Warning") -eq "Yes") {
+    if ([System.Windows.MessageBox]::Show("Sera criado um backup da configuracao do Appgate e aplicado RunScriptTimeout=300000. Deseja continuar?", "Ajustar Appgate", "YesNo", "Warning") -eq "Yes") {
         Set-V3Output (Repair-V3AppgateConfiguration -Confirmed)
     }
 })
 $window.FindName("BtnV3Health").Add_Click({ Set-V3Output (Invoke-V3MachineHealthPanel) })
+$window.FindName("BtnV3Solutions").Add_Click({ Open-V3SolutionCatalog })
 $window.FindName("BtnV3OfficeTpm").Add_Click({
     Set-V3Output (Invoke-V3OfficeTpmPanel)
 })
