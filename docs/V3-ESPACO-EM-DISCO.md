@@ -8,6 +8,8 @@ O início do relatório apresenta um resumo das vinte categorias, com quantidade
 
 Para encontrar uma categoria ou arquivo, use **Localizar no resultado** ou **Ctrl+Shift+F**. A área de leitura é ampliada e o trecho encontrado fica selecionado. **Próxima/Anterior**, **F3/Shift+F3** e **Enter/Shift+Enter** percorrem as ocorrências, voltando ao início ou fim da lista. **Esc** fecha a busca; **Voltar às ações** restaura os cartões. A busca é literal e ignora maiúsculas/minúsculas; acentos devem corresponder ao texto do relatório. **Ctrl+F** continua procurando ações do programa.
 
+Para navegar por tema, use o seletor **Ir para uma seção...** na barra do resultado. Ele reúne os títulos numerados das seções de detalhes, como Outlook, temporários e Lixeira. A escolha amplia a leitura e seleciona o título no relatório. Se a busca de texto estiver aberta, ela é fechada para mostrar o destino; o termo fica disponível ao reabrir a busca. Relatórios sem títulos numerados ocultam o seletor.
+
 - O coletor usa a unidade do Windows, limites padrão de 120 segundos e 200.000 arquivos. Limites são cooperativos; uma chamada de disco lenta pode atrasar a conclusão.
 - Acessos negados, coleta indisponível, links ignorados e limite atingido indicam cobertura parcial. Não interpretar ausência de achados como prova de ausência nesses casos.
 - Tamanho lógico não equivale a espaço ocupado nem a ganho recuperável. Categorias se sobrepõem: EVTX pode estar em Temp e na lista geral; MEMORY.DMP também aparece em dumps. Não somar os totais.

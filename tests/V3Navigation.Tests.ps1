@@ -70,7 +70,7 @@ Describe "V3 reading and responsive layout" {
         $ast = [Management.Automation.Language.Parser]::ParseInput(
             $script:AppText, [ref]$tokens, [ref]$errors
         )
-        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults", "Reset-V3ActionFilters", "Update-V3CompactLayout", "Update-V3ResultSearch", "Move-V3ResultMatch", "Set-V3ResultSearchVisible")) {
+        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults", "Reset-V3ActionFilters", "Update-V3CompactLayout", "Update-V3ResultSearch", "Move-V3ResultMatch", "Set-V3ResultSearchVisible", "Update-V3ResultSections", "Move-V3ResultSection")) {
             $functionAst = $ast.Find({
                 param($node)
                 $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
@@ -204,6 +204,36 @@ Describe "V3 reading and responsive layout" {
         $script:V3ResultMatches.Count | Should -Be 1
         $script:TxtV3Output.SelectedText | Should -Be ".txt"
         $script:TxtV3Output.Text | Should -Be $original
+    }
+
+    It "jumps to report sections instead of summary rows and preserves the report" {
+        $original = "INDICE`r`n[8] Windows Temp | 2 arquivos | 1 MB`r`n[22] Lixeira | 1 arquivo`r`n`r`n[8] Windows Temp`r`nPassos dos temporários.`r`n`r`n[22] Lixeira`r`nPassos da lixeira."
+        $script:TxtV3Output.Text = $original
+        Update-V3ResultSections
+        $picker = $window.FindName("ResultSections")
+        $picker.Items.Count | Should -Be 3
+        $picker.Visibility | Should -Be "Visible"
+        Set-V3ResultSearchVisible -Visible $true
+        $picker.SelectedIndex = 2
+        Move-V3ResultSection
+        $script:TxtV3Output.SelectionStart | Should -Be $original.LastIndexOf('[22] Lixeira')
+        $script:TxtV3Output.SelectedText | Should -Be '[22] Lixeira'
+        $script:V3ResultExpanded | Should -BeTrue
+        $window.FindName("ResultSearchPanel").Visibility | Should -Be "Collapsed"
+        $script:TxtV3Output.Text | Should -Be $original
+        Set-V3ResultExpanded -Expanded $false
+    }
+
+    It "removes previous section targets when a new unnumbered report is displayed" {
+        $script:TxtV3Output.Text = "[1] Primeiro relatório`nConteúdo"
+        Update-V3ResultSections
+        $window.FindName("ResultSections").Items.Count | Should -Be 2
+        $script:TxtV3Output.Text = "Outro relatório sem seções numeradas"
+        Update-V3ResultSections
+        $window.FindName("ResultSections").Visibility | Should -Be "Collapsed"
+        $window.FindName("ResultSections").Items.Count | Should -Be 0
+        Move-V3ResultSection
+        $script:TxtV3Output.Text | Should -Be "Outro relatório sem seções numeradas"
     }
 
     It "disables navigation for absent or empty terms and recalculates for a new report" {

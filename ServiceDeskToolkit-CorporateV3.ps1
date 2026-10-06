@@ -2715,6 +2715,7 @@ $xaml = @"
                             <Button Name="BtnV3ExpandResult" Content="Ampliar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Usar o espaço das ações para ler o relatório. Clique novamente para voltar." />
                             <Button Name="BtnV3SmallerText" Content="A−" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Diminuir texto do resultado" ToolTip="Diminuir texto do resultado." />
                             <Button Name="BtnV3LargerText" Content="A+" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Aumentar texto do resultado" ToolTip="Aumentar texto do resultado." />
+                            <ComboBox Name="ResultSections" Visibility="Collapsed" Width="240" Height="30" Margin="8,0,0,0" VerticalAlignment="Center" DisplayMemberPath="Label" AutomationProperties.Name="Ir para seção do resultado" AutomationProperties.HelpText="Selecione uma seção numerada para ampliar a leitura e ir ao trecho correspondente. Não altera o relatório." ToolTip="Ir diretamente a uma seção deste relatório." />
                         </WrapPanel>
                         <Grid Name="ResultSearchPanel" Visibility="Collapsed" Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
@@ -2792,6 +2793,38 @@ $CardV3Version.Text = Get-V3VersionInfo
 
 $script:V3ResultExpanded = $false
 $script:V3CompactLayout = $false
+function Update-V3ResultSections {
+    $picker = $window.FindName("ResultSections")
+    $script:V3UpdatingResultSections = $true
+    try {
+        $picker.Items.Clear()
+        $sections = @([regex]::Matches($script:TxtV3Output.Text, '(?m)^\[(\d+)\] ([^\r\n|]+)\r?$'))
+        $picker.Visibility = if ($sections.Count -gt 0) { "Visible" } else { "Collapsed" }
+        if ($sections.Count -eq 0) { return }
+        [void]$picker.Items.Add([pscustomobject]@{ Label = "Ir para uma seção..."; Position = -1; Length = 0 })
+        foreach ($section in $sections) {
+            [void]$picker.Items.Add([pscustomobject]@{
+                Label = $section.Value.TrimEnd("`r")
+                Position = $section.Index
+                Length = $section.Value.TrimEnd("`r").Length
+            })
+        }
+        $picker.SelectedIndex = 0
+    }
+    finally { $script:V3UpdatingResultSections = $false }
+}
+
+function Move-V3ResultSection {
+    if ($script:V3UpdatingResultSections) { return }
+    $selected = $window.FindName("ResultSections").SelectedItem
+    if ($null -eq $selected -or $selected.Position -lt 0) { return }
+    Set-V3ResultSearchVisible -Visible $false
+    Set-V3ResultExpanded -Expanded $true
+    $script:TxtV3Output.Select($selected.Position, $selected.Length)
+    $line = $script:TxtV3Output.GetLineIndexFromCharacterIndex($selected.Position)
+    if ($line -ge 0) { $script:TxtV3Output.ScrollToLine($line) }
+}
+
 function Update-V3ResultSearch {
     $query = $window.FindName("SearchResult").Text
     $script:V3ResultMatches = @()
@@ -2841,12 +2874,15 @@ function Set-V3ResultSearchVisible {
 
 $script:V3ResultMatches = @()
 $script:V3ResultMatchIndex = -1
+$script:V3UpdatingResultSections = $false
+$window.FindName("ResultSections").Add_SelectionChanged({ Move-V3ResultSection })
 $window.FindName("BtnV3FindResult").Add_Click({ Set-V3ResultSearchVisible -Visible $true })
 $window.FindName("BtnV3CloseResultSearch").Add_Click({ Set-V3ResultSearchVisible -Visible $false })
 $window.FindName("BtnV3PreviousMatch").Add_Click({ Move-V3ResultMatch -Direction -1 })
 $window.FindName("BtnV3NextMatch").Add_Click({ Move-V3ResultMatch -Direction 1 })
 $window.FindName("SearchResult").Add_TextChanged({ Update-V3ResultSearch })
 $script:TxtV3Output.Add_TextChanged({
+    Update-V3ResultSections
     if ($window.FindName("ResultSearchPanel").Visibility -eq "Visible") { Update-V3ResultSearch }
 })
 $window.FindName("SearchResult").Add_PreviewKeyDown({
