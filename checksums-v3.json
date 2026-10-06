@@ -7,15 +7,19 @@
   "files": [
     {
       "path": "docs/V3-README.md",
-      "sha256": "635ccd683ffd726e44350f08bf8712d0125659be95f7bf1f1a8240ac09783a18"
+      "sha256": "acf232985779b1f58c53636900870197557e9fdddf819f5086769e2514641e26"
+    },
+    {
+      "path": "docs/V3-ESPACO-EM-DISCO.md",
+      "sha256": "7693cc76368796006724e5aaaec44696953c815801ea925aa8b8a5ed71324c53"
     },
     {
       "path": "install-v3.ps1",
-      "sha256": "dcbaf47d54f9bad16fb2c673f196e75e7ce66c73338ad5cafd5fb820e9cef80d"
+      "sha256": "30a226475cb6cf6e1d39517c3baba2be7660614c865a21795b4caa83631d3a63"
     },
     {
       "path": "ServiceDeskToolkit-CorporateV3.ps1",
-      "sha256": "8c7090aafc507303f4df06781cc9a621200137f171f17064e5aa204542db4e37"
+      "sha256": "eb2a11a168d48f72a075c759ead0c16ff7a6dd21aef853fadcc1221b1f6f5894"
     },
     {
       "path": "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
@@ -42,6 +46,10 @@
       "sha256": "81ece25a3223e736cf7a0b3c19a67dd574676f274e0a8e3ae52c0f038bd54b2c"
     },
     {
+      "path": "src/ServiceDeskToolkit.Storage/ServiceDeskToolkit.Storage.psm1",
+      "sha256": "12c75a5cb56c32594e89b945f0e5862c297510cc60ab86eb955e20e8acc1ce2f"
+    },
+    {
       "path": "tools/Invoke-V3Preview2Homologation.ps1",
       "sha256": "282d2e3beab75a45cb0bc76f01915163420bbc135aea8bc53d6e29f02d6742e7"
     },
@@ -51,7 +59,7 @@
     },
     {
       "path": "tools/Test-ToolkitV3.ps1",
-      "sha256": "b64547c55ad229bbcf590e431aa9ac16081f467b155e71b527226539a5c96963"
+      "sha256": "e30c8d69bd165017475e599569122df98555374208d582461aed7a0b707cac1c"
     },
     {
       "path": "version-v3.json",

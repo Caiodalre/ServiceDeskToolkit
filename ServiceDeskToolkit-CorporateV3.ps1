@@ -64,6 +64,82 @@ catch {
     $script:V3OperationalModuleError = $_.Exception.Message
 }
 
+$script:V3StorageScan = $null
+function Start-V3StorageDiagnostic {
+    param(
+        [string]$ScanRoot = ($env:SystemDrive + "\"),
+        [int]$MaxSeconds = 120,
+        [int]$MaxFiles = 200000
+    )
+
+    if ($null -ne $script:V3StorageScan) {
+        $window.FindName("ResultStatus").Text = "Diagnostico de disco ja em andamento"
+        return
+    }
+    $pipeline = [powershell]::Create()
+    try {
+        $modulePath = Join-Path $script:RootPath "src\ServiceDeskToolkit.Storage\ServiceDeskToolkit.Storage.psm1"
+        [void]$pipeline.AddScript({
+            param($modulePath, $scanRoot, $maxSeconds, $maxFiles)
+            $ErrorActionPreference = "Stop"
+            Import-Module $modulePath -Force
+            $snapshot = Get-ToolkitStorageSnapshot -ScanRoot $scanRoot -MaxSeconds $maxSeconds -MaxFiles $maxFiles
+            Format-ToolkitStorageReport -Snapshot $snapshot
+        }).AddArgument($modulePath).AddArgument($ScanRoot).AddArgument($MaxSeconds).AddArgument($MaxFiles)
+        $handle = $pipeline.BeginInvoke()
+        $script:V3StorageScan = [pscustomobject]@{ Pipeline = $pipeline; Handle = $handle; Cancelled = $false; StopHandle = $null }
+        $window.FindName("BtnV3Storage").IsEnabled = $false
+        $window.FindName("BtnV3CancelStorage").Visibility = "Visible"
+        $window.FindName("BtnV3CancelStorage").IsEnabled = $true
+        Set-V3Output "ESPACO EM DISCO - COLETA EM ANDAMENTO`r`n`r`nLeitura de discos, perfis e arquivos. Nenhum arquivo sera apagado.`r`nA varredura usa limites de tempo e quantidade; acessos negados e cobertura parcial serao indicados.`r`nVoce pode navegar e cancelar a coleta. Ao terminar, o resultado sera substituido pelo plano de liberacao."
+        $window.FindName("ResultStatus").Text = "Lendo espaco em disco..."
+        $script:V3StorageTimer.Start()
+    }
+    catch {
+        $pipeline.Dispose()
+        $script:V3StorageScan = $null
+        $window.FindName("BtnV3Storage").IsEnabled = $true
+        $window.FindName("BtnV3CancelStorage").Visibility = "Collapsed"
+        Set-V3Output "Nao foi possivel iniciar o diagnostico de disco. Detalhe: $($_.Exception.Message)"
+    }
+}
+
+function Complete-V3StorageDiagnostic {
+    if ($null -eq $script:V3StorageScan -or -not $script:V3StorageScan.Handle.IsCompleted) { return }
+    $scan = $script:V3StorageScan
+    if ($null -ne $scan.StopHandle -and -not $scan.StopHandle.IsCompleted) { return }
+    try {
+        if ($null -ne $scan.StopHandle) { $scan.Pipeline.EndStop($scan.StopHandle) }
+        if ($scan.Cancelled) {
+            Set-V3Output "Diagnostico de disco cancelado. Nenhuma limpeza foi executada. Repita a coleta quando puder concluir a leitura."
+        }
+        else {
+            $result = $scan.Pipeline.EndInvoke($scan.Handle)
+            if ($scan.Pipeline.HadErrors) { throw "A coleta falhou; consulte as permissoes e repita o diagnostico." }
+            Set-V3Output ($result -join [Environment]::NewLine)
+        }
+    }
+    catch {
+        Set-V3Output "Nao foi possivel concluir o diagnostico de disco. Nenhuma limpeza foi executada.`r`nDetalhe: $($_.Exception.Message)"
+    }
+    finally {
+        $scan.Pipeline.Dispose()
+        $script:V3StorageScan = $null
+        $script:V3StorageTimer.Stop()
+        $window.FindName("BtnV3Storage").IsEnabled = $true
+        $window.FindName("BtnV3CancelStorage").Visibility = "Collapsed"
+    }
+}
+
+function Stop-V3StorageDiagnostic {
+    if ($null -ne $script:V3StorageScan -and -not $script:V3StorageScan.Cancelled) {
+        $script:V3StorageScan.Cancelled = $true
+        $script:V3StorageScan.StopHandle = $script:V3StorageScan.Pipeline.BeginStop($null, $null)
+        $window.FindName("BtnV3CancelStorage").IsEnabled = $false
+        $window.FindName("ResultStatus").Text = "Cancelando coleta de disco..."
+    }
+}
+
 function Test-V3Admin {
     try {
         $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -2579,6 +2655,17 @@ $xaml = @"
                         <StackPanel Name="TopicWindows" Margin="0,0,0,20">
                             <TextBlock Text="Windows" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
                             <TextBlock Text="Horário e manutenção dos componentes do Windows." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3Storage" Style="{StaticResource ActionGridButton}" Tag="Windows espaço disco armazenamento liberar limpeza temporários Outlook OST PST OneDrive SCCM Lixeira arquivos grandes passo a passo" ToolTip="Coleta somente leitura em segundo plano, com limites. Mostra achados e um plano por situação; não apaga arquivos.">
+                                        <StackPanel>
+                                            <TextBlock Text="Espaço em disco: diagnóstico e plano" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Identifica arquivos e orienta a liberação por situação." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
                             <StackPanel Tag="ActionsGroup" Uid="Maintenance">
                                 <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
                                 <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
@@ -2621,6 +2708,7 @@ $xaml = @"
                             <TextBlock Text="Resultado e andamento" FontSize="16" FontWeight="Bold" Foreground="#0F172A" />
                         </DockPanel>
                         <WrapPanel Margin="-8,8,0,0">
+                            <Button Name="BtnV3CancelStorage" Content="Cancelar coleta" Visibility="Collapsed" Style="{StaticResource FooterLinkButton}" ToolTip="Interrompe a leitura de disco sem executar limpeza." />
                             <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Copiar o relatório exibido." />
                             <Button Name="BtnV3ExpandResult" Content="Ampliar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Usar o espaço das ações para ler o relatório. Clique novamente para voltar." />
                             <Button Name="BtnV3SmallerText" Content="A−" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Diminuir texto do resultado" ToolTip="Diminuir texto do resultado." />
@@ -2981,6 +3069,20 @@ $window.Add_PreviewKeyDown({
     }
 })
 Set-V3Topic -Topic "Overview"
+
+$script:V3StorageTimer = [System.Windows.Threading.DispatcherTimer]::new()
+$script:V3StorageTimer.Interval = [TimeSpan]::FromMilliseconds(300)
+$script:V3StorageTimer.Add_Tick({ Complete-V3StorageDiagnostic })
+$window.FindName("BtnV3Storage").Add_Click({ Start-V3StorageDiagnostic })
+$window.FindName("BtnV3CancelStorage").Add_Click({ Stop-V3StorageDiagnostic })
+$window.Add_Closed({
+    $script:V3StorageTimer.Stop()
+    if ($null -ne $script:V3StorageScan) {
+        $script:V3StorageScan.Pipeline.Stop()
+        $script:V3StorageScan.Pipeline.Dispose()
+        $script:V3StorageScan = $null
+    }
+})
 
 $window.FindName("BtnV3QuickInternet").Add_Click({ Set-V3Output (Invoke-V3WorkflowNoInternet) })
 $window.FindName("BtnV3QuickVpn").Add_Click({ Set-V3Output (Invoke-V3WorkflowVpn) })

@@ -183,3 +183,9 @@ recomendada é:
 
 A versão estável oficial é a `v3.0.1`. A `v3.0.0` permanece como
 fallback temporário da linha V3 e a V2.3.0 como fallback legado.
+
+## Liberação de espaço em disco
+
+No tema Windows, use **Espaço em disco: diagnóstico e plano** para uma coleta
+em segundo plano e orientações por categoria. Consulte o
+[guia de atendimento](V3-ESPACO-EM-DISCO.md). Não executa exclusões automáticas.

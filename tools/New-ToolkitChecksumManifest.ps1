@@ -16,6 +16,7 @@ $resolvedRoot = (Resolve-Path $Root).Path
 $manifestPath = Join-Path $resolvedRoot "checksums-v3.json"
 $payloadPaths = @(
     "docs/V3-README.md",
+    "docs/V3-ESPACO-EM-DISCO.md",
     "install-v3.ps1",
     "ServiceDeskToolkit-CorporateV3.ps1",
     "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
@@ -24,6 +25,7 @@ $payloadPaths = @(
     "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
     "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
     "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
+    "src/ServiceDeskToolkit.Storage/ServiceDeskToolkit.Storage.psm1",
     "tools/Invoke-V3Preview2Homologation.ps1",
     "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md",
     "tools/Test-ToolkitV3.ps1",

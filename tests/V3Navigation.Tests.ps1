@@ -132,10 +132,10 @@ Describe "V3 reading and responsive layout" {
         ($groups | Where-Object Uid -eq "Consultation").Visibility | Should -Be "Visible"
     }
 
-    It "shows no results when the selected theme has no consultation actions" {
+    It "shows no results when the selected theme has no maintenance actions" {
         $window.FindName("SearchActions").Clear()
-        $window.FindName("ActionKind").SelectedIndex = 1
-        Set-V3Topic -Topic Windows
+        $window.FindName("ActionKind").SelectedIndex = 2
+        Set-V3Topic -Topic Overview
         $window.FindName("NoActions").Visibility | Should -Be "Visible"
         $window.FindName("NoActions").Text | Should -BeLike "*tipo de ação*"
         $window.FindName("ActionKind").SelectedIndex = 0
