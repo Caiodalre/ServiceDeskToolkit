@@ -97,3 +97,39 @@ Describe 'Storage distribution' {
         (Get-Content $guide -Raw) | Should -BeLike '*CCMCache*'
     }
 }
+
+Describe 'Storage before and after comparison' {
+    BeforeEach {
+        $before = [pscustomobject]@{ ComputerName = 'TESTE'; Root = 'C:\'; GeneratedAt = [datetime]'2026-10-01T10:00:00'; Partial = $true; EndDisks = @([pscustomobject]@{ Name = 'C:\'; Total = 100GB; Free = 10GB }, [pscustomobject]@{ Name = 'D:\'; Total = 50GB; Free = 20GB }) }
+        $after = [pscustomobject]@{ ComputerName = 'TESTE'; Root = 'C:\'; GeneratedAt = [datetime]'2026-10-01T11:00:00'; Partial = $false; EndDisks = @([pscustomobject]@{ Name = 'C:\'; Total = 100GB; Free = 12GB }, [pscustomobject]@{ Name = 'D:\'; Total = 50GB; Free = 19GB }) }
+    }
+
+    It 'reports gain and loss per unit using final readings without attributing causation' {
+        $report = Format-ToolkitStorageComparison -Before $before -After $after
+        $report | Should -Match 'C:\\:.*AUMENTOU:.*2[,.]00 GB'
+        $report | Should -Match 'D:\\:.*DIMINUIU:.*1[,.]00 GB'
+        $report | Should -BeLike '*nao comprova quanto uma limpeza recuperou*'
+        $report | Should -BeLike '*inicial parcial=True; final parcial=False*'
+        $before.EndDisks[0].Free | Should -Be 10GB
+    }
+
+    It 'refuses a different computer root or nonlater reading' {
+        $after.ComputerName = 'OUTRA'
+        { Format-ToolkitStorageComparison $before $after } | Should -Throw '*mesma estacao*'
+        $after.ComputerName = 'TESTE'
+        $after.Root = 'D:\'
+        { Format-ToolkitStorageComparison $before $after } | Should -Throw '*mesma raiz*'
+        $after.Root = 'C:\'
+        $after.GeneratedAt = $before.GeneratedAt
+        { Format-ToolkitStorageComparison $before $after } | Should -Throw '*posterior*'
+    }
+
+    It 'marks missing or changed volumes as incomparable and handles missing measurements' {
+        $after.EndDisks = @([pscustomobject]@{ Name = 'C:\'; Total = 200GB; Free = 12GB })
+        $report = Format-ToolkitStorageComparison $before $after
+        ([regex]::Matches($report, 'NAO COMPARAVEL')).Count | Should -Be 2
+        $before.EndDisks = @()
+        $after.EndDisks = @()
+        Format-ToolkitStorageComparison $before $after | Should -BeLike '*Sem leituras finais*'
+    }
+}

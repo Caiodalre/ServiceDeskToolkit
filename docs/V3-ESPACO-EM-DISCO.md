@@ -24,6 +24,18 @@ Para navegar por tema, use o seletor **Ir para uma seção...** na barra do resu
 4. Repita a leitura, compare o espaço livre da mesma unidade e valide os aplicativos envolvidos. A leitura inicial e final do script original não mede ganho se nenhuma limpeza aconteceu entre elas.
 5. Se o espaço continuar insuficiente, revise retenção/capacidade com o suporte. Crescimento recorrente de logs, dumps ou temporários exige corrigir o produtor.
 
+## Registrar e comparar antes/depois
+
+1. Execute **Espaço em disco: diagnóstico e plano** e aguarde a conclusão.
+2. Use **Salvar relatório** para guardar o texto em `.txt` no local escolhido. O texto é capturado ao clicar; um resultado novo durante a escolha do destino não muda o conteúdo salvo. Revise dados e caminhos antes de compartilhar.
+3. Clique em **Definir leitura inicial**. Essa leitura fica guardada na memória desta sessão; salvar o texto não cria uma base que possa ser importada depois. Definir novamente substitui a base anterior.
+4. O suporte realiza a ação revisada e autorizada. O Toolkit não executa limpeza por esses controles.
+5. Clique em **Voltar às ações** e repita o diagnóstico. Ao concluir uma nova coleta, **Comparar leituras** fica disponível.
+6. Confira aumento ou redução do espaço livre por unidade. A comparação usa as medidas ao fim de cada coleta; exige a mesma estação, raiz e leitura final posterior. Unidades ausentes, duplicadas ou com capacidade alterada são marcadas como não comparáveis. Nome e capacidade não identificam fisicamente um disco substituído.
+7. Salve também a comparação e valide os aplicativos. A variação inclui atividade de outros processos e não prova ganho causado pela limpeza. A cobertura parcial dos arquivos continua indicada.
+
+Cancelamento ou falha de uma coleta mantém as leituras concluídas na sessão. Ao fechar o programa, a base em memória é perdida; os arquivos `.txt` salvos permanecem no destino escolhido. **Salvar relatório** também funciona nos outros diagnósticos.
+
 ## Perfis existentes
 
 A data de alteração da pasta não comprova o último login. Confirme o proprietário e as sessões ativas; faça backup validado dos dados necessários. Apenas para perfil comprovadamente obsoleto, o suporte pode usar Propriedades do Sistema > Avançado > Perfis de Usuário > Configurações. Não apague C:\Users manualmente nem remova o perfil em uso.

@@ -65,6 +65,8 @@ catch {
 }
 
 $script:V3StorageScan = $null
+$script:V3StorageSnapshot = $null
+$script:V3StorageBaseline = $null
 function Start-V3StorageDiagnostic {
     param(
         [string]$ScanRoot = ($env:SystemDrive + "\"),
@@ -84,7 +86,7 @@ function Start-V3StorageDiagnostic {
             $ErrorActionPreference = "Stop"
             Import-Module $modulePath -Force
             $snapshot = Get-ToolkitStorageSnapshot -ScanRoot $scanRoot -MaxSeconds $maxSeconds -MaxFiles $maxFiles
-            Format-ToolkitStorageReport -Snapshot $snapshot
+            [pscustomobject]@{ Snapshot = $snapshot; Report = (Format-ToolkitStorageReport -Snapshot $snapshot) }
         }).AddArgument($modulePath).AddArgument($ScanRoot).AddArgument($MaxSeconds).AddArgument($MaxFiles)
         $handle = $pipeline.BeginInvoke()
         $script:V3StorageScan = [pscustomobject]@{ Pipeline = $pipeline; Handle = $handle; Cancelled = $false; StopHandle = $null }
@@ -116,7 +118,10 @@ function Complete-V3StorageDiagnostic {
         else {
             $result = $scan.Pipeline.EndInvoke($scan.Handle)
             if ($scan.Pipeline.HadErrors) { throw "A coleta falhou; consulte as permissoes e repita o diagnostico." }
-            Set-V3Output ($result -join [Environment]::NewLine)
+            if ($result.Count -ne 1 -or $null -eq $result[0].Snapshot) { throw 'Resultado de coleta indisponivel.' }
+            $script:V3StorageSnapshot = $result[0].Snapshot
+            Set-V3Output $result[0].Report
+            Set-V3ResultExpanded -Expanded $true
         }
     }
     catch {
@@ -128,7 +133,57 @@ function Complete-V3StorageDiagnostic {
         $script:V3StorageTimer.Stop()
         $window.FindName("BtnV3Storage").IsEnabled = $true
         $window.FindName("BtnV3CancelStorage").Visibility = "Collapsed"
+        Update-V3StorageFollowup
     }
+}
+
+function Update-V3StorageFollowup {
+    $available = $null -ne $script:V3StorageSnapshot -and $null -eq $script:V3StorageScan -and $script:TxtV3Output.Text.StartsWith('ESPACO EM DISCO')
+    $window.FindName("StorageFollowup").Visibility = if ($available) { "Visible" } else { "Collapsed" }
+    $window.FindName("BtnV3CompareStorage").IsEnabled = $available -and $null -ne $script:V3StorageBaseline -and -not [object]::ReferenceEquals($script:V3StorageBaseline, $script:V3StorageSnapshot)
+    $window.FindName("StorageBaselineStatus").Text = if ($null -eq $script:V3StorageBaseline) { "Defina a leitura inicial antes da limpeza" } else { "Inicial: " + $script:V3StorageBaseline.GeneratedAt.ToString('HH:mm:ss') }
+}
+
+function Set-V3StorageBaseline {
+    if ($null -eq $script:V3StorageSnapshot -or $null -ne $script:V3StorageScan) { return }
+    $script:V3StorageBaseline = $script:V3StorageSnapshot
+    Update-V3StorageFollowup
+    $window.FindName("ResultStatus").Text = "Leitura inicial definida. Repita o diagnostico apos a acao."
+}
+
+function Compare-V3StorageReadings {
+    if ($null -eq $script:V3StorageBaseline -or $null -eq $script:V3StorageSnapshot -or $null -ne $script:V3StorageScan) { return }
+    try {
+        Import-Module (Join-Path $script:RootPath 'src\ServiceDeskToolkit.Storage\ServiceDeskToolkit.Storage.psm1') -Force
+        $report = Format-ToolkitStorageComparison -Before $script:V3StorageBaseline -After $script:V3StorageSnapshot
+        Set-V3Output $report
+        Set-V3ResultExpanded -Expanded $true
+    }
+    catch { $window.FindName("ResultStatus").Text = "Comparacao indisponivel: $($_.Exception.Message)" }
+}
+
+function Get-V3ReportSavePath {
+    $dialog = [Microsoft.Win32.SaveFileDialog]::new()
+    $dialog.Title = 'Salvar relatorio do atendimento'
+    $dialog.Filter = 'Relatorio de texto (*.txt)|*.txt'
+    $dialog.DefaultExt = '.txt'
+    $dialog.AddExtension = $true
+    $dialog.OverwritePrompt = $true
+    $dialog.FileName = 'atendimento-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.txt'
+    if ($dialog.ShowDialog($window) -eq $true) { return $dialog.FileName }
+    return $null
+}
+
+function Save-V3Output {
+    if ([string]::IsNullOrWhiteSpace($script:TxtV3Output.Text)) { $window.FindName("ResultStatus").Text = 'Nenhum resultado para salvar'; return }
+    $reportToSave = $script:TxtV3Output.Text
+    try {
+        $path = Get-V3ReportSavePath
+        if ([string]::IsNullOrEmpty($path)) { return }
+        [IO.File]::WriteAllText($path, $reportToSave, [Text.UTF8Encoding]::new($true))
+        $window.FindName("ResultStatus").Text = 'Relatorio salvo em ' + $path
+    }
+    catch { $window.FindName("ResultStatus").Text = "Nao foi possivel salvar: $($_.Exception.Message)" }
 }
 
 function Stop-V3StorageDiagnostic {
@@ -2697,25 +2752,31 @@ $xaml = @"
                     </StackPanel>
                 </Border>
             </ScrollViewer>
-            <Border Grid.Row="4" Background="White" CornerRadius="12" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
+            <Border Name="ResultContainer" Grid.Row="4" Background="White" CornerRadius="12" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <StackPanel Margin="0,0,0,10">
+                    <StackPanel Name="ResultHeader" Margin="0,0,0,10">
                         <DockPanel>
-                            <TextBlock Name="ResultStatus" DockPanel.Dock="Right" Text="Pronto para consultar" FontSize="11" Foreground="#475569" VerticalAlignment="Center" />
+                            <TextBlock Name="ResultStatus" DockPanel.Dock="Right" Text="Pronto para consultar" MaxWidth="300" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="11" Foreground="#475569" VerticalAlignment="Center" />
                             <TextBlock Text="Resultado e andamento" FontSize="16" FontWeight="Bold" Foreground="#0F172A" />
                         </DockPanel>
                         <WrapPanel Margin="-8,8,0,0">
                             <Button Name="BtnV3CancelStorage" Content="Cancelar coleta" Visibility="Collapsed" Style="{StaticResource FooterLinkButton}" ToolTip="Interrompe a leitura de disco sem executar limpeza." />
                             <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Copiar o relatório exibido." />
+                            <Button Name="BtnV3SaveOutput" Content="Salvar relatório" Style="{StaticResource FooterLinkButton}" ToolTip="Salvar o texto exibido no local escolhido. O relatório pode conter caminhos e dados corporativos." />
                             <Button Name="BtnV3FindResult" Content="Localizar no resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Buscar texto neste relatório. Ctrl+Shift+F." />
                             <Button Name="BtnV3ExpandResult" Content="Ampliar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Usar o espaço das ações para ler o relatório. Clique novamente para voltar." />
                             <Button Name="BtnV3SmallerText" Content="A−" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Diminuir texto do resultado" ToolTip="Diminuir texto do resultado." />
                             <Button Name="BtnV3LargerText" Content="A+" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Aumentar texto do resultado" ToolTip="Aumentar texto do resultado." />
                             <ComboBox Name="ResultSections" Visibility="Collapsed" Width="240" Height="30" Margin="8,0,0,0" VerticalAlignment="Center" DisplayMemberPath="Label" AutomationProperties.Name="Ir para seção do resultado" AutomationProperties.HelpText="Selecione uma seção numerada para ampliar a leitura e ir ao trecho correspondente. Não altera o relatório." ToolTip="Ir diretamente a uma seção deste relatório." />
+                        </WrapPanel>
+                        <WrapPanel Name="StorageFollowup" Visibility="Collapsed" Margin="-8,8,0,0">
+                            <Button Name="BtnV3StorageBaseline" Content="Definir leitura inicial" Style="{StaticResource FooterLinkButton}" ToolTip="Guardar esta leitura na sessão para comparar com um novo diagnóstico após a ação do suporte." />
+                            <Button Name="BtnV3CompareStorage" Content="Comparar leituras" IsEnabled="False" Style="{StaticResource FooterLinkButton}" ToolTip="Comparar o espaço livre por unidade com a leitura inicial. Não executa limpeza." />
+                            <TextBlock Name="StorageBaselineStatus" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11" Foreground="#475569" TextWrapping="Wrap" />
                         </WrapPanel>
                         <Grid Name="ResultSearchPanel" Visibility="Collapsed" Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
@@ -2877,11 +2938,15 @@ $script:V3ResultMatchIndex = -1
 $script:V3UpdatingResultSections = $false
 $window.FindName("ResultSections").Add_SelectionChanged({ Move-V3ResultSection })
 $window.FindName("BtnV3FindResult").Add_Click({ Set-V3ResultSearchVisible -Visible $true })
+$window.FindName("BtnV3SaveOutput").Add_Click({ Save-V3Output })
+$window.FindName("BtnV3StorageBaseline").Add_Click({ Set-V3StorageBaseline })
+$window.FindName("BtnV3CompareStorage").Add_Click({ Compare-V3StorageReadings })
 $window.FindName("BtnV3CloseResultSearch").Add_Click({ Set-V3ResultSearchVisible -Visible $false })
 $window.FindName("BtnV3PreviousMatch").Add_Click({ Move-V3ResultMatch -Direction -1 })
 $window.FindName("BtnV3NextMatch").Add_Click({ Move-V3ResultMatch -Direction 1 })
 $window.FindName("SearchResult").Add_TextChanged({ Update-V3ResultSearch })
 $script:TxtV3Output.Add_TextChanged({
+    Update-V3StorageFollowup
     Update-V3ResultSections
     if ($window.FindName("ResultSearchPanel").Visibility -eq "Visible") { Update-V3ResultSearch }
 })
@@ -2933,6 +2998,8 @@ function Update-V3CompactLayout {
     $grid.MaxHeight = [Math]::Max(0, $surface.ActualHeight - 2 * $margin)
     $window.FindName("WorkspaceDescription").Visibility = if ($compact) { "Collapsed" } else { "Visible" }
     $window.FindName("WorkspaceFooter").Visibility = if ($compact) { "Collapsed" } else { "Visible" }
+    $window.FindName("ResultContainer").Padding = [System.Windows.Thickness]::new($(if ($compact) { 12 } else { 16 }))
+    $window.FindName("ResultHeader").Margin = [System.Windows.Thickness]::new(0, 0, 0, $(if ($compact) { 6 } else { 10 }))
     $grid.RowDefinitions[2].MinHeight = if ($script:V3ResultExpanded) { 0 } elseif ($compact) { 80 } else { 100 }
     $grid.RowDefinitions[4].MinHeight = if ($compact) { 170 } else { 200 }
     if ($compact -ne $script:V3CompactLayout) {

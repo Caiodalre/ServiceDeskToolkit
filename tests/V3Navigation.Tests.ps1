@@ -65,12 +65,16 @@ Describe "V3 reading and responsive layout" {
         $script:TxtV3Output = $window.FindName("TxtV3Output")
         $script:V3ResultExpanded = $false
         $script:V3CompactLayout = $false
+        $script:V3StorageScan = $null
+        $script:V3StorageSnapshot = $null
+        $script:V3StorageBaseline = $null
+        $script:RootPath = Split-Path -Parent $PSScriptRoot
         $tokens = $null
         $errors = $null
         $ast = [Management.Automation.Language.Parser]::ParseInput(
             $script:AppText, [ref]$tokens, [ref]$errors
         )
-        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults", "Reset-V3ActionFilters", "Update-V3CompactLayout", "Update-V3ResultSearch", "Move-V3ResultMatch", "Set-V3ResultSearchVisible", "Update-V3ResultSections", "Move-V3ResultSection")) {
+        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults", "Reset-V3ActionFilters", "Update-V3CompactLayout", "Update-V3ResultSearch", "Move-V3ResultMatch", "Set-V3ResultSearchVisible", "Update-V3ResultSections", "Move-V3ResultSection", "Get-V3ReportSavePath", "Save-V3Output", "Update-V3StorageFollowup", "Set-V3StorageBaseline", "Compare-V3StorageReadings", "Set-V3Output")) {
             $functionAst = $ast.Find({
                 param($node)
                 $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
@@ -185,6 +189,61 @@ Describe "V3 reading and responsive layout" {
         Should -Invoke Set-V3ClipboardText -Times 1 -ParameterFilter { $Text -eq "Relatório original" }
         $script:TxtV3Output.Text | Should -Be "Relatório original"
         $window.FindName("ResultStatus").Text | Should -BeLike "Resultado copiado*"
+    }
+
+    It "saves exact report text to the selected file without changing the displayed result" {
+        $savePath = Join-Path $TestDrive 'relatorio.txt'
+        Mock Get-V3ReportSavePath { $savePath }
+        $original = "Relatório de teste`r`nAção e evidência."
+        $script:TxtV3Output.Text = $original
+        Save-V3Output
+        [IO.File]::ReadAllText($savePath) | Should -Be $original
+        $script:TxtV3Output.Text | Should -Be $original
+        $window.FindName("ResultStatus").Text | Should -BeLike '*salvo em*'
+    }
+
+    It "preserves the report when saving is cancelled or the destination fails" {
+        Mock Get-V3ReportSavePath { $null }
+        $script:TxtV3Output.Text = 'Relatório preservado'
+        $window.FindName("ResultStatus").Text = 'Status original'
+        Save-V3Output
+        $window.FindName("ResultStatus").Text | Should -Be 'Status original'
+        Mock Get-V3ReportSavePath { $TestDrive }
+        Save-V3Output
+        $window.FindName("ResultStatus").Text | Should -BeLike '*possivel salvar*'
+        $script:TxtV3Output.Text | Should -Be 'Relatório preservado'
+    }
+
+    It "saves the clicked report when another result arrives while choosing a destination" {
+        $savePath = Join-Path $TestDrive 'resultado-inicial.txt'
+        Mock Get-V3ReportSavePath {
+            $script:TxtV3Output.Text = 'Resultado novo em segundo plano'
+            $savePath
+        }
+        $script:TxtV3Output.Text = 'Resultado escolhido para salvar'
+        Save-V3Output
+        [IO.File]::ReadAllText($savePath) | Should -Be 'Resultado escolhido para salvar'
+        $script:TxtV3Output.Text | Should -Be 'Resultado novo em segundo plano'
+    }
+
+    It "enables comparison only after a new completed reading and retains the baseline" {
+        $script:V3StorageSnapshot = [pscustomobject]@{ GeneratedAt = [datetime]'2026-10-01T10:00:00' }
+        $script:V3StorageBaseline = $null
+        $script:TxtV3Output.Text = 'ESPACO EM DISCO - LEITURA'
+        Set-V3StorageBaseline
+        $window.FindName("BtnV3CompareStorage").IsEnabled | Should -BeFalse
+        $script:V3StorageSnapshot = [pscustomobject]@{ GeneratedAt = [datetime]'2026-10-01T11:00:00' }
+        Update-V3StorageFollowup
+        $window.FindName("BtnV3CompareStorage").IsEnabled | Should -BeTrue
+        $script:V3StorageBaseline.GeneratedAt | Should -Be ([datetime]'2026-10-01T10:00:00')
+        $script:V3StorageScan = [pscustomobject]@{}
+        Update-V3StorageFollowup
+        $window.FindName("StorageFollowup").Visibility | Should -Be 'Collapsed'
+        $window.FindName("BtnV3CompareStorage").IsEnabled | Should -BeFalse
+        $script:V3StorageScan = $null
+        $script:V3StorageBaseline = $null
+        $script:V3StorageSnapshot = $null
+        Update-V3StorageFollowup
     }
 
     It "finds literal report text regardless of case and cycles in both directions" {

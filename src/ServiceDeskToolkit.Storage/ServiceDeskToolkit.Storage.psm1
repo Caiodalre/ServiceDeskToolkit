@@ -138,7 +138,7 @@ function Get-ToolkitStorageSnapshot {
     catch { $errors++ }
     $watch.Stop()
     [pscustomobject]@{
-        Root = $root; GeneratedAt = Get-Date; Disks = $disks; Profiles = $profiles
+        Root = $root; ComputerName = $env:COMPUTERNAME; GeneratedAt = Get-Date; Disks = $disks; Profiles = $profiles
         SearchStatus = $searchStatus; Categories = $buckets; FilesVisited = $count
         UserTemps = @($userTemps.Values); EndDisks = $endDisks
         Errors = $errors; SkippedLinks = $skipped; LimitReached = $limited
@@ -229,4 +229,36 @@ function Format-ToolkitStorageReport {
     return $sb.ToString()
 }
 
-Export-ModuleMember -Function Get-ToolkitStorageGuidance, Get-ToolkitStorageFileKinds, Get-ToolkitStorageSnapshot, Format-ToolkitStorageReport
+function Format-ToolkitStorageComparison {
+    param([Parameter(Mandatory = $true)]$Before, [Parameter(Mandatory = $true)]$After)
+
+    if ([string]::IsNullOrWhiteSpace($Before.ComputerName) -or $Before.ComputerName -ne $After.ComputerName -or $Before.Root -ne $After.Root) {
+        throw 'Compare leituras da mesma estacao e da mesma raiz.'
+    }
+    if ($After.GeneratedAt -le $Before.GeneratedAt) { throw 'A leitura final deve ser posterior a leitura inicial.' }
+    $sb = [Text.StringBuilder]::new()
+    [void]$sb.AppendLine('ESPACO EM DISCO - COMPARACAO DE LEITURAS')
+    [void]$sb.AppendLine("Inicial: $($Before.GeneratedAt.ToString('dd/MM/yyyy HH:mm:ss')) | Final: $($After.GeneratedAt.ToString('dd/MM/yyyy HH:mm:ss'))")
+    [void]$sb.AppendLine('Valores de espaco livre ao concluir cada coleta. Nenhuma limpeza e executada por esta comparacao.')
+    [void]$sb.AppendLine("Cobertura dos arquivos: inicial parcial=$($Before.Partial); final parcial=$($After.Partial).")
+    [void]$sb.AppendLine('A variacao pode incluir atividade de outros processos; nao comprova quanto uma limpeza recuperou.')
+    [void]$sb.AppendLine('')
+    $names = @(@($Before.EndDisks | ForEach-Object { $_.Name }) + @($After.EndDisks | ForEach-Object { $_.Name }) | Select-Object -Unique)
+    if ($names.Count -eq 0) { [void]$sb.AppendLine('Sem leituras finais de capacidade disponiveis para comparar.') }
+    foreach ($name in $names) {
+        $initial = @($Before.EndDisks | Where-Object Name -eq $name)
+        $final = @($After.EndDisks | Where-Object Name -eq $name)
+        if ($initial.Count -ne 1 -or $final.Count -ne 1 -or $initial[0].Total -ne $final[0].Total) {
+            [void]$sb.AppendLine("${name}: NAO COMPARAVEL - unidade ausente, duplicada ou capacidade alterada.")
+            continue
+        }
+        $delta = [long]$final[0].Free - [long]$initial[0].Free
+        $direction = if ($delta -gt 0) { 'AUMENTOU' } elseif ($delta -lt 0) { 'DIMINUIU' } else { 'SEM VARIACAO' }
+        [void]$sb.AppendLine(('{0}: inicial {1:N2} GB livres | final {2:N2} GB livres | {3}: {4:N2} MB ({5:N2} GB)' -f $name, ($initial[0].Free / 1GB), ($final[0].Free / 1GB), $direction, ([math]::Abs($delta) / 1MB), ([math]::Abs($delta) / 1GB)))
+    }
+    [void]$sb.AppendLine('')
+    [void]$sb.AppendLine('Valide os aplicativos e a mesma unidade apos cada acao autorizada. Nao somar categorias sobrepostas nem tratar tamanho logico como ganho.')
+    return $sb.ToString()
+}
+
+Export-ModuleMember -Function Get-ToolkitStorageGuidance, Get-ToolkitStorageFileKinds, Get-ToolkitStorageSnapshot, Format-ToolkitStorageReport, Format-ToolkitStorageComparison
