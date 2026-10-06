@@ -160,6 +160,26 @@ function Format-ToolkitStorageReport {
     [void]$sb.AppendLine('Tamanhos sao logicos, nao estimativa de bytes recuperaveis. Categorias se sobrepoem; nao somar os totais.')
     [void]$sb.AppendLine('Ausencia na leitura parcial nao comprova ausencia de arquivos. Outros discos nao foram varridos.')
     [void]$sb.AppendLine('')
+    [void]$sb.AppendLine('RESUMO E INDICE POR SITUACAO')
+    [void]$sb.AppendLine('Localize o numero entre colchetes para consultar arquivos, solucao e validacao.')
+    [void]$sb.AppendLine('[1] Discos - capacidade e alerta | [2] Perfis - confirmar dono e uso')
+    $guides = @(Get-ToolkitStorageGuidance)
+    $summarySection = 3
+    foreach ($guide in $guides) {
+        $bucket = $Snapshot.Categories[$guide.Key]
+        if ($bucket.Count -eq 0) {
+            $size = 'Nao observado no escopo lido'
+        }
+        elseif ($bucket.Bytes -ge 1GB) { $size = '{0:N2} GB logicos' -f ($bucket.Bytes / 1GB) }
+        elseif ($bucket.Bytes -ge 1MB) { $size = '{0:N2} MB logicos' -f ($bucket.Bytes / 1MB) }
+        elseif ($bucket.Bytes -ge 1KB) { $size = '{0:N2} KB logicos' -f ($bucket.Bytes / 1KB) }
+        else { $size = '{0:N0} bytes logicos' -f $bucket.Bytes }
+        [void]$sb.AppendLine(('[{0}] {1} | {2} arquivo(s) | {3}' -f $summarySection, $guide.Title, $bucket.Count, $size))
+        $summarySection++
+    }
+    [void]$sb.AppendLine('Os volumes observados nao indicam quanto pode ser excluido; revise o passo a passo de cada situacao.')
+    [void]$sb.AppendLine('Apos as categorias: estado final da leitura e validacao apos a liberacao.')
+    [void]$sb.AppendLine('')
     [void]$sb.AppendLine('[1] DISCOS - LEITURA INICIAL')
     foreach ($disk in $Snapshot.Disks) {
         $percent = if ($disk.Total -gt 0) { 100 * $disk.Free / $disk.Total } else { 0 }
@@ -174,7 +194,7 @@ function Format-ToolkitStorageReport {
     [void]$sb.AppendLine('Data da pasta nao indica ultimo login. Confirmar dono, sessoes e backup; se realmente obsoleto, suporte deve usar Propriedades do Sistema > Avancado > Perfis de Usuario > Configuracoes. Nao excluir C:\Users manualmente nem o perfil em uso.')
     [void]$sb.AppendLine("WSearch: $($Snapshot.SearchStatus)")
     $section = 3
-    foreach ($guide in Get-ToolkitStorageGuidance) {
+    foreach ($guide in $guides) {
         $bucket = $Snapshot.Categories[$guide.Key]
         [void]$sb.AppendLine('')
         [void]$sb.AppendLine("[$section] $($guide.Title)")

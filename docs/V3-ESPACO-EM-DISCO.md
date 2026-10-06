@@ -4,6 +4,8 @@ No tema Windows, abra **Espaço em disco: diagnóstico e plano**. A leitura ocor
 
 ## Como interpretar
 
+O início do relatório apresenta um resumo das vinte categorias, com quantidade de arquivos, tamanho observado em bytes/KB/MB/GB e número da seção com a solução. Use esse índice para localizar o passo a passo; as quantidades não representam espaço recuperável.
+
 - O coletor usa a unidade do Windows, limites padrão de 120 segundos e 200.000 arquivos. Limites são cooperativos; uma chamada de disco lenta pode atrasar a conclusão.
 - Acessos negados, coleta indisponível, links ignorados e limite atingido indicam cobertura parcial. Não interpretar ausência de achados como prova de ausência nesses casos.
 - Tamanho lógico não equivale a espaço ocupado nem a ganho recuperável. Categorias se sobrepõem: EVTX pode estar em Temp e na lista geral; MEMORY.DMP também aparece em dumps. Não somar os totais.

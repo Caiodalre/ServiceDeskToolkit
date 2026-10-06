@@ -40,6 +40,15 @@ Describe 'Storage diagnosis and guidance' {
         $report = Format-ToolkitStorageReport $snapshot
         $report | Should -BeLike '*Categorias se sobrepoem*'
         $report | Should -BeLike '*SOLUCAO E PASSO A PASSO*'
+        $report | Should -BeLike '*RESUMO E INDICE POR SITUACAO*'
+        $report | Should -Match '\[8\] Windows Temp \| 1 arquivo\(s\) \| 9 bytes logicos'
+        $summary = ($report -split '\[1\] DISCOS - LEITURA INICIAL')[0]
+        $section = 3
+        foreach ($guide in Get-ToolkitStorageGuidance) {
+            $summary | Should -Match ([regex]::Escape("[$section] $($guide.Title) |"))
+            $report | Should -Match ([regex]::Escape("[$section] $($guide.Title)") + '\r?\nObservado:')
+            $section++
+        }
         $report | Should -BeLike '*Nao observado no escopo lido*'
         $report | Should -BeLike '*Nao excluir a pasta ccmcache*'
         $report | Should -BeLike '*nao mede ganho de limpeza*'
