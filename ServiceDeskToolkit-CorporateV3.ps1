@@ -228,6 +228,7 @@ function Set-V3Output {
     if ($null -ne $script:TxtV3Output) {
         $script:TxtV3Output.Text = $Text
         $script:TxtV3Output.ScrollToHome()
+        if ($window.FindName("ResultSearchPanel").Visibility -eq "Visible") { Update-V3ResultSearch }
         if ($null -ne $window -and $null -ne $window.FindName("ResultStatus")) {
             $window.FindName("ResultStatus").Text = "Atualizado às " + (Get-Date -Format "HH:mm")
         }
@@ -2367,7 +2368,7 @@ $xaml = @"
                         <ComboBoxItem Tag="Maintenance" Content="Correções e manutenção" />
                     </ComboBox>
                     <TextBlock Text="Comece por uma consulta. As ações de manutenção ficam separadas em cada tema." Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,24,0,0" />
-                    <TextBlock Text="Ctrl+F  Buscar&#x0a;F6  Busca / resultado&#x0a;Esc  Limpar busca / voltar" Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,18,0,0" />
+                    <TextBlock Text="Ctrl+F  Buscar ações&#x0a;Ctrl+Shift+F  Localizar no resultado&#x0a;F6  Busca / resultado&#x0a;Esc  Limpar busca / voltar" Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,18,0,0" />
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -2710,12 +2711,26 @@ $xaml = @"
                         <WrapPanel Margin="-8,8,0,0">
                             <Button Name="BtnV3CancelStorage" Content="Cancelar coleta" Visibility="Collapsed" Style="{StaticResource FooterLinkButton}" ToolTip="Interrompe a leitura de disco sem executar limpeza." />
                             <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Copiar o relatório exibido." />
+                            <Button Name="BtnV3FindResult" Content="Localizar no resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Buscar texto neste relatório. Ctrl+Shift+F." />
                             <Button Name="BtnV3ExpandResult" Content="Ampliar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Usar o espaço das ações para ler o relatório. Clique novamente para voltar." />
                             <Button Name="BtnV3SmallerText" Content="A−" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Diminuir texto do resultado" ToolTip="Diminuir texto do resultado." />
                             <Button Name="BtnV3LargerText" Content="A+" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Aumentar texto do resultado" ToolTip="Aumentar texto do resultado." />
                         </WrapPanel>
+                        <Grid Name="ResultSearchPanel" Visibility="Collapsed" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Name="SearchResult" Height="30" VerticalContentAlignment="Center" Padding="8,0" BorderBrush="#CBD5E1" AutomationProperties.Name="Localizar texto no resultado" AutomationProperties.HelpText="Busca literal sem distinguir maiúsculas. Enter avança, Shift+Enter volta, Esc fecha. Não altera o relatório." ToolTip="Digite uma categoria, arquivo ou trecho do relatório." />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock Name="ResultMatchStatus" Text="Digite um texto" VerticalAlignment="Center" Margin="8,0" Foreground="#475569" AutomationProperties.LiveSetting="Polite" />
+                                <Button Name="BtnV3PreviousMatch" Content="Anterior" IsEnabled="False" Style="{StaticResource FooterLinkButton}" ToolTip="Ocorrência anterior. Shift+F3." />
+                                <Button Name="BtnV3NextMatch" Content="Próxima" IsEnabled="False" Style="{StaticResource FooterLinkButton}" ToolTip="Próxima ocorrência. F3." />
+                                <Button Name="BtnV3CloseResultSearch" Content="Fechar" Style="{StaticResource FooterLinkButton}" ToolTip="Fechar busca no resultado. Esc." />
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
-                    <TextBox Name="TxtV3Output" AutomationProperties.Name="Resultado do atendimento" AutomationProperties.HelpText="Relatório somente leitura. F6 alterna entre resultado e busca. Esc retorna às ações quando o resultado está ampliado." Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" FontFamily="Consolas" FontSize="13" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" IsReadOnly="True" Padding="12" />
+                    <TextBox Name="TxtV3Output" AutomationProperties.Name="Resultado do atendimento" AutomationProperties.HelpText="Relatório somente leitura. Ctrl+Shift+F localiza texto neste relatório. F6 alterna entre resultado e busca de ações. Esc fecha a busca ou retorna às ações." Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" FontFamily="Consolas" FontSize="13" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" IsReadOnly="True" IsInactiveSelectionHighlightEnabled="True" Padding="12" />
                 </Grid>
             </Border>
             <Border Name="WorkspaceFooter" Grid.Row="5" Background="Transparent" Margin="0,10,0,0">
@@ -2777,6 +2792,72 @@ $CardV3Version.Text = Get-V3VersionInfo
 
 $script:V3ResultExpanded = $false
 $script:V3CompactLayout = $false
+function Update-V3ResultSearch {
+    $query = $window.FindName("SearchResult").Text
+    $script:V3ResultMatches = @()
+    $script:V3ResultMatchIndex = -1
+    if (-not [string]::IsNullOrEmpty($query)) {
+        $matches = [Collections.Generic.List[int]]::new()
+        $offset = 0
+        $text = $script:TxtV3Output.Text
+        while ($offset -le $text.Length - $query.Length) {
+            $position = $text.IndexOf($query, $offset, [StringComparison]::OrdinalIgnoreCase)
+            if ($position -lt 0) { break }
+            $matches.Add($position)
+            $offset = $position + $query.Length
+        }
+        $script:V3ResultMatches = @($matches.ToArray())
+    }
+    $found = $script:V3ResultMatches.Count -gt 0
+    $window.FindName("BtnV3PreviousMatch").IsEnabled = $found
+    $window.FindName("BtnV3NextMatch").IsEnabled = $found
+    $window.FindName("ResultMatchStatus").Text = if ([string]::IsNullOrEmpty($query)) { "Digite um texto" } elseif (-not $found) { "Nenhuma ocorrência" } else { "$($script:V3ResultMatches.Count) ocorrência(s)" }
+    if ($found) { Move-V3ResultMatch -Direction 1 }
+}
+
+function Move-V3ResultMatch {
+    param([int]$Direction = 1)
+    if ($script:V3ResultMatches.Count -eq 0) { return }
+    $count = $script:V3ResultMatches.Count
+    $script:V3ResultMatchIndex = ($script:V3ResultMatchIndex + $Direction + $count) % $count
+    $position = $script:V3ResultMatches[$script:V3ResultMatchIndex]
+    $script:TxtV3Output.Select($position, $window.FindName("SearchResult").Text.Length)
+    $line = $script:TxtV3Output.GetLineIndexFromCharacterIndex($position)
+    if ($line -ge 0) { $script:TxtV3Output.ScrollToLine($line) }
+    $window.FindName("ResultMatchStatus").Text = "$($script:V3ResultMatchIndex + 1) de $count"
+}
+
+function Set-V3ResultSearchVisible {
+    param([bool]$Visible)
+    $window.FindName("ResultSearchPanel").Visibility = if ($Visible) { "Visible" } else { "Collapsed" }
+    if ($Visible) {
+        Set-V3ResultExpanded -Expanded $true
+        Update-V3ResultSearch
+        [void]$window.FindName("SearchResult").Focus()
+        $window.FindName("SearchResult").SelectAll()
+    }
+    else { [void]$script:TxtV3Output.Focus() }
+}
+
+$script:V3ResultMatches = @()
+$script:V3ResultMatchIndex = -1
+$window.FindName("BtnV3FindResult").Add_Click({ Set-V3ResultSearchVisible -Visible $true })
+$window.FindName("BtnV3CloseResultSearch").Add_Click({ Set-V3ResultSearchVisible -Visible $false })
+$window.FindName("BtnV3PreviousMatch").Add_Click({ Move-V3ResultMatch -Direction -1 })
+$window.FindName("BtnV3NextMatch").Add_Click({ Move-V3ResultMatch -Direction 1 })
+$window.FindName("SearchResult").Add_TextChanged({ Update-V3ResultSearch })
+$script:TxtV3Output.Add_TextChanged({
+    if ($window.FindName("ResultSearchPanel").Visibility -eq "Visible") { Update-V3ResultSearch }
+})
+$window.FindName("SearchResult").Add_PreviewKeyDown({
+    param($sender, $eventArgs)
+    if ($eventArgs.Key -eq [System.Windows.Input.Key]::Return) {
+        $direction = if (([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Shift) -ne 0) { -1 } else { 1 }
+        Move-V3ResultMatch -Direction $direction
+        $eventArgs.Handled = $true
+    }
+})
+
 function Set-V3ResultExpanded {
     param([bool]$Expanded)
 
@@ -3041,6 +3122,19 @@ $window.FindName("BtnV3SearchAll").Add_Click({
 $window.Add_PreviewKeyDown({
     param($sender, $eventArgs)
     if ($eventArgs.Key -eq [System.Windows.Input.Key]::F -and
+        [System.Windows.Input.Keyboard]::Modifiers -eq ([System.Windows.Input.ModifierKeys]::Control -bor [System.Windows.Input.ModifierKeys]::Shift)) {
+        Set-V3ResultSearchVisible -Visible $true
+        $eventArgs.Handled = $true
+    }
+    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::F3) {
+        if ($window.FindName("ResultSearchPanel").Visibility -ne "Visible") { Set-V3ResultSearchVisible -Visible $true }
+        else {
+            $direction = if (([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Shift) -ne 0) { -1 } else { 1 }
+            Move-V3ResultMatch -Direction $direction
+        }
+        $eventArgs.Handled = $true
+    }
+    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::F -and
         [System.Windows.Input.Keyboard]::Modifiers -eq [System.Windows.Input.ModifierKeys]::Control) {
         [void]$window.FindName("SearchActions").Focus()
         $window.FindName("SearchActions").SelectAll()
@@ -3056,7 +3150,12 @@ $window.Add_PreviewKeyDown({
         $eventArgs.Handled = $true
     }
     elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::Escape) {
-        if ($window.FindName("SearchActions").IsKeyboardFocusWithin -and
+        if ($window.FindName("ResultSearchPanel").Visibility -eq "Visible" -and
+            ($window.FindName("ResultSearchPanel").IsKeyboardFocusWithin -or $script:TxtV3Output.IsKeyboardFocusWithin)) {
+            Set-V3ResultSearchVisible -Visible $false
+            $eventArgs.Handled = $true
+        }
+        elseif ($window.FindName("SearchActions").IsKeyboardFocusWithin -and
             -not [string]::IsNullOrEmpty($window.FindName("SearchActions").Text)) {
             $window.FindName("SearchActions").Clear()
             $eventArgs.Handled = $true

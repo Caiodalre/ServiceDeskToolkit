@@ -70,7 +70,7 @@ Describe "V3 reading and responsive layout" {
         $ast = [Management.Automation.Language.Parser]::ParseInput(
             $script:AppText, [ref]$tokens, [ref]$errors
         )
-        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults", "Reset-V3ActionFilters", "Update-V3CompactLayout")) {
+        foreach ($name in @("Set-V3ResultExpanded", "Update-V3ResponsiveLayout", "Update-V3ActionFilter", "Set-V3Topic", "Set-V3ClipboardText", "Copy-V3OutputToClipboard", "Update-V3SearchResults", "Reset-V3ActionFilters", "Update-V3CompactLayout", "Update-V3ResultSearch", "Move-V3ResultMatch", "Set-V3ResultSearchVisible")) {
             $functionAst = $ast.Find({
                 param($node)
                 $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
@@ -185,6 +185,62 @@ Describe "V3 reading and responsive layout" {
         Should -Invoke Set-V3ClipboardText -Times 1 -ParameterFilter { $Text -eq "Relatório original" }
         $script:TxtV3Output.Text | Should -Be "Relatório original"
         $window.FindName("ResultStatus").Text | Should -BeLike "Resultado copiado*"
+    }
+
+    It "finds literal report text regardless of case and cycles in both directions" {
+        $original = "[8] Windows Temp`r`nTEMP: exemplo.txt`r`nFim Temp"
+        $script:TxtV3Output.Text = $original
+        $window.FindName("SearchResult").Text = "temp"
+        Update-V3ResultSearch
+        $script:V3ResultMatches.Count | Should -Be 3
+        $script:TxtV3Output.SelectionStart | Should -Be 12
+        $window.FindName("ResultMatchStatus").Text | Should -Be "1 de 3"
+        Move-V3ResultMatch -Direction -1
+        $window.FindName("ResultMatchStatus").Text | Should -Be "3 de 3"
+        Move-V3ResultMatch -Direction 1
+        $window.FindName("ResultMatchStatus").Text | Should -Be "1 de 3"
+        $window.FindName("SearchResult").Text = ".txt"
+        Update-V3ResultSearch
+        $script:V3ResultMatches.Count | Should -Be 1
+        $script:TxtV3Output.SelectedText | Should -Be ".txt"
+        $script:TxtV3Output.Text | Should -Be $original
+    }
+
+    It "disables navigation for absent or empty terms and recalculates for a new report" {
+        $window.FindName("SearchResult").Text = "Lixeira"
+        $script:TxtV3Output.Text = "Lixeira: conferir itens"
+        Update-V3ResultSearch
+        $script:V3ResultMatches.Count | Should -Be 1
+        $script:TxtV3Output.Text = "Outro diagnóstico"
+        Update-V3ResultSearch
+        $window.FindName("ResultMatchStatus").Text | Should -Be "Nenhuma ocorrência"
+        $window.FindName("BtnV3NextMatch").IsEnabled | Should -BeFalse
+        Move-V3ResultMatch -Direction 1
+        $script:TxtV3Output.Text | Should -Be "Outro diagnóstico"
+        $window.FindName("SearchResult").Clear()
+        Update-V3ResultSearch
+        $window.FindName("ResultMatchStatus").Text | Should -Be "Digite um texto"
+        $window.FindName("BtnV3PreviousMatch").IsEnabled | Should -BeFalse
+    }
+
+    It "opens report search with a usable reading area in a short window" {
+        $script:TxtV3Output.Text = "Plano de espaço preservado"
+        $surface = $window.Content
+        $surface.Width = 820
+        $surface.Height = 450
+        $surface.Measure([Windows.Size]::new(820, 450))
+        $surface.Arrange([Windows.Rect]::new(0, 0, 820, 450))
+        $surface.UpdateLayout()
+        Update-V3CompactLayout
+        Set-V3ResultSearchVisible -Visible $true
+        $surface.UpdateLayout()
+        $window.FindName("TxtV3Output").ActualHeight | Should -BeGreaterThan 100
+        $window.FindName("SearchResult").ActualWidth | Should -BeGreaterThan 80
+        $window.FindName("ResultSearchPanel").Visibility | Should -Be "Visible"
+        Set-V3ResultSearchVisible -Visible $false
+        $window.FindName("ResultSearchPanel").Visibility | Should -Be "Collapsed"
+        $script:TxtV3Output.Text | Should -Be "Plano de espaço preservado"
+        Set-V3ResultExpanded -Expanded $false
     }
 
     It "preserves the report when the clipboard is unavailable" {

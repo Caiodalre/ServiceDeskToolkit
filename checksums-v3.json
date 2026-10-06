@@ -11,7 +11,7 @@
     },
     {
       "path": "docs/V3-ESPACO-EM-DISCO.md",
-      "sha256": "ac7c692404ee5e6da0ca8ba39535af7315a37cf235a83bab1f69f6f60b6a34bc"
+      "sha256": "96a906f7ecff853dc8dfc953bc1583aacdaaa1a0d3d776cde0fdd3aa6fb0a307"
     },
     {
       "path": "install-v3.ps1",
@@ -19,7 +19,7 @@
     },
     {
       "path": "ServiceDeskToolkit-CorporateV3.ps1",
-      "sha256": "eb2a11a168d48f72a075c759ead0c16ff7a6dd21aef853fadcc1221b1f6f5894"
+      "sha256": "a3baca9c55a68b59bf03d189d935e93d399c9a0d6baee49066399f265049d048"
     },
     {
       "path": "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
