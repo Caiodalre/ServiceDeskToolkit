@@ -7,7 +7,7 @@
   "files": [
     {
       "path": "docs/V3-README.md",
-      "sha256": "c0ac6bcac7f28af803ce3c2abc6ee5f2f311629196b99d3236b2a1d73f871654"
+      "sha256": "069d0fc5f3ba5ffd32c8996cbf8d170550f9a669a42610fd9e834221ca20c4f7"
     },
     {
       "path": "docs/V3-ESPACO-EM-DISCO.md",
@@ -19,7 +19,7 @@
     },
     {
       "path": "ServiceDeskToolkit-CorporateV3.ps1",
-      "sha256": "2735d3b0038e8a991df97695bb98fd9ead643f919a24094fa2b455659a8578d9"
+      "sha256": "7513f0ae793de991c4eee8fba5a80226448f69e6d87b1f4a69ef36336ef002da"
     },
     {
       "path": "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
@@ -35,15 +35,15 @@
     },
     {
       "path": "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
-      "sha256": "9eed28a9fa088f97bb938e71888388dca4329cc3395bd8f69818c551383956c0"
+      "sha256": "a27de273a3925b0ead517c1bfd4cb12236f5ac999ca381650294d448d63518b8"
     },
     {
       "path": "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
-      "sha256": "1a201054b2172b0708327e1d96a7481f16d39e5437bf06ce4894505056496c47"
+      "sha256": "04d773a63c68bb4b26d6b4e4dfce38cd53e6c286e05e3b6e482957e2dbd21317"
     },
     {
       "path": "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
-      "sha256": "81ece25a3223e736cf7a0b3c19a67dd574676f274e0a8e3ae52c0f038bd54b2c"
+      "sha256": "a7355433373be202880208d79eaa099b8cd3eac1bf9132df42d57d9f561b2abb"
     },
     {
       "path": "src/ServiceDeskToolkit.Storage/ServiceDeskToolkit.Storage.psm1",

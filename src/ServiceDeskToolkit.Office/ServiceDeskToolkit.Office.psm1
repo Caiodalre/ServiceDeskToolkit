@@ -461,11 +461,11 @@ function Get-ToolkitOfficeTpmSnapshot {
     try {
         $aadPackage = Get-AppxPackage `
             -Name Microsoft.AAD.BrokerPlugin `
-            -ErrorAction SilentlyContinue |
+            -ErrorAction Stop |
             Select-Object -First 1
         $cloudExperiencePackage = Get-AppxPackage `
             -Name Microsoft.Windows.CloudExperienceHost `
-            -ErrorAction SilentlyContinue |
+            -ErrorAction Stop |
             Select-Object -First 1
     }
     catch {

@@ -489,6 +489,8 @@ function Get-ToolkitAdvancedNetworkReport {
 }
 
 function Get-ToolkitDnsReport {
+    param([switch]$PassThru)
+    $readSucceeded = $true
     $sb = New-Object System.Text.StringBuilder
     [void]$sb.AppendLine("DNS - CONFIGURACAO E CACHE")
     [void]$sb.AppendLine("==========================")
@@ -501,7 +503,7 @@ function Get-ToolkitDnsReport {
         }
         else { [void]$sb.AppendLine("Nenhum servidor DNS IPv4 encontrado.") }
     }
-    catch { [void]$sb.AppendLine("Falha ao consultar DNS: $($_.Exception.Message)") }
+    catch { $readSucceeded = $false; [void]$sb.AppendLine("Falha ao consultar DNS: $($_.Exception.Message)") }
 
     [void]$sb.AppendLine("CACHE DNS (30 PRIMEIROS REGISTROS)")
     try {
@@ -512,7 +514,8 @@ function Get-ToolkitDnsReport {
         }
         else { [void]$sb.AppendLine("Cache DNS vazio.") }
     }
-    catch { [void]$sb.AppendLine("Cache DNS indisponivel: $($_.Exception.Message)") }
+    catch { $readSucceeded = $false; [void]$sb.AppendLine("Cache DNS indisponivel: $($_.Exception.Message)") }
+    if ($PassThru) { return [pscustomobject]@{ Status = $(if ($readSucceeded) { 'ReadSucceeded' } else { 'ReadFailed' }); Report = $sb.ToString() } }
     return $sb.ToString()
 }
 

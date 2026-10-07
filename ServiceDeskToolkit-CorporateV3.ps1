@@ -1657,6 +1657,7 @@ function Invoke-V3SafeTimeSync {
     return $sb.ToString()
 }
 function Invoke-V3PrintersPanel {
+    param([switch]$PassThru)
     $generatedAt = Get-Date
     $failureParameters = @{
         Header = "PAINEL DE IMPRESSORAS - DIAGNOSTICO CONSOLIDADO"
@@ -1668,6 +1669,7 @@ function Invoke-V3PrintersPanel {
 
     if (-not $script:V3OperationalModulesAvailable) {
         $failureParameters.ErrorDetail = $script:V3OperationalModuleError
+        if ($PassThru) { return [pscustomobject]@{ Status = 'ReadFailed'; Report = (New-V3OperationalFailureReport @failureParameters) } }
         return New-V3OperationalFailureReport @failureParameters
     }
 
@@ -1683,15 +1685,21 @@ function Invoke-V3PrintersPanel {
             GeneratedAt = $generatedAt
         }
 
-        return Format-ToolkitPrinterReport @formatParameters
+        $report = Format-ToolkitPrinterReport @formatParameters
+        $readFailed = $snapshot.PSObject.Properties['CollectionErrors'] -and @($snapshot.CollectionErrors).Count -gt 0
+        if ($readFailed) { $report = "LEITURA PARCIAL DE IMPRESSAO - NAO LIBERA CORRECAO`r`n" + ($snapshot.CollectionErrors -join "`r`n") + "`r`nConfira permissoes, CIM/WMI e servicos. Repita a consulta antes de intervir.`r`n`r`n" + $report }
+        if ($PassThru) { return [pscustomobject]@{ Status = $(if ($readFailed) { 'ReadFailed' } else { 'ReadSucceeded' }); Report = $report } }
+        return $report
     }
     catch {
         $failureParameters.ErrorDetail = $_.Exception.Message
+        if ($PassThru) { return [pscustomobject]@{ Status = 'ReadFailed'; Report = (New-V3OperationalFailureReport @failureParameters) } }
         return New-V3OperationalFailureReport @failureParameters
     }
 }
 
 function Invoke-V3OfficeTpmPanel {
+    param([switch]$PassThru)
     $generatedAt = Get-Date
     $failureParameters = @{
         Header = "OFFICE / TPM / AUTENTICACAO - DIAGNOSTICO CONSOLIDADO"
@@ -1703,6 +1711,7 @@ function Invoke-V3OfficeTpmPanel {
 
     if (-not $script:V3OperationalModulesAvailable) {
         $failureParameters.ErrorDetail = $script:V3OperationalModuleError
+        if ($PassThru) { return [pscustomobject]@{ Status = 'ReadFailed'; Report = (New-V3OperationalFailureReport @failureParameters) } }
         return New-V3OperationalFailureReport @failureParameters
     }
 
@@ -1710,16 +1719,21 @@ function Invoke-V3OfficeTpmPanel {
         $snapshot = Get-ToolkitOfficeTpmSnapshot -ObservedAt $generatedAt
         $assessment = Get-ToolkitOfficeTpmAssessment -Snapshot $snapshot
 
-        return Format-ToolkitOfficeTpmReport `
+        $report = Format-ToolkitOfficeTpmReport `
             -Snapshot $snapshot `
             -Assessment $assessment `
             -ComputerName $env:COMPUTERNAME `
             -UserName "$env:USERDOMAIN\$env:USERNAME" `
             -IsAdministrator (Test-V3Admin) `
             -GeneratedAt $generatedAt
+        $readFailed = -not [string]::IsNullOrWhiteSpace($snapshot.WamPackageError)
+        if ($readFailed) { $report = "LEITURA WAM INCOMPLETA - NAO LIBERA CORRECAO`r`n$($snapshot.WamPackageError)`r`nConfira o perfil afetado e acesso ao servico de pacotes; repita o diagnostico.`r`n`r`n" + $report }
+        if ($PassThru) { return [pscustomobject]@{ Status = $(if ($readFailed) { 'ReadFailed' } else { 'ReadSucceeded' }); Report = $report } }
+        return $report
     }
     catch {
         $failureParameters.ErrorDetail = $_.Exception.Message
+        if ($PassThru) { return [pscustomobject]@{ Status = 'ReadFailed'; Report = (New-V3OperationalFailureReport @failureParameters) } }
         return New-V3OperationalFailureReport @failureParameters
     }
 }
@@ -2331,9 +2345,9 @@ function Invoke-V3SolutionOperation {
     }
     else {
         switch ($Id) {
-            'dns-cache' { return Get-ToolkitDnsReport }
-            'print-spooler' { return Invoke-V3PrintersPanel }
-            'office-wam' { return Invoke-V3OfficeTpmPanel }
+            'dns-cache' { return Get-ToolkitDnsReport -PassThru }
+            'print-spooler' { return Invoke-V3PrintersPanel -PassThru }
+            'office-wam' { return Invoke-V3OfficeTpmPanel -PassThru }
         }
     }
 }
@@ -2511,7 +2525,20 @@ function Complete-V3SolutionStage {
             return
         }
         $operationStatus = 'Completed'
-        if ($job.Stage -eq 'Repair' -and $result.Count -eq 1 -and $result[0].PSObject.Properties['Status']) {
+        if ($job.Stage -ne 'Repair' -and $result.Count -eq 1 -and $result[0].PSObject.Properties['Status']) {
+            if ($result[0].Status -notin @('ReadSucceeded', 'ReadFailed')) { throw 'Estado de leitura desconhecido.' }
+            $report = [string]$result[0].Report
+            if ([string]::IsNullOrWhiteSpace($report)) { throw 'A consulta nao retornou relatorio.' }
+            if ($result[0].Status -eq 'ReadFailed') {
+                if ($job.Stage -eq 'Diagnose') { $Session.Diagnosed = $false }
+                Add-V3SolutionHistory $Session $job.Stage ($report + "`r`n`r`nConsulta incompleta. Confira a orientacao e repita; esta leitura nao libera correcao nem registro de resolucao.")
+                $status = 'ReadFailed'
+                $Session.Dialog.FindName('SolutionStatus').Text = 'Consulta incompleta. Repita a leitura antes de corrigir ou registrar o resultado.'
+                return
+            }
+            $operationStatus = 'ReadSucceeded'
+        }
+        elseif ($job.Stage -eq 'Repair' -and $result.Count -eq 1 -and $result[0].PSObject.Properties['Status']) {
             if ($result[0].Status -notin @('Applied', 'Failed')) { throw 'Estado de correcao desconhecido.' }
             $operationStatus = $result[0].Status
             $report = [string]$result[0].Report

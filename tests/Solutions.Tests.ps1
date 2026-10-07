@@ -94,6 +94,79 @@ Describe 'Guided solution catalogue and operation routing' {
     }
 }
 
+Describe 'Collector failure preservation with simulated Windows queries' {
+    It 'marks DNS cache query errors as failed reads while preserving the other collected data' {
+        Mock Get-DnsClientServerAddress { [pscustomobject]@{ InterfaceAlias='FICTICIO'; InterfaceIndex=1; ServerAddresses=@('192.0.2.1') } } -ModuleName ServiceDeskToolkit.Network
+        Mock Get-DnsClientCache { throw 'cache inacessivel' } -ModuleName ServiceDeskToolkit.Network
+        $result = Get-ToolkitDnsReport -PassThru
+        $result.Status | Should -Be 'ReadFailed'
+        $result.Report | Should -BeLike '*FICTICIO*'
+        $result.Report | Should -BeLike '*cache inacessivel*'
+        Mock Get-DnsClientCache { @() } -ModuleName ServiceDeskToolkit.Network
+        (Get-ToolkitDnsReport -PassThru).Status | Should -Be 'ReadSucceeded'
+    }
+    It 'marks DNS configuration query errors as failed reads and keeps text reports compatible' {
+        Mock Get-DnsClientServerAddress { throw 'configuracao inacessivel' } -ModuleName ServiceDeskToolkit.Network
+        Mock Get-DnsClientCache { @() } -ModuleName ServiceDeskToolkit.Network
+        (Get-ToolkitDnsReport -PassThru).Status | Should -Be 'ReadFailed'
+        Get-ToolkitDnsReport | Should -BeOfType ([string])
+    }
+    It 'preserves printing query errors and avoids recommending repair from incomplete data' {
+        Mock Get-Service { [pscustomobject]@{ Status='Running' } } -ModuleName ServiceDeskToolkit.Printers
+        Mock Get-CimInstance { if ($ClassName -eq 'Win32_PrintJob') { throw 'fila inacessivel' }; @() } -ModuleName ServiceDeskToolkit.Printers
+        Mock Get-Command { $null } -ModuleName ServiceDeskToolkit.Printers -ParameterFilter { $Name -eq 'Get-PrinterPort' }
+        $snapshot = Get-ToolkitPrinterSnapshot
+        $snapshot.CollectionErrors.Count | Should -Be 1
+        $snapshot.CollectionErrors[0] | Should -BeLike '*fila inacessivel*'
+        $assessment = Get-ToolkitPrinterAssessment $snapshot
+        $assessment.NextAction | Should -BeLike '*repita o diagnostico*'
+        $assessment.Observations[0] | Should -BeLike '*nao comprova ausencia*'
+        Mock Get-CimInstance { @() } -ModuleName ServiceDeskToolkit.Printers
+        (Get-ToolkitPrinterSnapshot).CollectionErrors.Count | Should -Be 0
+    }
+}
+
+Describe 'Consultation results with simulated collectors' {
+    BeforeEach {
+        $script:V3OperationalModulesAvailable = $true
+        Mock Get-ToolkitPrinterSnapshot { [pscustomobject]@{ CollectionErrors = @() } }
+        Mock Get-ToolkitPrinterAssessment { [pscustomobject]@{} }
+        Mock Format-ToolkitPrinterReport { 'IMPRESSAO FICTICIA' }
+        Mock Get-ToolkitOfficeTpmSnapshot { [pscustomobject]@{ WamPackageError = $null } }
+        Mock Get-ToolkitOfficeTpmAssessment { [pscustomobject]@{} }
+        Mock Format-ToolkitOfficeTpmReport { 'OFFICE FICTICIO' }
+    }
+    It 'returns failed reads when collectors raise exceptions rather than unlocking repair' {
+        Mock Get-ToolkitPrinterSnapshot { throw 'CIM inacessivel' }
+        Mock Get-ToolkitOfficeTpmSnapshot { throw 'pacotes inacessiveis' }
+        (Invoke-V3PrintersPanel -PassThru).Status | Should -Be 'ReadFailed'
+        (Invoke-V3OfficeTpmPanel -PassThru).Status | Should -Be 'ReadFailed'
+    }
+    It 'reports partial printing queries and WAM package errors as failed reads' {
+        Mock Get-ToolkitPrinterSnapshot { [pscustomobject]@{ CollectionErrors = @('Fila inacessivel') } }
+        Mock Get-ToolkitOfficeTpmSnapshot { [pscustomobject]@{ WamPackageError = 'Consulta Appx recusada' } }
+        $printing = Invoke-V3PrintersPanel -PassThru
+        $printing.Status | Should -Be 'ReadFailed'
+        $printing.Report | Should -BeLike '*Fila inacessivel*'
+        $office = Invoke-V3OfficeTpmPanel -PassThru
+        $office.Status | Should -Be 'ReadFailed'
+        $office.Report | Should -BeLike '*perfil afetado*'
+    }
+    It 'keeps existing text reports and returns successful reads only when collection succeeded' {
+        (Invoke-V3PrintersPanel -PassThru).Status | Should -Be 'ReadSucceeded'
+        (Invoke-V3OfficeTpmPanel -PassThru).Status | Should -Be 'ReadSucceeded'
+        Invoke-V3PrintersPanel | Should -Be 'IMPRESSAO FICTICIA'
+        Invoke-V3OfficeTpmPanel | Should -Be 'OFFICE FICTICIO'
+    }
+    It 'returns failed reads when operational modules are unavailable' {
+        $script:V3OperationalModulesAvailable = $false
+        (Invoke-V3PrintersPanel -PassThru).Status | Should -Be 'ReadFailed'
+        (Invoke-V3OfficeTpmPanel -PassThru).Status | Should -Be 'ReadFailed'
+        Should -Invoke Get-ToolkitPrinterSnapshot -Times 0
+        Should -Invoke Get-ToolkitOfficeTpmSnapshot -Times 0
+    }
+}
+
 Describe 'Correction execution results with simulated commands' {
     BeforeEach {
         Mock Invoke-V3DnsFlushCommand { [pscustomobject]@{ ExitCode = 0; Output = 'SIMULADO' } }
@@ -289,6 +362,37 @@ Describe 'Guided solution session and background execution' {
         $session.Dialog.FindName('SolutionRepair').IsEnabled | Should -BeFalse
         $session.Dialog.FindName('SolutionDiagnose').IsEnabled | Should -BeTrue
         $session.History.ToString() | Should -BeLike '*Falha na etapa*'
+    }
+
+    It 'keeps correction blocked when a collector returns a partial report without throwing' {
+        Mock Get-V3SolutionWorkerText { 'param($rootPath,$id,$stage,$confirmed); [pscustomobject]@{Status="ReadFailed"; Report="CIM inacessivel"}' }
+        Start-V3SolutionStage $session Diagnose
+        Wait-TestSolution
+        $session.Diagnosed | Should -BeFalse
+        $session.Dialog.FindName('SolutionRepair').IsEnabled | Should -BeFalse
+        $session.History.ToString() | Should -BeLike '*CIM inacessivel*'
+        $session.Dialog.FindName('SolutionStatus').Text | Should -BeLike '*Consulta incompleta*'
+    }
+
+    It 'does not enable outcome registration after an incomplete validation' {
+        $session.RepairAttempted = $true
+        $session.Validated = $true
+        Mock Get-V3SolutionWorkerText { 'param($rootPath,$id,$stage,$confirmed); [pscustomobject]@{Status="ReadFailed"; Report="WAM inacessivel"}' }
+        Start-V3SolutionStage $session Validate
+        Wait-TestSolution
+        $session.RepairAttempted | Should -BeTrue
+        $session.Validated | Should -BeFalse
+        $session.Dialog.FindName('SolutionRecordOutcome').IsEnabled | Should -BeFalse
+        $session.Dialog.FindName('SolutionValidate').IsEnabled | Should -BeTrue
+    }
+
+    It 'accepts a structured successful consultation without inferring symptom resolution' {
+        Mock Get-V3SolutionWorkerText { 'param($rootPath,$id,$stage,$confirmed); [pscustomobject]@{Status="ReadSucceeded"; Report="LEITURA FICTICIA"}' }
+        Start-V3SolutionStage $session Diagnose
+        Wait-TestSolution
+        $session.Diagnosed | Should -BeTrue
+        $session.Validated | Should -BeFalse
+        $session.History.ToString() | Should -BeLike '*LEITURA FICTICIA*'
     }
 
     It 'records a blocked preflight without marking a repair attempted' {

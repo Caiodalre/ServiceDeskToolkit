@@ -234,3 +234,10 @@ parciais). DNS confere o código de saída do ipconfig; Spooler exige comando
 concluído e serviço em execução; WAM usa a verificação de pacotes do módulo.
 Esses estados não comprovam a resolução do sintoma. Em falha, use **Validar
 novamente** antes de decidir a próxima intervenção.
+
+Consultas retornam **ReadSucceeded** (leitura concluída) ou **ReadFailed**
+(consulta incompleta). Falhas de configuração/cache DNS, coleta de impressão
+ou consulta dos pacotes WAM bloqueiam a correção guiada. Os achados já coletados
+e os erros permanecem no histórico. Repita a consulta após resolver a condição
+indicada. Uma validação incompleta também não libera o registro do resultado;
+isso não impede copiar ou salvar as evidências da falha.
