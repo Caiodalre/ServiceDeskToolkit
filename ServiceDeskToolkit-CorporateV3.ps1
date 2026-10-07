@@ -163,6 +163,7 @@ function Compare-V3StorageReadings {
 }
 
 function Get-V3ReportSavePath {
+    param([Windows.Window]$Owner = $window)
     $dialog = [Microsoft.Win32.SaveFileDialog]::new()
     $dialog.Title = 'Salvar relatorio do atendimento'
     $dialog.Filter = 'Relatorio de texto (*.txt)|*.txt'
@@ -170,7 +171,7 @@ function Get-V3ReportSavePath {
     $dialog.AddExtension = $true
     $dialog.OverwritePrompt = $true
     $dialog.FileName = 'atendimento-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.txt'
-    if ($dialog.ShowDialog($window) -eq $true) { return $dialog.FileName }
+    if ($dialog.ShowDialog($Owner) -eq $true) { return $dialog.FileName }
     return $null
 }
 
@@ -2383,6 +2384,9 @@ function Update-V3SolutionControls {
     $Session.Dialog.FindName('SolutionValidate').IsEnabled = -not $busy -and $Session.RepairAttempted
     $Session.Dialog.FindName('SolutionOutcome').IsEnabled = -not $busy -and $Session.Validated
     $Session.Dialog.FindName('SolutionRecordOutcome').IsEnabled = -not $busy -and $Session.Validated -and $Session.Dialog.FindName('SolutionOutcome').SelectedIndex -gt 0
+    $hasHistory = -not [string]::IsNullOrWhiteSpace($Session.Dialog.FindName('SolutionOutput').Text)
+    $Session.Dialog.FindName('SolutionCopy').IsEnabled = -not $busy -and $hasHistory
+    $Session.Dialog.FindName('SolutionSave').IsEnabled = -not $busy -and $hasHistory
     $Session.Dialog.FindName('SolutionCancel').Visibility = if ($busy -and $Session.Job.Stage -ne 'Repair') { 'Visible' } else { 'Collapsed' }
     $Session.Dialog.FindName('SolutionCancel').IsEnabled = $busy -and -not $Session.Job.Cancelled
 }
@@ -2397,6 +2401,29 @@ function Add-V3SolutionHistory {
     $Session.Dialog.FindName('SolutionOutput').Text = $text
     $Session.Dialog.FindName('SolutionOutput').ScrollToEnd()
     Set-V3Output $text
+    Update-V3SolutionControls $Session
+}
+
+function Export-V3SolutionHistory {
+    param($Session, [ValidateSet('Copy', 'Save')][string]$Mode)
+    if ($null -ne $Session.Job) { return }
+    $report = $Session.Dialog.FindName('SolutionOutput').Text
+    if ([string]::IsNullOrWhiteSpace($report)) { return }
+    try {
+        if ($Mode -eq 'Copy') {
+            Set-V3ClipboardText -Text $report
+            $Session.Dialog.FindName('SolutionStatus').Text = 'Historico copiado. Cole no registro do atendimento.'
+        }
+        else {
+            $path = Get-V3ReportSavePath -Owner $Session.Dialog
+            if ([string]::IsNullOrEmpty($path)) { return }
+            [IO.File]::WriteAllText($path, $report, [Text.UTF8Encoding]::new($true))
+            $Session.Dialog.FindName('SolutionStatus').Text = 'Historico salvo em ' + $path
+        }
+    }
+    catch {
+        $Session.Dialog.FindName('SolutionStatus').Text = if ($Mode -eq 'Copy') { 'Copia indisponivel. Tente novamente ou salve o historico.' } else { "Nao foi possivel salvar: $($_.Exception.Message)" }
+    }
 }
 
 function Save-V3SolutionOutcome {
@@ -2544,7 +2571,7 @@ function New-V3SolutionSession {
     <StackPanel><TextBlock Text="Soluções guiadas" FontSize="22" FontWeight="Bold" Foreground="#0F172A"/><TextBlock Text="Selecione o problema e siga uma etapa por vez." Margin="0,4,0,10"/><ComboBox Name="SolutionChoice" DisplayMemberPath="Title" Height="32" AutomationProperties.Name="Problema do atendimento"/><WrapPanel Margin="0,10,0,8"><Button Name="SolutionDiagnose" Content="1. Diagnosticar" Padding="12,6" Margin="0,0,8,0"/><Button Name="SolutionRepair" Content="2. Aplicar correção" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/><Button Name="SolutionValidate" Content="3. Validar novamente" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/><Button Name="SolutionCancel" Content="Cancelar consulta" Padding="12,6" Visibility="Collapsed"/></WrapPanel></StackPanel>
     <TextBox Name="SolutionPlan" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="180" Padding="10" Margin="0,0,0,10" AutomationProperties.Name="Condições e impacto da solução"/>
     <TextBox Name="SolutionOutput" Grid.Row="2" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Padding="10" AutomationProperties.Name="Histórico das etapas do atendimento"/>
-    <StackPanel Grid.Row="3" Margin="0,10,0,0"><WrapPanel Margin="0,0,0,8"><ComboBox Name="SolutionOutcome" Width="310" Height="30" SelectedIndex="0" IsEnabled="False" AutomationProperties.Name="Resultado do teste do sintoma"><ComboBoxItem Content="Após validar, informe o resultado"/><ComboBoxItem Content="Testei o sintoma: resolvido"/><ComboBoxItem Content="Testei o sintoma: persiste"/><ComboBoxItem Content="Ainda não testei o sintoma"/></ComboBox><Button Name="SolutionRecordOutcome" Content="4. Registrar resultado" Padding="12,6" Margin="8,0,0,0" IsEnabled="False"/></WrapPanel><TextBlock Name="SolutionStatus" TextWrapping="Wrap" Foreground="#334155" AutomationProperties.LiveSetting="Polite"/><TextBlock Text="Ao fechar, use Salvar relatório na janela principal para guardar o histórico. Durante uma etapa, aguarde a conclusão antes de fechar." FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
+    <StackPanel Grid.Row="3" Margin="0,10,0,0"><WrapPanel Margin="0,0,0,8"><ComboBox Name="SolutionOutcome" Width="280" Height="30" SelectedIndex="0" IsEnabled="False" AutomationProperties.Name="Resultado do teste do sintoma"><ComboBoxItem Content="Após validar, informe o resultado"/><ComboBoxItem Content="Testei o sintoma: resolvido"/><ComboBoxItem Content="Testei o sintoma: persiste"/><ComboBoxItem Content="Ainda não testei o sintoma"/></ComboBox><Button Name="SolutionRecordOutcome" Content="4. Registrar resultado" Padding="8,6" Margin="8,0,0,0" IsEnabled="False"/><Button Name="SolutionCopy" Content="Copiar histórico" Padding="8,6" Margin="8,0,0,0" IsEnabled="False"/><Button Name="SolutionSave" Content="Salvar histórico" Padding="8,6" Margin="8,0,0,0" IsEnabled="False"/></WrapPanel><TextBlock Name="SolutionStatus" TextWrapping="Wrap" Foreground="#334155" AutomationProperties.LiveSetting="Polite"/><TextBlock Text="Copie ou salve o histórico após concluir a etapa. Ele também permanece no resultado principal ao fechar." FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
   </Grid>
 </Window>
 '@
@@ -2576,6 +2603,8 @@ function Open-V3SolutionCatalog {
     $session.Dialog.FindName('SolutionCancel').Add_Click({ Stop-V3SolutionConsultation $script:V3SolutionSession })
     $session.Dialog.FindName('SolutionOutcome').Add_SelectionChanged({ Update-V3SolutionControls $script:V3SolutionSession })
     $session.Dialog.FindName('SolutionRecordOutcome').Add_Click({ Save-V3SolutionOutcome $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionCopy').Add_Click({ Export-V3SolutionHistory $script:V3SolutionSession 'Copy' })
+    $session.Dialog.FindName('SolutionSave').Add_Click({ Export-V3SolutionHistory $script:V3SolutionSession 'Save' })
     $session.Dialog.Add_Closing({
         param($sender, $eventArgs)
         if ($null -ne $script:V3SolutionSession.Job) { $eventArgs.Cancel = $true; $script:V3SolutionSession.Dialog.FindName('SolutionStatus').Text = 'Aguarde a etapa em andamento antes de fechar.' }

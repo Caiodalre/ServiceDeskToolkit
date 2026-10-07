@@ -414,4 +414,72 @@ Describe 'Guided solution session and background execution' {
         $session.Dialog.FindName('SolutionOutput').ActualHeight | Should -BeGreaterThan 100
         $session.Dialog.FindName('SolutionPlan').MaxHeight | Should -Be 110
     }
+
+    It 'exports only a completed nonempty history' {
+        Mock Set-V3ClipboardText { }
+        Mock Get-V3ReportSavePath { $null }
+        Export-V3SolutionHistory $session Copy
+        Export-V3SolutionHistory $session Save
+        Should -Invoke Set-V3ClipboardText -Times 0
+        Should -Invoke Get-V3ReportSavePath -Times 0
+        $session.Dialog.FindName('SolutionCopy').IsEnabled | Should -BeFalse
+        Add-V3SolutionHistory $session Diagnose 'DADOS FICTICIOS'
+        $session.Dialog.FindName('SolutionSave').IsEnabled | Should -BeTrue
+        Start-V3SolutionStage $session Diagnose
+        $session.Dialog.FindName('SolutionCopy').IsEnabled | Should -BeFalse
+        Export-V3SolutionHistory $session Copy
+        Export-V3SolutionHistory $session Save
+        Should -Invoke Set-V3ClipboardText -Times 0
+        Should -Invoke Get-V3ReportSavePath -Times 0
+        Wait-TestSolution
+        $session.Dialog.FindName('SolutionCopy').IsEnabled | Should -BeTrue
+    }
+
+    It 'copies the complete history without modifying its content or adding feedback to it' {
+        Add-V3SolutionHistory $session Diagnose 'Relatorio ficticio com acentuação'
+        $original = $session.Dialog.FindName('SolutionOutput').Text
+        Mock Set-V3ClipboardText { }
+        Export-V3SolutionHistory $session Copy
+        Should -Invoke Set-V3ClipboardText -Times 1 -ParameterFilter { $Text -eq $original }
+        $session.Dialog.FindName('SolutionOutput').Text | Should -Be $original
+        $session.Dialog.FindName('SolutionStatus').Text | Should -BeLike '*Historico copiado*'
+        Mock Set-V3ClipboardText { throw 'ocupado' }
+        Export-V3SolutionHistory $session Copy
+        $session.Dialog.FindName('SolutionOutput').Text | Should -Be $original
+        $session.Dialog.FindName('SolutionStatus').Text | Should -BeLike '*Copia indisponivel*'
+    }
+
+    It 'saves a faithful UTF8 history using the catalogue window as owner' {
+        Add-V3SolutionHistory $session Diagnose 'Relatorio ficticio com acentuação'
+        $original = $session.Dialog.FindName('SolutionOutput').Text
+        $savePath = Join-Path $TestDrive 'solution-history.txt'
+        Mock Get-V3ReportSavePath { $savePath }
+        Export-V3SolutionHistory $session Save
+        Should -Invoke Get-V3ReportSavePath -Times 1 -ParameterFilter { $Owner -eq $session.Dialog }
+        [IO.File]::ReadAllText($savePath) | Should -Be $original
+        [BitConverter]::ToString([IO.File]::ReadAllBytes($savePath)[0..2]) | Should -Be 'EF-BB-BF'
+        $session.Dialog.FindName('SolutionOutput').Text | Should -Be $original
+    }
+
+    It 'preserves history and feedback on cancelled saving and reports inaccessible destinations' {
+        Add-V3SolutionHistory $session Diagnose 'DADOS FICTICIOS'
+        $original = $session.Dialog.FindName('SolutionOutput').Text
+        $status = $session.Dialog.FindName('SolutionStatus').Text
+        Mock Get-V3ReportSavePath { $null }
+        Export-V3SolutionHistory $session Save
+        $session.Dialog.FindName('SolutionStatus').Text | Should -Be $status
+        Mock Get-V3ReportSavePath { $TestDrive }
+        Export-V3SolutionHistory $session Save
+        $session.Dialog.FindName('SolutionStatus').Text | Should -BeLike '*Nao foi possivel salvar*'
+        $session.Dialog.FindName('SolutionOutput').Text | Should -Be $original
+    }
+
+    It 'saves the captured history even if the content changes while choosing the destination' {
+        Add-V3SolutionHistory $session Diagnose 'DADOS FICTICIOS INICIAIS'
+        $original = $session.Dialog.FindName('SolutionOutput').Text
+        $savePath = Join-Path $TestDrive 'captured-history.txt'
+        Mock Get-V3ReportSavePath { $session.Dialog.FindName('SolutionOutput').Text = 'OUTRO TEXTO'; $savePath }
+        Export-V3SolutionHistory $session Save
+        [IO.File]::ReadAllText($savePath) | Should -Be $original
+    }
 }

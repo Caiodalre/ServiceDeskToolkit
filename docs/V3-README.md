@@ -206,8 +206,10 @@ pré-condições, impacto, comando e validação do sintoma original.
    persiste ou ainda não testado. O registro identifica a informação do operador;
    o programa não deduz resolução pela execução do comando. Nova leitura ou troca
    de problema exige nova validação.
-5. Ao fechar o catálogo, o histórico fica no resultado principal para copiar ou
-   salvar. As etapas geram registros em `logs/solutions/solutions-audit.jsonl`.
+5. Use **Copiar histórico** ou **Salvar histórico** no próprio catálogo ao
+   concluir a etapa. O TXT mantém o texto completo em UTF-8; cancelar ou falhar
+   não altera o histórico. Ao fechar, ele também fica no resultado principal.
+   As etapas geram registros em `logs/solutions/solutions-audit.jsonl`.
 
 **Cancelar consulta** interrompe apenas diagnóstico/validação. Correções devem
 terminar antes de fechar a janela. Trocar de problema exige novo diagnóstico;
