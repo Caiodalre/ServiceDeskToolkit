@@ -1420,6 +1420,8 @@ function Invoke-V3VpnDiagnosticSummary {
     return $sb.ToString()
 }
 function Invoke-V3SafeFlushDns {
+    param([switch]$PassThru)
+    $operationStatus = 'Failed'
     $sb = New-Object System.Text.StringBuilder
 
     [void]$sb.AppendLine("CORRECAO SEGURA - LIMPAR DNS")
@@ -1458,15 +1460,16 @@ function Invoke-V3SafeFlushDns {
         [void]$sb.AppendLine("EXECUCAO")
         [void]$sb.AppendLine("--------")
 
-        $flushResult = ipconfig /flushdns 2>&1 | Out-String
+        $flush = Invoke-V3DnsFlushCommand
+        $flushResult = $flush.Output
+        [void]$sb.AppendLine("Codigo de saida do ipconfig: $($flush.ExitCode)")
+        if (-not [string]::IsNullOrWhiteSpace($flushResult)) { [void]$sb.AppendLine($flushResult.Trim()) }
+        if ($flush.ExitCode -ne 0) { throw 'ipconfig nao confirmou a limpeza. Confira permissoes e o servico Cliente DNS antes de repetir.' }
+        $operationStatus = 'Applied'
 
         if ([string]::IsNullOrWhiteSpace($flushResult)) {
             [void]$sb.AppendLine("Comando executado: ipconfig /flushdns")
         }
-        else {
-            [void]$sb.AppendLine($flushResult.Trim())
-        }
-
         Start-Sleep -Seconds 1
 
         $dnsAfterOk = $false
@@ -1497,7 +1500,7 @@ function Invoke-V3SafeFlushDns {
         [void]$sb.AppendLine("--------------------")
 
         if (-not $dnsBeforeOk -and $dnsAfterOk) {
-            [void]$sb.AppendLine("Resultado: DNS corrigido apos limpeza de cache.")
+            [void]$sb.AppendLine("Resultado: alvo de teste voltou a resolver apos limpeza de cache. Valide o destino do chamado.")
             [void]$sb.AppendLine("Proxima acao recomendada: pedir ao usuario para testar novamente o sistema ou site afetado.")
         }
         elseif ($dnsBeforeOk -and $dnsAfterOk) {
@@ -1518,7 +1521,13 @@ function Invoke-V3SafeFlushDns {
         [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
     }
 
+    if ($PassThru) { return [pscustomobject]@{ Status = $operationStatus; Report = $sb.ToString() } }
     return $sb.ToString()
+}
+function Invoke-V3DnsFlushCommand {
+    $output = & ipconfig.exe /flushdns 2>&1 | Out-String
+    $exitCode = $LASTEXITCODE
+    return [pscustomobject]@{ Output = $output; ExitCode = $exitCode }
 }
 function Invoke-V3SafeTimeSync {
     $sb = New-Object System.Text.StringBuilder
@@ -1715,6 +1724,7 @@ function Invoke-V3OfficeTpmPanel {
 }
 
 function Invoke-V3OfficeWamRepair {
+    param([switch]$PassThru)
     try {
         if (-not $script:V3OperationalModulesAvailable) {
             throw (
@@ -1730,14 +1740,17 @@ function Invoke-V3OfficeWamRepair {
             -Confirmed `
             -AuditPath $auditPath
 
-        return Format-ToolkitOfficeWamRepairReport -Result $result
+        $report = Format-ToolkitOfficeWamRepairReport -Result $result
+        if ($PassThru) { return [pscustomobject]@{ Status = $(if ($result.Success) { 'Applied' } else { 'Failed' }); Report = $report } }
+        return $report
     }
     catch {
         $sb = New-Object System.Text.StringBuilder
-        [void]$sb.AppendLine("REPARO DO LOGIN OFFICE - NAO EXECUTADO")
+        [void]$sb.AppendLine("REPARO DO LOGIN OFFICE - FALHA OU BLOQUEIO")
         [void]$sb.AppendLine("======================================")
         [void]$sb.AppendLine("")
         [void]$sb.AppendLine("Motivo: $($_.Exception.Message)")
+        [void]$sb.AppendLine("O registro dos componentes pode ter sido parcialmente aplicado. Consulte o diagnostico antes de repetir.")
         [void]$sb.AppendLine("")
         [void]$sb.AppendLine(
             "Nenhuma credencial, conta Entra ou chave TPM foi removida."
@@ -1747,11 +1760,15 @@ function Invoke-V3OfficeWamRepair {
             "Feche Word, Excel, Outlook, Teams e outros aplicativos Office antes de tentar novamente."
         )
 
+        if ($PassThru) { return [pscustomobject]@{ Status = 'Failed'; Report = $sb.ToString() } }
         return $sb.ToString()
     }
 }
 
 function Invoke-V3SafeSpoolerRestart {
+    param([switch]$PassThru)
+    $operationStatus = 'Failed'
+    $commandCompleted = $false
     $sb = New-Object System.Text.StringBuilder
 
     [void]$sb.AppendLine("CORRECAO SEGURA - REINICIAR SPOOLER")
@@ -1806,11 +1823,13 @@ function Invoke-V3SafeSpoolerRestart {
 
         if ($null -eq $serviceBefore) {
             [void]$sb.AppendLine("Nao foi possivel reiniciar. O servico Spooler nao foi encontrado.")
+            $operationStatus = 'Blocked'
         }
         elseif (-not (Test-V3Admin)) {
             [void]$sb.AppendLine("A ferramenta nao esta em modo administrador.")
             [void]$sb.AppendLine("O Spooler normalmente exige permissao administrativa para reiniciar.")
             [void]$sb.AppendLine("Nenhuma alteracao foi executada.")
+            $operationStatus = 'Blocked'
         }
         else {
             try {
@@ -1823,6 +1842,7 @@ function Invoke-V3SafeSpoolerRestart {
                     [void]$sb.AppendLine("Servico estava parado. Comando executado: Start-Service -Name Spooler")
                 }
 
+                $commandCompleted = $true
                 Start-Sleep -Seconds 2
             }
             catch {
@@ -1867,7 +1887,12 @@ function Invoke-V3SafeSpoolerRestart {
             [void]$sb.AppendLine("Resultado: nenhuma correcao foi executada por falta de permissao administrativa.")
             [void]$sb.AppendLine("Proxima acao recomendada: executar o Toolkit como administrador e tentar novamente.")
         }
+        elseif (-not $commandCompleted) {
+            [void]$sb.AppendLine("Resultado: comando falhou; o estado atual do servico nao comprova que o reinicio ocorreu.")
+            [void]$sb.AppendLine("Proxima acao recomendada: conferir permissoes e eventos de impressao; validar antes de repetir.")
+        }
         elseif ($null -ne $serviceAfter -and $serviceAfter.Status -eq "Running") {
+            $operationStatus = 'Applied'
             [void]$sb.AppendLine("Resultado: Spooler esta em execucao apos a correcao.")
             [void]$sb.AppendLine("Proxima acao recomendada: pedir ao usuario para testar impressao novamente.")
         }
@@ -1885,6 +1910,7 @@ function Invoke-V3SafeSpoolerRestart {
         [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
     }
 
+    if ($PassThru) { return [pscustomobject]@{ Status = $operationStatus; Report = $sb.ToString() } }
     return $sb.ToString()
 }
 function Get-V3AppgateStatus {
@@ -2294,12 +2320,12 @@ function Invoke-V3SolutionOperation {
         try { Test-V3SolutionPrerequisites -Id $Id }
         catch { return [pscustomobject]@{ Status = 'Blocked'; Report = "CORRECAO NAO INICIADA`r`n$($_.Exception.Message)`r`nResolva a condicao indicada e execute um novo diagnostico." } }
         switch ($Id) {
-            'dns-cache' { return Invoke-V3SafeFlushDns }
+            'dns-cache' { return Invoke-V3SafeFlushDns -PassThru }
             'print-spooler' {
                 if (-not (Test-V3Admin)) { throw 'Reinicio do Spooler exige administrador.' }
-                return Invoke-V3SafeSpoolerRestart
+                return Invoke-V3SafeSpoolerRestart -PassThru
             }
-            'office-wam' { return Invoke-V3OfficeWamRepair }
+            'office-wam' { return Invoke-V3OfficeWamRepair -PassThru }
         }
     }
     else {
@@ -2313,7 +2339,7 @@ function Invoke-V3SolutionOperation {
 
 function Get-V3SolutionWorkerText {
     # Somente definicoes do proprio programa; o catalogo nao fornece codigo executavel.
-    $definitions = foreach ($name in @('Test-V3Admin', 'New-V3OperationalFailureReport', 'Invoke-V3SafeFlushDns', 'Invoke-V3SafeSpoolerRestart', 'Invoke-V3OfficeWamRepair', 'Invoke-V3PrintersPanel', 'Invoke-V3OfficeTpmPanel', 'Test-V3SolutionPrerequisites', 'Invoke-V3SolutionOperation')) {
+    $definitions = foreach ($name in @('Test-V3Admin', 'New-V3OperationalFailureReport', 'Invoke-V3DnsFlushCommand', 'Invoke-V3SafeFlushDns', 'Invoke-V3SafeSpoolerRestart', 'Invoke-V3OfficeWamRepair', 'Invoke-V3PrintersPanel', 'Invoke-V3OfficeTpmPanel', 'Test-V3SolutionPrerequisites', 'Invoke-V3SolutionOperation')) {
         $command = Get-Command -Name $name -CommandType Function -ErrorAction Stop
         'function ' + $name + ' {' + [Environment]::NewLine + $command.Definition + [Environment]::NewLine + '}'
     }
@@ -2457,7 +2483,13 @@ function Complete-V3SolutionStage {
             $Session.Dialog.FindName('SolutionStatus').Text = 'Correcao bloqueada antes de executar. Confira a orientacao no historico.'
             return
         }
-        $report = $result -join [Environment]::NewLine
+        $operationStatus = 'Completed'
+        if ($job.Stage -eq 'Repair' -and $result.Count -eq 1 -and $result[0].PSObject.Properties['Status']) {
+            if ($result[0].Status -notin @('Applied', 'Failed')) { throw 'Estado de correcao desconhecido.' }
+            $operationStatus = $result[0].Status
+            $report = [string]$result[0].Report
+        }
+        else { $report = $result -join [Environment]::NewLine }
         if ([string]::IsNullOrWhiteSpace($report)) { throw 'A etapa nao retornou um relatorio.' }
         if ($job.Stage -eq 'Diagnose') { $Session.Diagnosed = $true }
         if ($job.Stage -eq 'Repair') { $Session.RepairAttempted = $true }
@@ -2467,8 +2499,12 @@ function Complete-V3SolutionStage {
             $report += "`r`n`r`nVALIDACAO DO CHAMADO:`r`n" + $solution.Validate
         }
         Add-V3SolutionHistory $Session $job.Stage $report
-        $status = 'Completed'
-        $Session.Dialog.FindName('SolutionStatus').Text = 'Etapa encerrada. Confira o relatorio; conclusao nao significa problema resolvido.'
+        $status = $operationStatus
+        $Session.Dialog.FindName('SolutionStatus').Text = switch ($status) {
+            'Applied' { 'Comando aplicado. Valide novamente e teste o sintoma original antes de registrar resolucao.' }
+            'Failed' { 'Correcao sem sucesso confirmado. Pode haver alteracoes parciais; valide o estado antes de repetir.' }
+            default { 'Etapa encerrada. Confira o relatorio; conclusao nao significa problema resolvido.' }
+        }
     }
     catch {
         if ($job.Stage -eq 'Repair') { $Session.RepairAttempted = $true }

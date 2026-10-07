@@ -225,3 +225,10 @@ e manifestos oficiais WAM presentes. Se falhar, o histórico informa **correçã
 não iniciada**, orienta a próxima ação e exige novo diagnóstico. Essa conferência
 não comprova que a solução atende à causa do chamado; confira os achados e o
 perfil afetado antes de confirmar.
+
+A auditoria distingue **Applied** (comando aplicado), **Blocked** (correção
+não iniciada) e **Failed** (sem sucesso confirmado; podem existir alterações
+parciais). DNS confere o código de saída do ipconfig; Spooler exige comando
+concluído e serviço em execução; WAM usa a verificação de pacotes do módulo.
+Esses estados não comprovam a resolução do sintoma. Em falha, use **Validar
+novamente** antes de decidir a próxima intervenção.

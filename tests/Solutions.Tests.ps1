@@ -94,6 +94,72 @@ Describe 'Guided solution catalogue and operation routing' {
     }
 }
 
+Describe 'Correction execution results with simulated commands' {
+    BeforeEach {
+        Mock Invoke-V3DnsFlushCommand { [pscustomobject]@{ ExitCode = 0; Output = 'SIMULADO' } }
+        Mock Resolve-DnsName { throw 'alvo indisponivel' }
+        Mock Start-Sleep { }
+        Mock Test-V3Admin { $true }
+        Mock Get-Service { [pscustomobject]@{ Status = 'Running' } }
+        Mock Get-CimInstance { @() }
+        Mock Restart-Service { }
+        Mock Start-Service { }
+        Mock Repair-ToolkitOfficeWam { [pscustomobject]@{ Success = $true } }
+        Mock Format-ToolkitOfficeWamRepairReport { 'WAM SIMULADO' }
+        $script:V3OperationalModulesAvailable = $true
+    }
+    It 'reports failed DNS exit code without claiming the cache was cleared' {
+        Mock Invoke-V3DnsFlushCommand { [pscustomobject]@{ ExitCode = 5; Output = 'recusado' } }
+        $result = Invoke-V3SafeFlushDns -PassThru
+        $result.Status | Should -Be 'Failed'
+        $result.Report | Should -BeLike '*Codigo de saida do ipconfig: 5*'
+        $result.Report | Should -BeLike '*nao confirmou a limpeza*'
+        Should -Invoke Resolve-DnsName -Times 1
+    }
+    It 'distinguishes DNS command success from an unresolved target and preserves plain reports' {
+        $result = Invoke-V3SafeFlushDns -PassThru
+        $result.Status | Should -Be 'Applied'
+        $result.Report | Should -BeLike '*resolucao continua falhando*'
+        Invoke-V3SafeFlushDns | Should -BeOfType ([string])
+    }
+    It 'does not report spooler restart success when the command fails but service is running' {
+        Mock Restart-Service { throw 'acesso negado' }
+        $result = Invoke-V3SafeSpoolerRestart -PassThru
+        $result.Status | Should -Be 'Failed'
+        $result.Report | Should -BeLike '*estado atual do servico nao comprova*'
+        $result.Report | Should -Not -BeLike '*Spooler esta em execucao apos a correcao*'
+    }
+    It 'reports applied spooler correction only after command completion and running state' {
+        $result = Invoke-V3SafeSpoolerRestart -PassThru
+        $result.Status | Should -Be 'Applied'
+        Should -Invoke Restart-Service -Times 1
+        Should -Invoke Start-Service -Times 0
+    }
+    It 'reports an unsuccessful start when the spooler remains stopped' {
+        Mock Get-Service { [pscustomobject]@{ Status = 'Stopped' } }
+        (Invoke-V3SafeSpoolerRestart -PassThru).Status | Should -Be 'Failed'
+        Should -Invoke Start-Service -Times 1
+    }
+    It 'reports blocked spooler action when administrator permission is lost' {
+        Mock Test-V3Admin { $false }
+        (Invoke-V3SafeSpoolerRestart -PassThru).Status | Should -Be 'Blocked'
+        Should -Invoke Restart-Service -Times 0
+        Should -Invoke Start-Service -Times 0
+    }
+    It 'uses the WAM module success flag rather than inferring success from report text' {
+        (Invoke-V3OfficeWamRepair -PassThru).Status | Should -Be 'Applied'
+        Mock Repair-ToolkitOfficeWam { [pscustomobject]@{ Success = $false } }
+        (Invoke-V3OfficeWamRepair -PassThru).Status | Should -Be 'Failed'
+    }
+    It 'preserves WAM partial failure guidance when registration raises an exception' {
+        Mock Repair-ToolkitOfficeWam { throw 'segundo manifesto falhou' }
+        $result = Invoke-V3OfficeWamRepair -PassThru
+        $result.Status | Should -Be 'Failed'
+        $result.Report | Should -BeLike '*parcialmente aplicado*'
+        $result.Report | Should -Not -BeLike '*NAO EXECUTADO*'
+    }
+}
+
 Describe 'Guided solution prerequisites before any mutation' {
     BeforeEach {
         Mock Test-V3Admin { $true }
@@ -238,6 +304,35 @@ Describe 'Guided solution session and background execution' {
         $session.History.ToString() | Should -BeLike '*Feche o Office*'
         $entries = @(Get-Content (Join-Path $TestDrive 'logs/solutions/solutions-audit.jsonl') | ConvertFrom-Json)
         @($entries | Where-Object Status -eq 'Blocked').Count | Should -Be 1
+    }
+
+    It 'records a failed correction as Failed and permits validation without blind repetition' {
+        $session.Diagnosed = $true
+        Mock Confirm-V3SolutionRepair { $true }
+        Mock Get-V3SolutionWorkerText { 'param($rootPath, $id, $stage, $confirmed); [pscustomobject]@{Status="Failed"; Report="Comando falhou"}' }
+        Start-V3SolutionStage $session Repair
+        Wait-TestSolution
+        $session.RepairAttempted | Should -BeTrue
+        $session.Dialog.FindName('SolutionRepair').IsEnabled | Should -BeFalse
+        $session.Dialog.FindName('SolutionValidate').IsEnabled | Should -BeTrue
+        $session.Dialog.FindName('SolutionStatus').Text | Should -BeLike '*alteracoes parciais*'
+        $session.History.ToString() | Should -BeLike '*Comando falhou*'
+        $entries = @(Get-Content (Join-Path $TestDrive 'logs/solutions/solutions-audit.jsonl') | ConvertFrom-Json)
+        $entries.Status | Should -Contain 'Failed'
+    }
+
+    It 'records applied commands without marking the operator symptom resolved' {
+        $session.Diagnosed = $true
+        Mock Confirm-V3SolutionRepair { $true }
+        Mock Get-V3SolutionWorkerText { 'param($rootPath, $id, $stage, $confirmed); [pscustomobject]@{Status="Applied"; Report="Comando aplicado"}' }
+        Start-V3SolutionStage $session Repair
+        Wait-TestSolution
+        $session.Validated | Should -BeFalse
+        $session.Dialog.FindName('SolutionRecordOutcome').IsEnabled | Should -BeFalse
+        $session.Dialog.FindName('SolutionStatus').Text | Should -BeLike '*teste o sintoma original*'
+        $session.History.ToString() | Should -BeLike '*Comando aplicado*'
+        $entries = @(Get-Content (Join-Path $TestDrive 'logs/solutions/solutions-audit.jsonl') | ConvertFrom-Json)
+        $entries.Status | Should -Contain 'Applied'
     }
 
     It 'requires validation before recording the operator outcome and clears it on a new diagnosis' {
