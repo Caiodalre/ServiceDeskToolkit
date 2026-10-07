@@ -7,7 +7,7 @@
   "files": [
     {
       "path": "docs/V3-README.md",
-      "sha256": "069d0fc5f3ba5ffd32c8996cbf8d170550f9a669a42610fd9e834221ca20c4f7"
+      "sha256": "acd8757939db8c1f1e4b05e334dd12c001a509df446108674f92c46337ce9d3a"
     },
     {
       "path": "docs/V3-ESPACO-EM-DISCO.md",
@@ -19,7 +19,7 @@
     },
     {
       "path": "ServiceDeskToolkit-CorporateV3.ps1",
-      "sha256": "7513f0ae793de991c4eee8fba5a80226448f69e6d87b1f4a69ef36336ef002da"
+      "sha256": "3d9c83530ee47a2bed65df50e06eee0d5284b6ef5f38bac204499dcdd5ea6ff5"
     },
     {
       "path": "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
@@ -55,7 +55,7 @@
     },
     {
       "path": "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md",
-      "sha256": "ae698c630eb8e7726a038289a813d16eb5208ba8731b3fe5e13c80042159419e"
+      "sha256": "ff0d6245a55f178c7f98ff47cdb219654457c4593715327829248ab477033c15"
     },
     {
       "path": "tools/Test-ToolkitV3.ps1",

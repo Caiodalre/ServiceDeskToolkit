@@ -519,6 +519,55 @@ Describe 'Guided solution session and background execution' {
         $session.Dialog.FindName('SolutionPlan').MaxHeight | Should -Be 110
     }
 
+    It 'restores history on reopening without restoring authorization to repair or record resolution' {
+        Add-V3SolutionHistory $session Diagnose 'EVIDENCIA FICTICIA'
+        $session.Diagnosed = $true
+        $session.RepairAttempted = $true
+        $session.Validated = $true
+        $checkpoint = Get-V3SolutionCheckpoint $session
+        $restored = New-V3SolutionSession -Checkpoint $checkpoint
+        $restored.Dialog.FindName('SolutionChoice').SelectedIndex = 0
+        Set-V3SolutionSelection $restored
+        $restored.History.ToString() | Should -Be $session.History.ToString()
+        $restored.EntryCount | Should -Be 1
+        $restored.Diagnosed | Should -BeFalse
+        $restored.RepairAttempted | Should -BeFalse
+        $restored.Validated | Should -BeFalse
+        $restored.Dialog.FindName('SolutionRepair').IsEnabled | Should -BeFalse
+        $restored.Dialog.FindName('SolutionRecordOutcome').IsEnabled | Should -BeFalse
+        $restored.Dialog.FindName('SolutionSave').IsEnabled | Should -BeTrue
+        $restored.Dialog.FindName('SolutionOutput').Text | Should -BeLike '*EVIDENCIA FICTICIA*'
+        $restored.Dialog.FindName('SolutionOutput').Text | Should -BeLike '*apenas enquanto o programa estiver aberto*'
+        Add-V3SolutionHistory $restored Diagnose 'SEGUNDA LEITURA FICTICIA'
+        $restored.EntryCount | Should -Be 2
+        $restored.History.ToString() | Should -BeLike '*[[]2[]]*'
+        $checkpoint.History | Should -Not -BeLike '*SEGUNDA LEITURA*'
+        $restored.Timer.Stop()
+    }
+
+    It 'keeps checkpoints free of window and execution objects and rejects capture during a running stage' {
+        $session.Dialog.FindName('SolutionChoice').SelectedIndex = 1
+        Set-V3SolutionSelection $session
+        $checkpoint = Get-V3SolutionCheckpoint $session
+        $checkpoint.Id | Should -Be 'print-spooler'
+        $checkpoint.EntryCount | Should -Be 0
+        @($checkpoint.PSObject.Properties.Name).Count | Should -Be 3
+        Start-V3SolutionStage $session Diagnose
+        { Get-V3SolutionCheckpoint $session } | Should -Throw '*Aguarde*'
+        Wait-TestSolution
+    }
+
+    It 'uses readable Portuguese titles and stage names in the exported history' {
+        Add-V3SolutionHistory $session Diagnose 'LEITURA FICTICIA'
+        Add-V3SolutionHistory $session Repair 'CORRECAO FICTICIA'
+        Add-V3SolutionHistory $session Validate 'VALIDACAO FICTICIA'
+        $history = $session.History.ToString()
+        $history | Should -BeLike '*Site ou sistema com falha de DNS - Diagnostico*'
+        $history | Should -BeLike '*Site ou sistema com falha de DNS - Correcao*'
+        $history | Should -BeLike '*Site ou sistema com falha de DNS - Validacao*'
+        $history | Should -Not -BeLike '*dns-cache - Diagnose*'
+    }
+
     It 'exports only a completed nonempty history' {
         Mock Set-V3ClipboardText { }
         Mock Get-V3ReportSavePath { $null }

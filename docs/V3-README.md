@@ -211,6 +211,12 @@ pré-condições, impacto, comando e validação do sintoma original.
    não altera o histórico. Ao fechar, ele também fica no resultado principal.
    As etapas geram registros em `logs/solutions/solutions-audit.jsonl`.
 
+Ao fechar e reabrir **Soluções guiadas**, o histórico e a última solução
+selecionada são recuperados enquanto o programa estiver aberto. As permissões
+do fluxo são reiniciadas: execute novo diagnóstico antes de outra correção.
+O histórico não é recuperado após encerrar o programa; salve o TXT para guardar
+as evidências. Etapas aparecem com títulos e nomes em português.
+
 **Cancelar consulta** interrompe apenas diagnóstico/validação. Correções devem
 terminar antes de fechar a janela. Trocar de problema exige novo diagnóstico;
 uma correção não é repetida sem nova leitura. Se não for possível gravar o

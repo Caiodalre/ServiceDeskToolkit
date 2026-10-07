@@ -12,6 +12,7 @@ $script:V3RepairJob = $null
 $script:V3RepairProcessId = $null
 $script:V3RepairStartedAt = $null
 $script:V3RepairProcessExitObservedAt = $null
+$script:V3SolutionCheckpoint = $null
 
 try {
     $diagnosticsModulePath = Join-Path `
@@ -2408,10 +2409,18 @@ function Update-V3SolutionControls {
 function Add-V3SolutionHistory {
     param($Session, [string]$Stage, [string]$Report)
     $Session.EntryCount++
-    [void]$Session.History.AppendLine("[$($Session.EntryCount)] $($Session.Id) - $Stage - $(Get-Date -Format 'HH:mm:ss')")
+    $stageLabel = switch ($Stage) { 'Diagnose' { 'Diagnostico' }; 'Repair' { 'Correcao' }; 'Validate' { 'Validacao' }; default { $Stage } }
+    $solution = Get-V3SolutionCatalog | Where-Object Id -eq $Session.Id
+    $title = if ($solution) { $solution.Title } else { $Session.Id }
+    [void]$Session.History.AppendLine("[$($Session.EntryCount)] $title - $stageLabel - $(Get-Date -Format 'HH:mm:ss')")
     [void]$Session.History.AppendLine($Report)
     [void]$Session.History.AppendLine('')
-    $text = "ATENDIMENTO POR SOLUCOES GUIDADAS`r`nEtapas registradas; resolucao do chamado depende de testar o sintoma original.`r`n`r`n" + $Session.History.ToString()
+    Update-V3SolutionHistoryView $Session
+}
+
+function Update-V3SolutionHistoryView {
+    param($Session)
+    $text = "ATENDIMENTO POR SOLUCOES GUIADAS`r`nEtapas registradas; resolucao do chamado depende de testar o sintoma original.`r`nHistorico mantido apenas enquanto o programa estiver aberto. Salve para guardar.`r`n`r`n" + $Session.History.ToString()
     $Session.Dialog.FindName('SolutionOutput').Text = $text
     $Session.Dialog.FindName('SolutionOutput').ScrollToEnd()
     Set-V3Output $text
@@ -2591,6 +2600,7 @@ function Set-V3SolutionSelection {
 }
 
 function New-V3SolutionSession {
+    param($Checkpoint = $null)
     $solutionXaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Solucoes guiadas - ServiceDesk Toolkit" Width="860" Height="700" MinWidth="720" MinHeight="480" WindowStartupLocation="CenterOwner" Background="#F3F6FA" FontFamily="Segoe UI">
   <Grid Margin="16" Background="#F3F6FA">
@@ -2609,7 +2619,18 @@ function New-V3SolutionSession {
     $dialog.Height = [math]::Min($dialog.Height, [Windows.SystemParameters]::WorkArea.Height)
     $session = [pscustomobject]@{ Dialog = $dialog; Id = ''; Diagnosed = $false; RepairAttempted = $false; Validated = $false; Job = $null; Timer = [Windows.Threading.DispatcherTimer]::new(); History = [Text.StringBuilder]::new(); EntryCount = 0 }
     foreach ($solution in Get-V3SolutionCatalog) { [void]$dialog.FindName('SolutionChoice').Items.Add($solution) }
+    if ($null -ne $Checkpoint -and $Checkpoint.EntryCount -gt 0 -and -not [string]::IsNullOrWhiteSpace($Checkpoint.History)) {
+        [void]$session.History.Append($Checkpoint.History)
+        $session.EntryCount = $Checkpoint.EntryCount
+        Update-V3SolutionHistoryView $session
+    }
     return $session
+}
+
+function Get-V3SolutionCheckpoint {
+    param($Session)
+    if ($null -ne $Session.Job) { throw 'Aguarde a etapa antes de guardar o atendimento.' }
+    return [pscustomobject]@{ Id = $Session.Id; EntryCount = $Session.EntryCount; History = $Session.History.ToString() }
 }
 
 function Update-V3SolutionLayout {
@@ -2618,7 +2639,7 @@ function Update-V3SolutionLayout {
 }
 
 function Open-V3SolutionCatalog {
-    $script:V3SolutionSession = New-V3SolutionSession
+    $script:V3SolutionSession = New-V3SolutionSession -Checkpoint $script:V3SolutionCheckpoint
     $session = $script:V3SolutionSession
     $session.Timer.Interval = [TimeSpan]::FromMilliseconds(300)
     $session.Timer.Add_Tick({ Complete-V3SolutionStage $script:V3SolutionSession })
@@ -2637,8 +2658,14 @@ function Open-V3SolutionCatalog {
         if ($null -ne $script:V3SolutionSession.Job) { $eventArgs.Cancel = $true; $script:V3SolutionSession.Dialog.FindName('SolutionStatus').Text = 'Aguarde a etapa em andamento antes de fechar.' }
     })
     $session.Dialog.FindName('SolutionChoice').SelectedIndex = 0
+    if ($null -ne $script:V3SolutionCheckpoint) {
+        foreach ($item in $session.Dialog.FindName('SolutionChoice').Items) {
+            if ($item.Id -eq $script:V3SolutionCheckpoint.Id) { $session.Dialog.FindName('SolutionChoice').SelectedItem = $item; break }
+        }
+    }
+    if ($session.EntryCount -gt 0) { $session.Dialog.FindName('SolutionStatus').Text = 'Historico recuperado desta sessao. Execute novo diagnostico antes de outra correcao.' }
     try { [void]$session.Dialog.ShowDialog() }
-    finally { $session.Timer.Stop(); $script:V3SolutionSession = $null }
+    finally { $session.Timer.Stop(); $script:V3SolutionCheckpoint = Get-V3SolutionCheckpoint $session; $script:V3SolutionSession = $null }
 }
 
 $xaml = @"
