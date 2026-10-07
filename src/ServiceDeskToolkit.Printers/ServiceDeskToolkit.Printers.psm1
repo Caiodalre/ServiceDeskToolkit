@@ -6,30 +6,30 @@ function Get-ToolkitPrinterSnapshot {
         [datetime]$ObservedAt = (Get-Date)
     )
 
-    $spooler = Get-Service `
-        -Name "Spooler" `
-        -ErrorAction SilentlyContinue
-    $printers = @(
-        Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue
-    )
-    $jobs = @(
-        Get-CimInstance Win32_PrintJob -ErrorAction SilentlyContinue
-    )
-    $drivers = @(
-        Get-CimInstance `
-            Win32_PrinterDriver `
-            -ErrorAction SilentlyContinue
-    )
+    $collectionErrors = New-Object 'System.Collections.Generic.List[string]'
+    $spooler = $null
+    $printers = @()
+    $jobs = @()
+    $drivers = @()
+    try { $spooler = Get-Service -Name 'Spooler' -ErrorAction Stop }
+    catch { $collectionErrors.Add("Spooler: $($_.Exception.Message)") }
+    try { $printers = @(Get-CimInstance Win32_Printer -ErrorAction Stop) }
+    catch { $collectionErrors.Add("Impressoras: $($_.Exception.Message)") }
+    try { $jobs = @(Get-CimInstance Win32_PrintJob -ErrorAction Stop) }
+    catch { $collectionErrors.Add("Fila: $($_.Exception.Message)") }
+    try { $drivers = @(Get-CimInstance Win32_PrinterDriver -ErrorAction Stop) }
+    catch { $collectionErrors.Add("Drivers: $($_.Exception.Message)") }
     $ports = @()
 
     if (Get-Command Get-PrinterPort -ErrorAction SilentlyContinue) {
         try {
             $ports = @(
-                Get-PrinterPort -ErrorAction SilentlyContinue
+                Get-PrinterPort -ErrorAction Stop
             )
         }
         catch {
             $ports = @()
+            $collectionErrors.Add("Portas: $($_.Exception.Message)")
         }
     }
 
@@ -72,6 +72,7 @@ function Get-ToolkitPrinterSnapshot {
         NetworkPrinters = [object[]]$networkPrinters
         LocalPrinters = [object[]]$localPrinters
         AlertPrinters = [object[]]$alertPrinters
+        CollectionErrors = [string[]]$collectionErrors.ToArray()
     }
 }
 
@@ -83,6 +84,13 @@ function Get-ToolkitPrinterAssessment {
     )
 
     $observations = New-Object 'System.Collections.Generic.List[string]'
+    if ($Snapshot.PSObject.Properties['CollectionErrors'] -and @($Snapshot.CollectionErrors).Count -gt 0) {
+        return [pscustomobject]@{
+            HasObservations = $true
+            Observations = [string[]](@('Leitura parcial: ausencia de resultados nao comprova ausencia de impressoras ou trabalhos.') + @($Snapshot.CollectionErrors))
+            NextAction = 'Confira permissoes, CIM/WMI e servicos; repita o diagnostico antes de corrigir.'
+        }
+    }
     $spooler = $Snapshot.Spooler
     $printers = @($Snapshot.Printers)
     $jobs = @($Snapshot.Jobs)
@@ -431,8 +439,16 @@ function Format-ToolkitPrinterReport {
                 Select-Object -First 1
 
             if ($driverInfo) {
+                $driverVersion = "Nao informada"
+                $versionProperty = $driverInfo.PSObject.Properties["DriverVersion"]
+                if (
+                    $null -ne $versionProperty -and
+                    -not [string]::IsNullOrWhiteSpace([string]$versionProperty.Value)
+                ) {
+                    $driverVersion = [string]$versionProperty.Value
+                }
                 [void]$sb.AppendLine(
-                    "Driver: $driverName | Versao: $(if ($driverInfo.DriverVersion) { $driverInfo.DriverVersion } else { 'Nao informada' })"
+                    "Driver: $driverName | Versao: $driverVersion"
                 )
             }
             else {

@@ -1,5 +1,5 @@
 ﻿param(
-    [string]$Branch = "v3.1.0-office-tpm-preview",
+    [string]$Branch = "v3.1.0-ui-homologation",
     [string]$Repo = "Caiodalre/ServiceDeskToolkit",
     [string]$InstallRoot,
     [switch]$NoShortcut,
@@ -281,6 +281,12 @@ function Install-V3IntoPath {
         [string]$OfficeModuleText,
 
         [Parameter(Mandatory = $true)]
+        [string]$StorageModuleText,
+
+        [Parameter(Mandatory = $true)]
+        [string]$StorageGuideText,
+
+        [Parameter(Mandatory = $true)]
         [string]$HomologationToolText,
 
         [Parameter(Mandatory = $true)]
@@ -323,6 +329,8 @@ function Install-V3IntoPath {
     $homologationGuideFile = Join-Path `
         $installPath `
         "docs\V3.1.0-PREVIEW2-HOMOLOGACAO.md"
+    $storageModuleFile = Join-Path $installPath "src\ServiceDeskToolkit.Storage\ServiceDeskToolkit.Storage.psm1"
+    $storageGuideFile = Join-Path $installPath "docs\V3-ESPACO-EM-DISCO.md"
     $latestFile = Join-Path $RootPath "latest.txt"
 
     New-Item -Path $installPath -ItemType Directory -Force | Out-Null
@@ -355,6 +363,8 @@ function Install-V3IntoPath {
         -Path (Split-Path $officeModuleFile -Parent) `
         -ItemType Directory `
         -Force | Out-Null
+
+    New-Item -Path (Split-Path $storageModuleFile -Parent) -ItemType Directory -Force | Out-Null
 
     $utf8Bom = New-Object System.Text.UTF8Encoding($true)
     $ascii = [System.Text.Encoding]::ASCII
@@ -396,6 +406,8 @@ function Install-V3IntoPath {
         -Path $homologationGuideFile `
         -Content $HomologationGuideText `
         -Encoding $utf8Bom
+    Write-V3TextFile -Path $storageModuleFile -Content $StorageModuleText -Encoding $utf8Bom
+    Write-V3TextFile -Path $storageGuideFile -Content $StorageGuideText -Encoding ([Text.UTF8Encoding]::new($false))
     Write-V3TextFile -Path $cmdFile -Content $CmdText -Encoding $ascii
 
     Unblock-File $mainFile -ErrorAction SilentlyContinue
@@ -409,6 +421,8 @@ function Install-V3IntoPath {
     Unblock-File $networkModuleFile -ErrorAction SilentlyContinue
     Unblock-File $printersModuleFile -ErrorAction SilentlyContinue
     Unblock-File $officeModuleFile -ErrorAction SilentlyContinue
+    Unblock-File $storageModuleFile -ErrorAction SilentlyContinue
+    Unblock-File $storageGuideFile -ErrorAction SilentlyContinue
     Unblock-File $homologationToolFile -ErrorAction SilentlyContinue
     Unblock-File $homologationGuideFile -ErrorAction SilentlyContinue
     Unblock-File $cmdFile -ErrorAction SilentlyContinue
@@ -473,6 +487,7 @@ $integrityPaths = @(
     "ServiceDeskToolkit-CorporateV3.ps1",
     "tools/Test-ToolkitV3.ps1",
     "docs/V3-README.md",
+    "docs/V3-ESPACO-EM-DISCO.md",
     "version-v3.json",
     "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
     "src/ServiceDeskToolkit.Health/ServiceDeskToolkit.Health.psm1",
@@ -480,6 +495,7 @@ $integrityPaths = @(
     "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
     "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
     "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
+    "src/ServiceDeskToolkit.Storage/ServiceDeskToolkit.Storage.psm1",
     "tools/Invoke-V3Preview2Homologation.ps1",
     "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md"
 )
@@ -503,6 +519,8 @@ try {
         "ServiceDeskToolkit-CorporateV3.ps1" = "Script principal V3"
         "tools/Test-ToolkitV3.ps1" = "Validador V3"
         "docs/V3-README.md" = "README V3"
+        "docs/V3-ESPACO-EM-DISCO.md" = "Guia de liberacao de espaco"
+        "src/ServiceDeskToolkit.Storage/ServiceDeskToolkit.Storage.psm1" = "Modulo de armazenamento"
         "version-v3.json" = "Metadados de versao V3"
         "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1" = "Modulo de diagnosticos V3"
         "src/ServiceDeskToolkit.Health/ServiceDeskToolkit.Health.psm1" = "Modulo de avaliacao de saude V3"
@@ -561,6 +579,8 @@ $homologationToolText = $payloads[
 $homologationGuideText = $payloads[
     "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md"
 ]
+$storageModuleText = $payloads["src/ServiceDeskToolkit.Storage/ServiceDeskToolkit.Storage.psm1"]
+$storageGuideText = $payloads["docs/V3-ESPACO-EM-DISCO.md"]
 $cmdText = New-V3CmdText
 
 Write-V3Step "2/5 - Validando conteudo baixado..." "Cyan"
@@ -683,6 +703,7 @@ foreach ($marker in $requiredMarkers) {
     }
 }
 
+Test-V3PowerShellSyntax -Text $storageModuleText -Name "ServiceDeskToolkit.Storage.psm1"
 Test-V3PowerShellSyntax -Text $mainText -Name "ServiceDeskToolkit-CorporateV3.ps1"
 Test-V3PowerShellSyntax -Text $validatorText -Name "tools\Test-ToolkitV3.ps1"
 Test-V3PowerShellSyntax `
@@ -744,6 +765,8 @@ foreach ($root in $candidateRoots) {
             -NetworkModuleText $networkModuleText `
             -PrintersModuleText $printersModuleText `
             -OfficeModuleText $officeModuleText `
+            -StorageModuleText $storageModuleText `
+            -StorageGuideText $storageGuideText `
             -HomologationToolText $homologationToolText `
             -HomologationGuideText $homologationGuideText `
             -CmdText $cmdText

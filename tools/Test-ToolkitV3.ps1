@@ -24,6 +24,7 @@ $PrintersModule = Join-Path `
 $OfficeModule = Join-Path `
     $Root `
     "src\ServiceDeskToolkit.Office\ServiceDeskToolkit.Office.psm1"
+$StorageModule = Join-Path $Root "src\ServiceDeskToolkit.Storage\ServiceDeskToolkit.Storage.psm1"
 $HomologationTool = Join-Path `
     $Root `
     "tools\Invoke-V3Preview2Homologation.ps1"
@@ -148,6 +149,7 @@ if (Test-Path $ChecksumManifest) {
             "tools/Test-ToolkitV3.ps1",
             "version-v3.json",
             "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
+            "src/ServiceDeskToolkit.Storage/ServiceDeskToolkit.Storage.psm1",
             "tools/Invoke-V3Preview2Homologation.ps1",
             "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md"
         )) {
@@ -192,6 +194,7 @@ $moduleFiles = @(
         Name = "Modulo Office, TPM e autenticacao"
         Path = $OfficeModule
     },
+    @{ Name = "Modulo de armazenamento"; Path = $StorageModule },
     @{
         Name = "Coletor de homologacao da preview.2"
         Path = $HomologationTool

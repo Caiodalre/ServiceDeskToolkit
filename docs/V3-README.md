@@ -1,4 +1,4 @@
-﻿# ServiceDesk Toolkit Corporate V3
+# ServiceDesk Toolkit Corporate V3
 
 ## Status
 
@@ -56,6 +56,31 @@ Pelo CMD:
 Ou pelo PowerShell:
 
     powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File ".\ServiceDeskToolkit-CorporateV3.ps1"
+
+## Navegação por temas — candidata em homologação
+
+A interface organiza as ações em Visão geral, Rede e internet, VPN / Appgate,
+Impressoras, Office / TPM e Windows. O índice destaca o tema selecionado e
+filtra as ações; **Todos os temas** exibe o catálogo completo.
+
+A busca filtra as ações do tema atual por nome ou descrição, aceita termos
+com ou sem acentos e mantém o resultado anterior. **Limpar busca** restaura
+a lista. Cada cartão explica o que a ação faz antes de sua execução.
+
+Os dados da estação ficam em Visão geral. Diagnósticos e consultas aparecem
+antes das correções, que têm destaque visual próprio. Cada botão mantém seu
+comportamento e as confirmações existentes.
+
+A lista de ações e o resultado têm rolagem independente. Arraste a divisória
+entre as duas áreas para ajustar o espaço de leitura. **Copiar resultado**
+permanece disponível no cabeçalho do relatório, que é somente leitura.
+
+A candidata visual está na branch `v3.1.0-ui-homologation`. O instalador
+desta branch usa essa mesma referência e seu manifesto SHA-256.
+O roteiro está em [Homologação da interface](V3.1.0-UI-HOMOLOGACAO.md).
+
+Esta mudança ainda precisa de homologação visual e operacional. As evidências
+anteriores da preview.2 não aprovam automaticamente a interface modificada.
 
 ## Como validar
 
@@ -158,3 +183,67 @@ recomendada é:
 
 A versão estável oficial é a `v3.0.1`. A `v3.0.0` permanece como
 fallback temporário da linha V3 e a V2.3.0 como fallback legado.
+
+## Liberação de espaço em disco
+
+No tema Windows, use **Espaço em disco: diagnóstico e plano** para uma coleta
+em segundo plano e orientações por categoria. Consulte o
+[guia de atendimento](V3-ESPACO-EM-DISCO.md). Não executa exclusões automáticas.
+
+## Soluções guiadas na candidata V3.1
+
+Em **Visão geral**, abra **Soluções guiadas**. O catálogo inclui DNS, serviço
+de impressão e login WAM do Office. Cada solução explica quando usar,
+pré-condições, impacto, comando e validação do sintoma original.
+
+1. Selecione o problema e execute **Diagnosticar**. A consulta roda em segundo plano.
+2. Confira os achados e a condição de uso. **Aplicar correção** exige diagnóstico
+   registrado e confirmação; o reinício do spooler também exige administrador.
+   Para WAM, use o perfil afetado e feche os aplicativos Office.
+3. Execute **Validar novamente** e teste o sintoma: site/sistema, página de teste
+   ou login do Office. Conclusão da etapa não significa chamado resolvido.
+4. Selecione o resultado do teste e use **Registrar resultado**: resolvido,
+   persiste ou ainda não testado. O registro identifica a informação do operador;
+   o programa não deduz resolução pela execução do comando. Nova leitura ou troca
+   de problema exige nova validação.
+5. Use **Copiar histórico** ou **Salvar histórico** no próprio catálogo ao
+   concluir a etapa. O TXT mantém o texto completo em UTF-8; cancelar ou falhar
+   não altera o histórico. Ao fechar, ele também fica no resultado principal.
+   As etapas geram registros em `logs/solutions/solutions-audit.jsonl`.
+
+Ao fechar e reabrir **Soluções guiadas**, o histórico e a última solução
+selecionada são recuperados enquanto o programa estiver aberto. As permissões
+do fluxo são reiniciadas: execute novo diagnóstico antes de outra correção.
+O histórico não é recuperado após encerrar o programa; salve o TXT para guardar
+as evidências. Etapas aparecem com títulos e nomes em português.
+
+**Cancelar consulta** interrompe apenas diagnóstico/validação. Correções devem
+terminar antes de fechar a janela. Trocar de problema exige novo diagnóstico;
+uma correção não é repetida sem nova leitura. Se não for possível gravar o
+registro inicial da etapa, a ação não começa. Relatórios podem conter dados
+corporativos; revise as evidências antes de compartilhar.
+
+O catálogo chama somente funções previstas no programa e não executa comandos
+digitados ou texto da base JSON legada. Esta candidata também limita **Ajustar
+Appgate** ao backup e ao timeout; a ação não modifica a política de UAC.
+
+Antes da correção, há uma nova conferência em segundo plano: disponibilidade do
+ipconfig, permissão e serviço Spooler habilitado, ou aplicativos Office fechados
+e manifestos oficiais WAM presentes. Se falhar, o histórico informa **correção
+não iniciada**, orienta a próxima ação e exige novo diagnóstico. Essa conferência
+não comprova que a solução atende à causa do chamado; confira os achados e o
+perfil afetado antes de confirmar.
+
+A auditoria distingue **Applied** (comando aplicado), **Blocked** (correção
+não iniciada) e **Failed** (sem sucesso confirmado; podem existir alterações
+parciais). DNS confere o código de saída do ipconfig; Spooler exige comando
+concluído e serviço em execução; WAM usa a verificação de pacotes do módulo.
+Esses estados não comprovam a resolução do sintoma. Em falha, use **Validar
+novamente** antes de decidir a próxima intervenção.
+
+Consultas retornam **ReadSucceeded** (leitura concluída) ou **ReadFailed**
+(consulta incompleta). Falhas de configuração/cache DNS, coleta de impressão
+ou consulta dos pacotes WAM bloqueiam a correção guiada. Os achados já coletados
+e os erros permanecem no histórico. Repita a consulta após resolver a condição
+indicada. Uma validação incompleta também não libera o registro do resultado;
+isso não impede copiar ou salvar as evidências da falha.

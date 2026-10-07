@@ -12,6 +12,7 @@ $script:V3RepairJob = $null
 $script:V3RepairProcessId = $null
 $script:V3RepairStartedAt = $null
 $script:V3RepairProcessExitObservedAt = $null
+$script:V3SolutionCheckpoint = $null
 
 try {
     $diagnosticsModulePath = Join-Path `
@@ -62,6 +63,138 @@ try {
 }
 catch {
     $script:V3OperationalModuleError = $_.Exception.Message
+}
+
+$script:V3StorageScan = $null
+$script:V3StorageSnapshot = $null
+$script:V3StorageBaseline = $null
+function Start-V3StorageDiagnostic {
+    param(
+        [string]$ScanRoot = ($env:SystemDrive + "\"),
+        [int]$MaxSeconds = 120,
+        [int]$MaxFiles = 200000
+    )
+
+    if ($null -ne $script:V3StorageScan) {
+        $window.FindName("ResultStatus").Text = "Diagnostico de disco ja em andamento"
+        return
+    }
+    $pipeline = [powershell]::Create()
+    try {
+        $modulePath = Join-Path $script:RootPath "src\ServiceDeskToolkit.Storage\ServiceDeskToolkit.Storage.psm1"
+        [void]$pipeline.AddScript({
+            param($modulePath, $scanRoot, $maxSeconds, $maxFiles)
+            $ErrorActionPreference = "Stop"
+            Import-Module $modulePath -Force
+            $snapshot = Get-ToolkitStorageSnapshot -ScanRoot $scanRoot -MaxSeconds $maxSeconds -MaxFiles $maxFiles
+            [pscustomobject]@{ Snapshot = $snapshot; Report = (Format-ToolkitStorageReport -Snapshot $snapshot) }
+        }).AddArgument($modulePath).AddArgument($ScanRoot).AddArgument($MaxSeconds).AddArgument($MaxFiles)
+        $handle = $pipeline.BeginInvoke()
+        $script:V3StorageScan = [pscustomobject]@{ Pipeline = $pipeline; Handle = $handle; Cancelled = $false; StopHandle = $null }
+        $window.FindName("BtnV3Storage").IsEnabled = $false
+        $window.FindName("BtnV3CancelStorage").Visibility = "Visible"
+        $window.FindName("BtnV3CancelStorage").IsEnabled = $true
+        Set-V3Output "ESPACO EM DISCO - COLETA EM ANDAMENTO`r`n`r`nLeitura de discos, perfis e arquivos. Nenhum arquivo sera apagado.`r`nA varredura usa limites de tempo e quantidade; acessos negados e cobertura parcial serao indicados.`r`nVoce pode navegar e cancelar a coleta. Ao terminar, o resultado sera substituido pelo plano de liberacao."
+        $window.FindName("ResultStatus").Text = "Lendo espaco em disco..."
+        $script:V3StorageTimer.Start()
+    }
+    catch {
+        $pipeline.Dispose()
+        $script:V3StorageScan = $null
+        $window.FindName("BtnV3Storage").IsEnabled = $true
+        $window.FindName("BtnV3CancelStorage").Visibility = "Collapsed"
+        Set-V3Output "Nao foi possivel iniciar o diagnostico de disco. Detalhe: $($_.Exception.Message)"
+    }
+}
+
+function Complete-V3StorageDiagnostic {
+    if ($null -eq $script:V3StorageScan -or -not $script:V3StorageScan.Handle.IsCompleted) { return }
+    $scan = $script:V3StorageScan
+    if ($null -ne $scan.StopHandle -and -not $scan.StopHandle.IsCompleted) { return }
+    try {
+        if ($null -ne $scan.StopHandle) { $scan.Pipeline.EndStop($scan.StopHandle) }
+        if ($scan.Cancelled) {
+            Set-V3Output "Diagnostico de disco cancelado. Nenhuma limpeza foi executada. Repita a coleta quando puder concluir a leitura."
+        }
+        else {
+            $result = $scan.Pipeline.EndInvoke($scan.Handle)
+            if ($scan.Pipeline.HadErrors) { throw "A coleta falhou; consulte as permissoes e repita o diagnostico." }
+            if ($result.Count -ne 1 -or $null -eq $result[0].Snapshot) { throw 'Resultado de coleta indisponivel.' }
+            $script:V3StorageSnapshot = $result[0].Snapshot
+            Set-V3Output $result[0].Report
+            Set-V3ResultExpanded -Expanded $true
+        }
+    }
+    catch {
+        Set-V3Output "Nao foi possivel concluir o diagnostico de disco. Nenhuma limpeza foi executada.`r`nDetalhe: $($_.Exception.Message)"
+    }
+    finally {
+        $scan.Pipeline.Dispose()
+        $script:V3StorageScan = $null
+        $script:V3StorageTimer.Stop()
+        $window.FindName("BtnV3Storage").IsEnabled = $true
+        $window.FindName("BtnV3CancelStorage").Visibility = "Collapsed"
+        Update-V3StorageFollowup
+    }
+}
+
+function Update-V3StorageFollowup {
+    $available = $null -ne $script:V3StorageSnapshot -and $null -eq $script:V3StorageScan -and $script:TxtV3Output.Text.StartsWith('ESPACO EM DISCO')
+    $window.FindName("StorageFollowup").Visibility = if ($available) { "Visible" } else { "Collapsed" }
+    $window.FindName("BtnV3CompareStorage").IsEnabled = $available -and $null -ne $script:V3StorageBaseline -and -not [object]::ReferenceEquals($script:V3StorageBaseline, $script:V3StorageSnapshot)
+    $window.FindName("StorageBaselineStatus").Text = if ($null -eq $script:V3StorageBaseline) { "Defina a leitura inicial antes da limpeza" } else { "Inicial: " + $script:V3StorageBaseline.GeneratedAt.ToString('HH:mm:ss') }
+}
+
+function Set-V3StorageBaseline {
+    if ($null -eq $script:V3StorageSnapshot -or $null -ne $script:V3StorageScan) { return }
+    $script:V3StorageBaseline = $script:V3StorageSnapshot
+    Update-V3StorageFollowup
+    $window.FindName("ResultStatus").Text = "Leitura inicial definida. Repita o diagnostico apos a acao."
+}
+
+function Compare-V3StorageReadings {
+    if ($null -eq $script:V3StorageBaseline -or $null -eq $script:V3StorageSnapshot -or $null -ne $script:V3StorageScan) { return }
+    try {
+        Import-Module (Join-Path $script:RootPath 'src\ServiceDeskToolkit.Storage\ServiceDeskToolkit.Storage.psm1') -Force
+        $report = Format-ToolkitStorageComparison -Before $script:V3StorageBaseline -After $script:V3StorageSnapshot
+        Set-V3Output $report
+        Set-V3ResultExpanded -Expanded $true
+    }
+    catch { $window.FindName("ResultStatus").Text = "Comparacao indisponivel: $($_.Exception.Message)" }
+}
+
+function Get-V3ReportSavePath {
+    param([Windows.Window]$Owner = $window)
+    $dialog = [Microsoft.Win32.SaveFileDialog]::new()
+    $dialog.Title = 'Salvar relatorio do atendimento'
+    $dialog.Filter = 'Relatorio de texto (*.txt)|*.txt'
+    $dialog.DefaultExt = '.txt'
+    $dialog.AddExtension = $true
+    $dialog.OverwritePrompt = $true
+    $dialog.FileName = 'atendimento-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.txt'
+    if ($dialog.ShowDialog($Owner) -eq $true) { return $dialog.FileName }
+    return $null
+}
+
+function Save-V3Output {
+    if ([string]::IsNullOrWhiteSpace($script:TxtV3Output.Text)) { $window.FindName("ResultStatus").Text = 'Nenhum resultado para salvar'; return }
+    $reportToSave = $script:TxtV3Output.Text
+    try {
+        $path = Get-V3ReportSavePath
+        if ([string]::IsNullOrEmpty($path)) { return }
+        [IO.File]::WriteAllText($path, $reportToSave, [Text.UTF8Encoding]::new($true))
+        $window.FindName("ResultStatus").Text = 'Relatorio salvo em ' + $path
+    }
+    catch { $window.FindName("ResultStatus").Text = "Nao foi possivel salvar: $($_.Exception.Message)" }
+}
+
+function Stop-V3StorageDiagnostic {
+    if ($null -ne $script:V3StorageScan -and -not $script:V3StorageScan.Cancelled) {
+        $script:V3StorageScan.Cancelled = $true
+        $script:V3StorageScan.StopHandle = $script:V3StorageScan.Pipeline.BeginStop($null, $null)
+        $window.FindName("BtnV3CancelStorage").IsEnabled = $false
+        $window.FindName("ResultStatus").Text = "Cancelando coleta de disco..."
+    }
 }
 
 function Test-V3Admin {
@@ -151,6 +284,11 @@ function Set-V3Output {
 
     if ($null -ne $script:TxtV3Output) {
         $script:TxtV3Output.Text = $Text
+        $script:TxtV3Output.ScrollToHome()
+        if ($window.FindName("ResultSearchPanel").Visibility -eq "Visible") { Update-V3ResultSearch }
+        if ($null -ne $window -and $null -ne $window.FindName("ResultStatus")) {
+            $window.FindName("ResultStatus").Text = "Atualizado às " + (Get-Date -Format "HH:mm")
+        }
     }
 }
 
@@ -818,7 +956,7 @@ function Get-V3HomeText {
 ServiceDesk Toolkit Corporate V3
 ================================
 
-Nova experiência visual limpa.
+Escolha um tema no índice à esquerda para iniciar o atendimento.
 
 Objetivo:
 - Guiar o atendimento técnico
@@ -834,7 +972,9 @@ Ambiente:
 - Versão: $(Get-V3VersionInfo)
 
 Próximo passo recomendado:
-Use Atendimento Guiado para iniciar uma triagem.
+Comece por Saúde da máquina em Visão geral ou selecione o tema do problema.
+Busque pelo nome da ação ou role a lista para ver as demais opções.
+Arraste a divisória para ampliar o resultado e use Copiar resultado para coletar a evidência.
 "@
 }
 
@@ -1282,6 +1422,8 @@ function Invoke-V3VpnDiagnosticSummary {
     return $sb.ToString()
 }
 function Invoke-V3SafeFlushDns {
+    param([switch]$PassThru)
+    $operationStatus = 'Failed'
     $sb = New-Object System.Text.StringBuilder
 
     [void]$sb.AppendLine("CORRECAO SEGURA - LIMPAR DNS")
@@ -1320,15 +1462,16 @@ function Invoke-V3SafeFlushDns {
         [void]$sb.AppendLine("EXECUCAO")
         [void]$sb.AppendLine("--------")
 
-        $flushResult = ipconfig /flushdns 2>&1 | Out-String
+        $flush = Invoke-V3DnsFlushCommand
+        $flushResult = $flush.Output
+        [void]$sb.AppendLine("Codigo de saida do ipconfig: $($flush.ExitCode)")
+        if (-not [string]::IsNullOrWhiteSpace($flushResult)) { [void]$sb.AppendLine($flushResult.Trim()) }
+        if ($flush.ExitCode -ne 0) { throw 'ipconfig nao confirmou a limpeza. Confira permissoes e o servico Cliente DNS antes de repetir.' }
+        $operationStatus = 'Applied'
 
         if ([string]::IsNullOrWhiteSpace($flushResult)) {
             [void]$sb.AppendLine("Comando executado: ipconfig /flushdns")
         }
-        else {
-            [void]$sb.AppendLine($flushResult.Trim())
-        }
-
         Start-Sleep -Seconds 1
 
         $dnsAfterOk = $false
@@ -1359,7 +1502,7 @@ function Invoke-V3SafeFlushDns {
         [void]$sb.AppendLine("--------------------")
 
         if (-not $dnsBeforeOk -and $dnsAfterOk) {
-            [void]$sb.AppendLine("Resultado: DNS corrigido apos limpeza de cache.")
+            [void]$sb.AppendLine("Resultado: alvo de teste voltou a resolver apos limpeza de cache. Valide o destino do chamado.")
             [void]$sb.AppendLine("Proxima acao recomendada: pedir ao usuario para testar novamente o sistema ou site afetado.")
         }
         elseif ($dnsBeforeOk -and $dnsAfterOk) {
@@ -1380,7 +1523,13 @@ function Invoke-V3SafeFlushDns {
         [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
     }
 
+    if ($PassThru) { return [pscustomobject]@{ Status = $operationStatus; Report = $sb.ToString() } }
     return $sb.ToString()
+}
+function Invoke-V3DnsFlushCommand {
+    $output = & ipconfig.exe /flushdns 2>&1 | Out-String
+    $exitCode = $LASTEXITCODE
+    return [pscustomobject]@{ Output = $output; ExitCode = $exitCode }
 }
 function Invoke-V3SafeTimeSync {
     $sb = New-Object System.Text.StringBuilder
@@ -1509,6 +1658,7 @@ function Invoke-V3SafeTimeSync {
     return $sb.ToString()
 }
 function Invoke-V3PrintersPanel {
+    param([switch]$PassThru)
     $generatedAt = Get-Date
     $failureParameters = @{
         Header = "PAINEL DE IMPRESSORAS - DIAGNOSTICO CONSOLIDADO"
@@ -1520,6 +1670,7 @@ function Invoke-V3PrintersPanel {
 
     if (-not $script:V3OperationalModulesAvailable) {
         $failureParameters.ErrorDetail = $script:V3OperationalModuleError
+        if ($PassThru) { return [pscustomobject]@{ Status = 'ReadFailed'; Report = (New-V3OperationalFailureReport @failureParameters) } }
         return New-V3OperationalFailureReport @failureParameters
     }
 
@@ -1535,15 +1686,21 @@ function Invoke-V3PrintersPanel {
             GeneratedAt = $generatedAt
         }
 
-        return Format-ToolkitPrinterReport @formatParameters
+        $report = Format-ToolkitPrinterReport @formatParameters
+        $readFailed = $snapshot.PSObject.Properties['CollectionErrors'] -and @($snapshot.CollectionErrors).Count -gt 0
+        if ($readFailed) { $report = "LEITURA PARCIAL DE IMPRESSAO - NAO LIBERA CORRECAO`r`n" + ($snapshot.CollectionErrors -join "`r`n") + "`r`nConfira permissoes, CIM/WMI e servicos. Repita a consulta antes de intervir.`r`n`r`n" + $report }
+        if ($PassThru) { return [pscustomobject]@{ Status = $(if ($readFailed) { 'ReadFailed' } else { 'ReadSucceeded' }); Report = $report } }
+        return $report
     }
     catch {
         $failureParameters.ErrorDetail = $_.Exception.Message
+        if ($PassThru) { return [pscustomobject]@{ Status = 'ReadFailed'; Report = (New-V3OperationalFailureReport @failureParameters) } }
         return New-V3OperationalFailureReport @failureParameters
     }
 }
 
 function Invoke-V3OfficeTpmPanel {
+    param([switch]$PassThru)
     $generatedAt = Get-Date
     $failureParameters = @{
         Header = "OFFICE / TPM / AUTENTICACAO - DIAGNOSTICO CONSOLIDADO"
@@ -1555,6 +1712,7 @@ function Invoke-V3OfficeTpmPanel {
 
     if (-not $script:V3OperationalModulesAvailable) {
         $failureParameters.ErrorDetail = $script:V3OperationalModuleError
+        if ($PassThru) { return [pscustomobject]@{ Status = 'ReadFailed'; Report = (New-V3OperationalFailureReport @failureParameters) } }
         return New-V3OperationalFailureReport @failureParameters
     }
 
@@ -1562,21 +1720,27 @@ function Invoke-V3OfficeTpmPanel {
         $snapshot = Get-ToolkitOfficeTpmSnapshot -ObservedAt $generatedAt
         $assessment = Get-ToolkitOfficeTpmAssessment -Snapshot $snapshot
 
-        return Format-ToolkitOfficeTpmReport `
+        $report = Format-ToolkitOfficeTpmReport `
             -Snapshot $snapshot `
             -Assessment $assessment `
             -ComputerName $env:COMPUTERNAME `
             -UserName "$env:USERDOMAIN\$env:USERNAME" `
             -IsAdministrator (Test-V3Admin) `
             -GeneratedAt $generatedAt
+        $readFailed = -not [string]::IsNullOrWhiteSpace($snapshot.WamPackageError)
+        if ($readFailed) { $report = "LEITURA WAM INCOMPLETA - NAO LIBERA CORRECAO`r`n$($snapshot.WamPackageError)`r`nConfira o perfil afetado e acesso ao servico de pacotes; repita o diagnostico.`r`n`r`n" + $report }
+        if ($PassThru) { return [pscustomobject]@{ Status = $(if ($readFailed) { 'ReadFailed' } else { 'ReadSucceeded' }); Report = $report } }
+        return $report
     }
     catch {
         $failureParameters.ErrorDetail = $_.Exception.Message
+        if ($PassThru) { return [pscustomobject]@{ Status = 'ReadFailed'; Report = (New-V3OperationalFailureReport @failureParameters) } }
         return New-V3OperationalFailureReport @failureParameters
     }
 }
 
 function Invoke-V3OfficeWamRepair {
+    param([switch]$PassThru)
     try {
         if (-not $script:V3OperationalModulesAvailable) {
             throw (
@@ -1592,14 +1756,17 @@ function Invoke-V3OfficeWamRepair {
             -Confirmed `
             -AuditPath $auditPath
 
-        return Format-ToolkitOfficeWamRepairReport -Result $result
+        $report = Format-ToolkitOfficeWamRepairReport -Result $result
+        if ($PassThru) { return [pscustomobject]@{ Status = $(if ($result.Success) { 'Applied' } else { 'Failed' }); Report = $report } }
+        return $report
     }
     catch {
         $sb = New-Object System.Text.StringBuilder
-        [void]$sb.AppendLine("REPARO DO LOGIN OFFICE - NAO EXECUTADO")
+        [void]$sb.AppendLine("REPARO DO LOGIN OFFICE - FALHA OU BLOQUEIO")
         [void]$sb.AppendLine("======================================")
         [void]$sb.AppendLine("")
         [void]$sb.AppendLine("Motivo: $($_.Exception.Message)")
+        [void]$sb.AppendLine("O registro dos componentes pode ter sido parcialmente aplicado. Consulte o diagnostico antes de repetir.")
         [void]$sb.AppendLine("")
         [void]$sb.AppendLine(
             "Nenhuma credencial, conta Entra ou chave TPM foi removida."
@@ -1609,11 +1776,15 @@ function Invoke-V3OfficeWamRepair {
             "Feche Word, Excel, Outlook, Teams e outros aplicativos Office antes de tentar novamente."
         )
 
+        if ($PassThru) { return [pscustomobject]@{ Status = 'Failed'; Report = $sb.ToString() } }
         return $sb.ToString()
     }
 }
 
 function Invoke-V3SafeSpoolerRestart {
+    param([switch]$PassThru)
+    $operationStatus = 'Failed'
+    $commandCompleted = $false
     $sb = New-Object System.Text.StringBuilder
 
     [void]$sb.AppendLine("CORRECAO SEGURA - REINICIAR SPOOLER")
@@ -1668,11 +1839,13 @@ function Invoke-V3SafeSpoolerRestart {
 
         if ($null -eq $serviceBefore) {
             [void]$sb.AppendLine("Nao foi possivel reiniciar. O servico Spooler nao foi encontrado.")
+            $operationStatus = 'Blocked'
         }
         elseif (-not (Test-V3Admin)) {
             [void]$sb.AppendLine("A ferramenta nao esta em modo administrador.")
             [void]$sb.AppendLine("O Spooler normalmente exige permissao administrativa para reiniciar.")
             [void]$sb.AppendLine("Nenhuma alteracao foi executada.")
+            $operationStatus = 'Blocked'
         }
         else {
             try {
@@ -1685,6 +1858,7 @@ function Invoke-V3SafeSpoolerRestart {
                     [void]$sb.AppendLine("Servico estava parado. Comando executado: Start-Service -Name Spooler")
                 }
 
+                $commandCompleted = $true
                 Start-Sleep -Seconds 2
             }
             catch {
@@ -1729,7 +1903,12 @@ function Invoke-V3SafeSpoolerRestart {
             [void]$sb.AppendLine("Resultado: nenhuma correcao foi executada por falta de permissao administrativa.")
             [void]$sb.AppendLine("Proxima acao recomendada: executar o Toolkit como administrador e tentar novamente.")
         }
+        elseif (-not $commandCompleted) {
+            [void]$sb.AppendLine("Resultado: comando falhou; o estado atual do servico nao comprova que o reinicio ocorreu.")
+            [void]$sb.AppendLine("Proxima acao recomendada: conferir permissoes e eventos de impressao; validar antes de repetir.")
+        }
         elseif ($null -ne $serviceAfter -and $serviceAfter.Status -eq "Running") {
+            $operationStatus = 'Applied'
             [void]$sb.AppendLine("Resultado: Spooler esta em execucao apos a correcao.")
             [void]$sb.AppendLine("Proxima acao recomendada: pedir ao usuario para testar impressao novamente.")
         }
@@ -1747,6 +1926,7 @@ function Invoke-V3SafeSpoolerRestart {
         [void]$sb.AppendLine("Detalhe: $($_.Exception.Message)")
     }
 
+    if ($PassThru) { return [pscustomobject]@{ Status = $operationStatus; Report = $sb.ToString() } }
     return $sb.ToString()
 }
 function Get-V3AppgateStatus {
@@ -1814,12 +1994,14 @@ function Restart-V3Appgate {
 }
 
 function Repair-V3AppgateConfiguration {
-    param([switch]$Confirmed)
+    param(
+        [switch]$Confirmed,
+        [string]$ConfigPath = "C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config",
+        [string]$BackupDirectory = (Join-Path $script:RootPath 'backup-appgate')
+    )
     if (-not $Confirmed) { throw "Ajuste do Appgate exige confirmacao explicita." }
     if (-not (Test-V3Admin)) { throw "Execute o Toolkit como administrador para ajustar o Appgate." }
-    $configPath = "C:\Program Files\Appgate SDP\Service\Appgate SDP Service.dll.config"
     if (-not (Test-Path $configPath)) { throw "Configuracao do Appgate nao encontrada: $configPath" }
-    $backupDirectory = Join-Path $script:RootPath "backup-appgate"
     if (-not (Test-Path $backupDirectory)) { New-Item $backupDirectory -ItemType Directory -Force | Out-Null }
     $backupPath = Join-Path $backupDirectory ("Appgate-SDP-Service.dll.config.{0}.bak" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
     Copy-Item $configPath $backupPath -Force -ErrorAction Stop
@@ -1829,8 +2011,7 @@ function Repair-V3AppgateConfiguration {
     $oldValue = $node.InnerText
     $node.InnerText = "300000"
     $xml.Save($configPath)
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name ConsentPromptBehaviorAdmin -Value 5 -Type DWord -ErrorAction Stop
-    return "AJUSTE DO APPGATE CONCLUIDO`r`n============================`r`nRunScriptTimeout: $oldValue -> 300000`r`nUAC ConsentPromptBehaviorAdmin: 5`r`nBackup: $backupPath`r`n`r`nReinicie o Appgate e valide a conexao."
+    return "AJUSTE DO APPGATE CONCLUIDO`r`n============================`r`nRunScriptTimeout: $oldValue -> 300000`r`nBackup: $backupPath`r`n`r`nReinicie o Appgate e valide a conexao."
 }
 
 function Invoke-V3MachineHealthPanel {
@@ -2063,34 +2244,26 @@ function Invoke-V3WorkflowPrinter {
 
     return New-V3WorkflowResult @workflowParameters
 }
+function Set-V3ClipboardText {
+    param([string]$Text)
+
+    [System.Windows.Clipboard]::SetText($Text)
+}
+
 function Copy-V3OutputToClipboard {
+    if ($null -eq $script:TxtV3Output) {
+        return
+    }
+    if ([string]::IsNullOrWhiteSpace($script:TxtV3Output.Text)) {
+        $window.FindName("ResultStatus").Text = "Nenhum resultado para copiar"
+        return
+    }
     try {
-        if ($null -eq $script:TxtV3Output) {
-            return
-        }
-
-        $currentText = $script:TxtV3Output.Text
-
-        if ([string]::IsNullOrWhiteSpace($currentText)) {
-            Set-V3Output "Nenhum resultado disponível para copiar."
-            return
-        }
-
-        $cleanText = [regex]::Replace(
-            $currentText,
-            "(\r?\n){2}\[COPIADO\].*$",
-            ""
-        )
-
-        [System.Windows.Clipboard]::SetText($cleanText)
-
-        $feedback = "[COPIADO] Resultado copiado para a área de transferência em $(Get-Date -Format 'HH:mm:ss')."
-
-        $script:TxtV3Output.Text = $cleanText.TrimEnd() + "`r`n`r`n" + $feedback
-        $script:TxtV3Output.ScrollToEnd()
+        Set-V3ClipboardText -Text $script:TxtV3Output.Text
+        $window.FindName("ResultStatus").Text = "Resultado copiado às " + (Get-Date -Format "HH:mm")
     }
     catch {
-        Set-V3Output "Não foi possível copiar o resultado para a área de transferência.`r`n`r`nDetalhe: $($_.Exception.Message)"
+        $window.FindName("ResultStatus").Text = "Cópia indisponível. Tente novamente."
     }
 }
 function Open-V3ExternalLink {
@@ -2123,250 +2296,957 @@ function Open-V3ExternalLink {
         Set-V3Output "Erro ao abrir $($Label):`r`n$($_.Exception.Message)"
     }
 }
-$xaml = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ServiceDesk Toolkit Corporate V3"
-        Height="760"
-        Width="1180"
-        WindowStartupLocation="CenterScreen"
-        Background="#F3F6FA"
-        FontFamily="Segoe UI">
+function Get-V3SolutionCatalog {
+    @(
+        [pscustomobject]@{ Id = 'dns-cache'; Title = 'Site ou sistema com falha de DNS'; Situation = 'Use quando a resolucao de nomes falha ou pode estar usando cache antigo. Nao corrige proxy, VPN ou indisponibilidade do destino.'; Preconditions = 'Confirme o site afetado e confira os servidores DNS no diagnostico. A consulta usa alvos de teste; valide tambem o destino do chamado.'; Impact = 'Limpa o cache DNS local. Os nomes serao consultados novamente; nao altera servidores DNS.'; Command = 'ipconfig /flushdns'; RequiresAdmin = $false; Validate = 'Abra novamente o site ou sistema afetado. Se persistir, investigar rede, VPN, proxy e DNS corporativo.' }
+        [pscustomobject]@{ Id = 'print-spooler'; Title = 'Impressora nao imprime: servico de impressao'; Situation = 'Use quando o diagnostico indicar Spooler parado ou com falha. Impressora offline, driver ou conectividade podem exigir outra solucao.'; Preconditions = 'Confira servico, impressoras e filas. Requer administrador; avise os usuarios com impressao em andamento.'; Impact = 'Inicia ou reinicia o Spooler e interrompe a impressao temporariamente. Esta solucao nao exclui os trabalhos da fila.'; Command = 'Start-Service ou Restart-Service -Name Spooler'; RequiresAdmin = $true; Validate = 'Envie uma pagina de teste e confira a fila. Servico em execucao sozinho nao comprova que a impressora voltou a imprimir.' }
+        [pscustomobject]@{ Id = 'office-wam'; Title = 'Office com falha de login: componentes WAM'; Situation = 'Use em falhas de login compatíveis com componentes WAM. Nao e uma correcao universal para erros TPM, licenca ou conta bloqueada.'; Preconditions = 'Use o perfil do usuario afetado. Feche Word, Excel, Outlook, Teams e demais aplicativos Office; o reparo verifica processos abertos.'; Impact = 'Registra novamente AAD BrokerPlugin e CloudExperienceHost no perfil atual. Nao limpa TPM, credenciais ou vinculo Entra.'; Command = 'Novo registro dos manifestos WAM com Add-AppxPackage'; RequiresAdmin = $false; Validate = 'Abra o Office no perfil afetado e teste o login original. Nao marcar como resolvido apenas por concluir o registro dos componentes.' }
+    )
+}
 
+function Test-V3SolutionPrerequisites {
+    param([ValidateSet('dns-cache', 'print-spooler', 'office-wam')][string]$Id)
+    switch ($Id) {
+        'dns-cache' {
+            if (-not (Get-Command ipconfig.exe -CommandType Application -ErrorAction SilentlyContinue)) { throw 'ipconfig indisponivel. Encaminhe para suporte do Windows.' }
+        }
+        'print-spooler' {
+            if (-not (Test-V3Admin)) { throw 'Reinicio do Spooler exige administrador.' }
+            $service = Get-Service -Name Spooler -ErrorAction Stop
+            if ($service.StartType -eq 'Disabled') { throw 'Spooler desabilitado. Confira a politica com o administrador; esta solucao nao altera o tipo de inicializacao.' }
+        }
+        'office-wam' {
+            $apps = @(Get-Process -Name WINWORD, EXCEL, OUTLOOK, POWERPNT, MSACCESS, ONENOTE, MSPUB, VISIO, WINPROJ, Teams, ms-teams -ErrorAction SilentlyContinue)
+            if ($apps.Count -gt 0) { throw ('Feche os aplicativos antes de repetir: ' + (($apps.ProcessName | Sort-Object -Unique) -join ', ')) }
+            foreach ($manifest in @('SystemApps\Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy\Appxmanifest.xml', 'SystemApps\Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy\Appxmanifest.xml')) {
+                if (-not (Test-Path -LiteralPath (Join-Path $env:windir $manifest) -PathType Leaf)) { throw 'Manifesto oficial WAM ausente. Encaminhe para suporte do Windows; nao use pacotes de origem desconhecida.' }
+            }
+        }
+    }
+}
+
+function Invoke-V3SolutionOperation {
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('dns-cache', 'print-spooler', 'office-wam')][string]$Id,
+        [Parameter(Mandatory = $true)][ValidateSet('Diagnose', 'Repair', 'Validate')][string]$Stage,
+        [switch]$Confirmed
+    )
+    if ($Stage -eq 'Repair') {
+        if (-not $Confirmed) { throw 'Correcao exige confirmacao explicita.' }
+        try { Test-V3SolutionPrerequisites -Id $Id }
+        catch { return [pscustomobject]@{ Status = 'Blocked'; Report = "CORRECAO NAO INICIADA`r`n$($_.Exception.Message)`r`nResolva a condicao indicada e execute um novo diagnostico." } }
+        switch ($Id) {
+            'dns-cache' { return Invoke-V3SafeFlushDns -PassThru }
+            'print-spooler' {
+                if (-not (Test-V3Admin)) { throw 'Reinicio do Spooler exige administrador.' }
+                return Invoke-V3SafeSpoolerRestart -PassThru
+            }
+            'office-wam' { return Invoke-V3OfficeWamRepair -PassThru }
+        }
+    }
+    else {
+        switch ($Id) {
+            'dns-cache' { return Get-ToolkitDnsReport -PassThru }
+            'print-spooler' { return Invoke-V3PrintersPanel -PassThru }
+            'office-wam' { return Invoke-V3OfficeTpmPanel -PassThru }
+        }
+    }
+}
+
+function Get-V3SolutionWorkerText {
+    # Somente definicoes do proprio programa; o catalogo nao fornece codigo executavel.
+    $definitions = foreach ($name in @('Test-V3Admin', 'New-V3OperationalFailureReport', 'Invoke-V3DnsFlushCommand', 'Invoke-V3SafeFlushDns', 'Invoke-V3SafeSpoolerRestart', 'Invoke-V3OfficeWamRepair', 'Invoke-V3PrintersPanel', 'Invoke-V3OfficeTpmPanel', 'Test-V3SolutionPrerequisites', 'Invoke-V3SolutionOperation')) {
+        $command = Get-Command -Name $name -CommandType Function -ErrorAction Stop
+        'function ' + $name + ' {' + [Environment]::NewLine + $command.Definition + [Environment]::NewLine + '}'
+    }
+    $setup = @'
+param($rootPath, $id, $stage, $confirmed)
+$ErrorActionPreference = 'Stop'
+$script:RootPath = $rootPath
+$moduleName = switch ($id) {
+    'dns-cache' { 'Network' }
+    'print-spooler' { 'Printers' }
+    'office-wam' { 'Office' }
+    default { throw 'Solucao desconhecida.' }
+}
+Import-Module (Join-Path $rootPath ("src\ServiceDeskToolkit.{0}\ServiceDeskToolkit.{0}.psm1" -f $moduleName)) -Force -ErrorAction Stop
+$script:V3OperationalModulesAvailable = $true
+$script:V3OperationalModuleError = $null
+'@
+    return $setup + [Environment]::NewLine + ($definitions -join [Environment]::NewLine) + [Environment]::NewLine + 'Invoke-V3SolutionOperation -Id $id -Stage $stage -Confirmed:$confirmed'
+}
+
+function Write-V3SolutionAudit {
+    param([string]$Id, [string]$Stage, [string]$Status, [bool]$Confirmed)
+    $folder = Join-Path $script:RootPath 'logs\solutions'
+    [void][IO.Directory]::CreateDirectory($folder)
+    $entry = [ordered]@{ Timestamp = (Get-Date).ToString('o'); Solution = $Id; Stage = $Stage; Status = $Status; Confirmed = $Confirmed }
+    [IO.File]::AppendAllText((Join-Path $folder 'solutions-audit.jsonl'), (($entry | ConvertTo-Json -Compress) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+}
+
+function Confirm-V3SolutionRepair {
+    param($Solution, $Dialog)
+    $message = $Solution.Impact + "`r`n`r`nAntes de executar:`r`n" + $Solution.Preconditions + "`r`n`r`nConfirme que o diagnostico e o sintoma justificam esta correcao. Deseja continuar?"
+    return [Windows.MessageBox]::Show($Dialog, $message, $Solution.Title, 'YesNo', 'Warning') -eq [Windows.MessageBoxResult]::Yes
+}
+
+function Update-V3SolutionControls {
+    param($Session)
+    $busy = $null -ne $Session.Job
+    $Session.Dialog.FindName('SolutionChoice').IsEnabled = -not $busy
+    $Session.Dialog.FindName('SolutionDiagnose').IsEnabled = -not $busy
+    $Session.Dialog.FindName('SolutionRepair').IsEnabled = -not $busy -and $Session.Diagnosed -and -not $Session.RepairAttempted
+    $Session.Dialog.FindName('SolutionValidate').IsEnabled = -not $busy -and $Session.RepairAttempted
+    $Session.Dialog.FindName('SolutionOutcome').IsEnabled = -not $busy -and $Session.Validated
+    $Session.Dialog.FindName('SolutionRecordOutcome').IsEnabled = -not $busy -and $Session.Validated -and $Session.Dialog.FindName('SolutionOutcome').SelectedIndex -gt 0
+    $hasHistory = -not [string]::IsNullOrWhiteSpace($Session.Dialog.FindName('SolutionOutput').Text)
+    $Session.Dialog.FindName('SolutionCopy').IsEnabled = -not $busy -and $hasHistory
+    $Session.Dialog.FindName('SolutionSave').IsEnabled = -not $busy -and $hasHistory
+    $Session.Dialog.FindName('SolutionCancel').Visibility = if ($busy -and $Session.Job.Stage -ne 'Repair') { 'Visible' } else { 'Collapsed' }
+    $Session.Dialog.FindName('SolutionCancel').IsEnabled = $busy -and -not $Session.Job.Cancelled
+}
+
+function Add-V3SolutionHistory {
+    param($Session, [string]$Stage, [string]$Report)
+    $Session.EntryCount++
+    $stageLabel = switch ($Stage) { 'Diagnose' { 'Diagnostico' }; 'Repair' { 'Correcao' }; 'Validate' { 'Validacao' }; default { $Stage } }
+    $solution = Get-V3SolutionCatalog | Where-Object Id -eq $Session.Id
+    $title = if ($solution) { $solution.Title } else { $Session.Id }
+    [void]$Session.History.AppendLine("[$($Session.EntryCount)] $title - $stageLabel - $(Get-Date -Format 'HH:mm:ss')")
+    [void]$Session.History.AppendLine($Report)
+    [void]$Session.History.AppendLine('')
+    Update-V3SolutionHistoryView $Session
+}
+
+function Update-V3SolutionHistoryView {
+    param($Session)
+    $text = "ATENDIMENTO POR SOLUCOES GUIADAS`r`nEtapas registradas; resolucao do chamado depende de testar o sintoma original.`r`nHistorico mantido apenas enquanto o programa estiver aberto. Salve para guardar.`r`n`r`n" + $Session.History.ToString()
+    $Session.Dialog.FindName('SolutionOutput').Text = $text
+    $Session.Dialog.FindName('SolutionOutput').ScrollToEnd()
+    Set-V3Output $text
+    Update-V3SolutionControls $Session
+}
+
+function Export-V3SolutionHistory {
+    param($Session, [ValidateSet('Copy', 'Save')][string]$Mode)
+    if ($null -ne $Session.Job) { return }
+    $report = $Session.Dialog.FindName('SolutionOutput').Text
+    if ([string]::IsNullOrWhiteSpace($report)) { return }
+    try {
+        if ($Mode -eq 'Copy') {
+            Set-V3ClipboardText -Text $report
+            $Session.Dialog.FindName('SolutionStatus').Text = 'Historico copiado. Cole no registro do atendimento.'
+        }
+        else {
+            $path = Get-V3ReportSavePath -Owner $Session.Dialog
+            if ([string]::IsNullOrEmpty($path)) { return }
+            [IO.File]::WriteAllText($path, $report, [Text.UTF8Encoding]::new($true))
+            $Session.Dialog.FindName('SolutionStatus').Text = 'Historico salvo em ' + $path
+        }
+    }
+    catch {
+        $Session.Dialog.FindName('SolutionStatus').Text = if ($Mode -eq 'Copy') { 'Copia indisponivel. Tente novamente ou salve o historico.' } else { "Nao foi possivel salvar: $($_.Exception.Message)" }
+    }
+}
+
+function Save-V3SolutionOutcome {
+    param($Session)
+    if ($null -ne $Session.Job -or -not $Session.Validated) { return }
+    $index = $Session.Dialog.FindName('SolutionOutcome').SelectedIndex
+    if ($index -notin @(1, 2, 3)) { return }
+    $code = @('Pending', 'ResolvedByOperator', 'PersistsByOperator', 'NotTestedByOperator')[$index]
+    $description = @('', 'Operador informa: sintoma original testado e resolvido.', 'Operador informa: sintoma original testado e persiste. Investigue as outras causas descritas no plano.', 'Operador informa: sintoma original ainda nao testado. Atendimento pendente de validacao com o usuario.')[$index]
+    try {
+        Write-V3SolutionAudit -Id $Session.Id -Stage 'Outcome' -Status $code -Confirmed $false
+        Add-V3SolutionHistory $Session 'Resultado informado pelo operador' $description
+        $Session.Dialog.FindName('SolutionStatus').Text = $description
+    }
+    catch { $Session.Dialog.FindName('SolutionStatus').Text = 'Resultado nao registrado: arquivo de auditoria indisponivel. Tente novamente.' }
+}
+
+function Start-V3SolutionStage {
+    param($Session, [ValidateSet('Diagnose', 'Repair', 'Validate')][string]$Stage)
+    if ($null -ne $Session.Job) { return }
+    $solution = @(Get-V3SolutionCatalog | Where-Object Id -eq $Session.Id)
+    if ($solution.Count -ne 1) { throw 'Solucao desconhecida.' }
+    $confirmed = $false
+    if ($Stage -eq 'Repair') {
+        if (-not $Session.Diagnosed -or $Session.RepairAttempted) { $Session.Dialog.FindName('SolutionStatus').Text = 'Execute um novo diagnostico antes da correcao.'; return }
+        if ($solution[0].RequiresAdmin -and -not (Test-V3Admin)) { $Session.Dialog.FindName('SolutionStatus').Text = 'Esta correcao exige administrador. O diagnostico permanece disponivel.'; return }
+        $confirmed = Confirm-V3SolutionRepair -Solution $solution[0] -Dialog $Session.Dialog
+        if (-not $confirmed) { Add-V3SolutionHistory $Session 'Repair' 'Correcao cancelada. Nenhuma acao executada.'; $Session.Dialog.FindName('SolutionStatus').Text = 'Correcao cancelada. Nenhuma acao executada.'; return }
+    }
+    if ($Stage -eq 'Validate' -and -not $Session.RepairAttempted) { return }
+    if ($Stage -eq 'Diagnose') { $Session.Diagnosed = $false; $Session.RepairAttempted = $false }
+    $Session.Validated = $false
+    $Session.Dialog.FindName('SolutionOutcome').SelectedIndex = 0
+    $pipeline = [powershell]::Create()
+    $startedRecorded = $false
+    try {
+        Write-V3SolutionAudit -Id $Session.Id -Stage $Stage -Status 'Started' -Confirmed $confirmed
+        $startedRecorded = $true
+        [void]$pipeline.AddScript((Get-V3SolutionWorkerText)).AddArgument($script:RootPath).AddArgument($Session.Id).AddArgument($Stage).AddArgument($confirmed)
+        $handle = $pipeline.BeginInvoke()
+        $Session.Job = [pscustomobject]@{ Pipeline = $pipeline; Handle = $handle; Stage = $Stage; Confirmed = $confirmed; Cancelled = $false; StopHandle = $null }
+        $Session.Dialog.FindName('SolutionStatus').Text = 'Etapa em andamento. Aguarde; o diagnostico do Office pode demorar.'
+        Update-V3SolutionControls $Session
+        $Session.Timer.Start()
+    }
+    catch {
+        $pipeline.Dispose()
+        if ($startedRecorded) { try { Write-V3SolutionAudit -Id $Session.Id -Stage $Stage -Status 'NotStarted' -Confirmed $confirmed } catch { } }
+        Add-V3SolutionHistory $Session $Stage ("Etapa nao iniciada: $($_.Exception.Message)")
+        $Session.Dialog.FindName('SolutionStatus').Text = 'Etapa nao iniciada. Confira o registro e as permissoes.'
+        Update-V3SolutionControls $Session
+    }
+}
+
+function Stop-V3SolutionConsultation {
+    param($Session)
+    if ($null -eq $Session.Job -or $Session.Job.Stage -eq 'Repair' -or $Session.Job.Cancelled) { return }
+    $Session.Job.Cancelled = $true
+    $Session.Job.StopHandle = $Session.Job.Pipeline.BeginStop($null, $null)
+    $Session.Dialog.FindName('SolutionStatus').Text = 'Cancelando consulta. Aguarde a conclusao.'
+    Update-V3SolutionControls $Session
+}
+
+function Complete-V3SolutionStage {
+    param($Session)
+    if ($null -eq $Session.Job -or -not $Session.Job.Handle.IsCompleted) { return }
+    $job = $Session.Job
+    if ($null -ne $job.StopHandle -and -not $job.StopHandle.IsCompleted) { return }
+    $status = 'Error'
+    try {
+        if ($null -ne $job.StopHandle) { $job.Pipeline.EndStop($job.StopHandle) }
+        if ($job.Cancelled) {
+            Add-V3SolutionHistory $Session $job.Stage 'Consulta cancelada. Esta etapa nao executa correcao.'
+            $status = 'Cancelled'
+            $Session.Dialog.FindName('SolutionStatus').Text = 'Consulta cancelada. Repita quando puder concluir a leitura.'
+            return
+        }
+        $result = $job.Pipeline.EndInvoke($job.Handle)
+        if ($job.Pipeline.HadErrors) { throw 'A etapa apresentou erro de execucao.' }
+        if ($result.Count -eq 1 -and $result[0].PSObject.Properties['Status'] -and $result[0].Status -eq 'Blocked') {
+            $Session.Diagnosed = $false
+            Add-V3SolutionHistory $Session $job.Stage $result[0].Report
+            $status = 'Blocked'
+            $Session.Dialog.FindName('SolutionStatus').Text = 'Correcao bloqueada antes de executar. Confira a orientacao no historico.'
+            return
+        }
+        $operationStatus = 'Completed'
+        if ($job.Stage -ne 'Repair' -and $result.Count -eq 1 -and $result[0].PSObject.Properties['Status']) {
+            if ($result[0].Status -notin @('ReadSucceeded', 'ReadFailed')) { throw 'Estado de leitura desconhecido.' }
+            $report = [string]$result[0].Report
+            if ([string]::IsNullOrWhiteSpace($report)) { throw 'A consulta nao retornou relatorio.' }
+            if ($result[0].Status -eq 'ReadFailed') {
+                if ($job.Stage -eq 'Diagnose') { $Session.Diagnosed = $false }
+                Add-V3SolutionHistory $Session $job.Stage ($report + "`r`n`r`nConsulta incompleta. Confira a orientacao e repita; esta leitura nao libera correcao nem registro de resolucao.")
+                $status = 'ReadFailed'
+                $Session.Dialog.FindName('SolutionStatus').Text = 'Consulta incompleta. Repita a leitura antes de corrigir ou registrar o resultado.'
+                return
+            }
+            $operationStatus = 'ReadSucceeded'
+        }
+        elseif ($job.Stage -eq 'Repair' -and $result.Count -eq 1 -and $result[0].PSObject.Properties['Status']) {
+            if ($result[0].Status -notin @('Applied', 'Failed')) { throw 'Estado de correcao desconhecido.' }
+            $operationStatus = $result[0].Status
+            $report = [string]$result[0].Report
+        }
+        else { $report = $result -join [Environment]::NewLine }
+        if ([string]::IsNullOrWhiteSpace($report)) { throw 'A etapa nao retornou um relatorio.' }
+        if ($job.Stage -eq 'Diagnose') { $Session.Diagnosed = $true }
+        if ($job.Stage -eq 'Repair') { $Session.RepairAttempted = $true }
+        if ($job.Stage -eq 'Validate') {
+            $Session.Validated = $true
+            $solution = Get-V3SolutionCatalog | Where-Object Id -eq $Session.Id
+            $report += "`r`n`r`nVALIDACAO DO CHAMADO:`r`n" + $solution.Validate
+        }
+        Add-V3SolutionHistory $Session $job.Stage $report
+        $status = $operationStatus
+        $Session.Dialog.FindName('SolutionStatus').Text = switch ($status) {
+            'Applied' { 'Comando aplicado. Valide novamente e teste o sintoma original antes de registrar resolucao.' }
+            'Failed' { 'Correcao sem sucesso confirmado. Pode haver alteracoes parciais; valide o estado antes de repetir.' }
+            default { 'Etapa encerrada. Confira o relatorio; conclusao nao significa problema resolvido.' }
+        }
+    }
+    catch {
+        if ($job.Stage -eq 'Repair') { $Session.RepairAttempted = $true }
+        $guidance = if ($job.Stage -eq 'Repair') { 'Uma correcao iniciada pode ter sido parcialmente aplicada. Valide o estado antes de repetir.' } else { 'A consulta falhou. Um diagnostico inicial incompleto nao libera a correcao.' }
+        Add-V3SolutionHistory $Session $job.Stage ("Falha na etapa: $($_.Exception.Message)`r`n$guidance")
+        $Session.Dialog.FindName('SolutionStatus').Text = 'Falha registrada. Confira o relatorio antes de repetir.'
+    }
+    finally {
+        try { Write-V3SolutionAudit -Id $Session.Id -Stage $job.Stage -Status $status -Confirmed $job.Confirmed }
+        catch { $Session.Dialog.FindName('SolutionStatus').Text += ' Registro em arquivo indisponivel; salve o relatorio.' }
+        $job.Pipeline.Dispose()
+        $Session.Job = $null
+        $Session.Timer.Stop()
+        Update-V3SolutionControls $Session
+    }
+}
+
+function Set-V3SolutionSelection {
+    param($Session)
+    $solution = $Session.Dialog.FindName('SolutionChoice').SelectedItem
+    if ($null -eq $solution -or $null -ne $Session.Job) { return }
+    $Session.Id = $solution.Id
+    $Session.Diagnosed = $false
+    $Session.RepairAttempted = $false
+    $Session.Validated = $false
+    $Session.Dialog.FindName('SolutionOutcome').SelectedIndex = 0
+    $Session.Dialog.FindName('SolutionPlan').Text = "QUANDO USAR`r`n$($solution.Situation)`r`n`r`nANTES DE EXECUTAR`r`n$($solution.Preconditions)`r`n`r`nIMPACTO E COMANDO`r`n$($solution.Impact)`r`n$($solution.Command)`r`n`r`nCOMO VALIDAR`r`n$($solution.Validate)"
+    $Session.Dialog.FindName('SolutionStatus').Text = 'Comece pelo diagnostico. As correcoes exigem confirmacao.'
+    Update-V3SolutionControls $Session
+}
+
+function New-V3SolutionSession {
+    param($Checkpoint = $null)
+    $solutionXaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Solucoes guiadas - ServiceDesk Toolkit" Width="860" Height="700" MinWidth="720" MinHeight="480" WindowStartupLocation="CenterOwner" Background="#F3F6FA" FontFamily="Segoe UI">
+  <Grid Margin="16" Background="#F3F6FA">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel><TextBlock Text="Soluções guiadas" FontSize="22" FontWeight="Bold" Foreground="#0F172A"/><TextBlock Text="Selecione o problema e siga uma etapa por vez." Margin="0,4,0,10"/><ComboBox Name="SolutionChoice" DisplayMemberPath="Title" Height="32" AutomationProperties.Name="Problema do atendimento"/><WrapPanel Margin="0,10,0,8"><Button Name="SolutionDiagnose" Content="1. Diagnosticar" Padding="12,6" Margin="0,0,8,0"/><Button Name="SolutionRepair" Content="2. Aplicar correção" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/><Button Name="SolutionValidate" Content="3. Validar novamente" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/><Button Name="SolutionCancel" Content="Cancelar consulta" Padding="12,6" Visibility="Collapsed"/></WrapPanel></StackPanel>
+    <TextBox Name="SolutionPlan" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="180" Padding="10" Margin="0,0,0,10" AutomationProperties.Name="Condições e impacto da solução"/>
+    <TextBox Name="SolutionOutput" Grid.Row="2" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Padding="10" AutomationProperties.Name="Histórico das etapas do atendimento"/>
+    <StackPanel Grid.Row="3" Margin="0,10,0,0"><WrapPanel Margin="0,0,0,8"><ComboBox Name="SolutionOutcome" Width="280" Height="30" SelectedIndex="0" IsEnabled="False" AutomationProperties.Name="Resultado do teste do sintoma"><ComboBoxItem Content="Após validar, informe o resultado"/><ComboBoxItem Content="Testei o sintoma: resolvido"/><ComboBoxItem Content="Testei o sintoma: persiste"/><ComboBoxItem Content="Ainda não testei o sintoma"/></ComboBox><Button Name="SolutionRecordOutcome" Content="4. Registrar resultado" Padding="8,6" Margin="8,0,0,0" IsEnabled="False"/><Button Name="SolutionCopy" Content="Copiar histórico" Padding="8,6" Margin="8,0,0,0" IsEnabled="False"/><Button Name="SolutionSave" Content="Salvar histórico" Padding="8,6" Margin="8,0,0,0" IsEnabled="False"/></WrapPanel><TextBlock Name="SolutionStatus" TextWrapping="Wrap" Foreground="#334155" AutomationProperties.LiveSetting="Polite"/><TextBlock Text="Copie ou salve o histórico após concluir a etapa. Ele também permanece no resultado principal ao fechar." FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
+  </Grid>
+</Window>
+'@
+    [xml]$layout = $solutionXaml
+    $dialog = [Windows.Markup.XamlReader]::Load([Xml.XmlNodeReader]::new($layout))
+    if ($window.IsVisible) { $dialog.Owner = $window }
+    $dialog.Width = [math]::Min($dialog.Width, [Windows.SystemParameters]::WorkArea.Width)
+    $dialog.Height = [math]::Min($dialog.Height, [Windows.SystemParameters]::WorkArea.Height)
+    $session = [pscustomobject]@{ Dialog = $dialog; Id = ''; Diagnosed = $false; RepairAttempted = $false; Validated = $false; Job = $null; Timer = [Windows.Threading.DispatcherTimer]::new(); History = [Text.StringBuilder]::new(); EntryCount = 0 }
+    foreach ($solution in Get-V3SolutionCatalog) { [void]$dialog.FindName('SolutionChoice').Items.Add($solution) }
+    if ($null -ne $Checkpoint -and $Checkpoint.EntryCount -gt 0 -and -not [string]::IsNullOrWhiteSpace($Checkpoint.History)) {
+        [void]$session.History.Append($Checkpoint.History)
+        $session.EntryCount = $Checkpoint.EntryCount
+        Update-V3SolutionHistoryView $session
+    }
+    return $session
+}
+
+function Get-V3SolutionCheckpoint {
+    param($Session)
+    if ($null -ne $Session.Job) { throw 'Aguarde a etapa antes de guardar o atendimento.' }
+    return [pscustomobject]@{ Id = $Session.Id; EntryCount = $Session.EntryCount; History = $Session.History.ToString() }
+}
+
+function Update-V3SolutionLayout {
+    param($Session)
+    $Session.Dialog.FindName('SolutionPlan').MaxHeight = if ($Session.Dialog.Content.ActualHeight -lt 560) { 110 } else { 180 }
+}
+
+function Open-V3SolutionCatalog {
+    $script:V3SolutionSession = New-V3SolutionSession -Checkpoint $script:V3SolutionCheckpoint
+    $session = $script:V3SolutionSession
+    $session.Timer.Interval = [TimeSpan]::FromMilliseconds(300)
+    $session.Timer.Add_Tick({ Complete-V3SolutionStage $script:V3SolutionSession })
+    $session.Dialog.Content.Add_SizeChanged({ Update-V3SolutionLayout $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionChoice').Add_SelectionChanged({ Set-V3SolutionSelection $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionDiagnose').Add_Click({ Start-V3SolutionStage $script:V3SolutionSession 'Diagnose' })
+    $session.Dialog.FindName('SolutionRepair').Add_Click({ Start-V3SolutionStage $script:V3SolutionSession 'Repair' })
+    $session.Dialog.FindName('SolutionValidate').Add_Click({ Start-V3SolutionStage $script:V3SolutionSession 'Validate' })
+    $session.Dialog.FindName('SolutionCancel').Add_Click({ Stop-V3SolutionConsultation $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionOutcome').Add_SelectionChanged({ Update-V3SolutionControls $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionRecordOutcome').Add_Click({ Save-V3SolutionOutcome $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionCopy').Add_Click({ Export-V3SolutionHistory $script:V3SolutionSession 'Copy' })
+    $session.Dialog.FindName('SolutionSave').Add_Click({ Export-V3SolutionHistory $script:V3SolutionSession 'Save' })
+    $session.Dialog.Add_Closing({
+        param($sender, $eventArgs)
+        if ($null -ne $script:V3SolutionSession.Job) { $eventArgs.Cancel = $true; $script:V3SolutionSession.Dialog.FindName('SolutionStatus').Text = 'Aguarde a etapa em andamento antes de fechar.' }
+    })
+    $session.Dialog.FindName('SolutionChoice').SelectedIndex = 0
+    if ($null -ne $script:V3SolutionCheckpoint) {
+        foreach ($item in $session.Dialog.FindName('SolutionChoice').Items) {
+            if ($item.Id -eq $script:V3SolutionCheckpoint.Id) { $session.Dialog.FindName('SolutionChoice').SelectedItem = $item; break }
+        }
+    }
+    if ($session.EntryCount -gt 0) { $session.Dialog.FindName('SolutionStatus').Text = 'Historico recuperado desta sessao. Execute novo diagnostico antes de outra correcao.' }
+    try { [void]$session.Dialog.ShowDialog() }
+    finally { $session.Timer.Stop(); $script:V3SolutionCheckpoint = Get-V3SolutionCheckpoint $session; $script:V3SolutionSession = $null }
+}
+
+$xaml = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="ServiceDesk Toolkit Corporate V3 | Temas" Height="820" Width="1180" WindowStartupLocation="CenterScreen" Background="#F3F6FA" FontFamily="Segoe UI" MinWidth="820" MinHeight="480">
     <Window.Resources>
         <Style x:Key="NavButton" TargetType="Button">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Margin" Value="0,4,0,0"/>
-            <Setter Property="Padding" Value="12,0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Background" Value="#162033"/>
-            <Setter Property="Foreground" Value="#E5E7EB"/>
-            <Setter Property="BorderBrush" Value="#263449"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Background" Value="#162033" />
+            <Setter Property="Foreground" Value="#E5E7EB" />
+            <Setter Property="BorderBrush" Value="#263449" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#2563EB" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#60A5FA" />
+                                <Setter TargetName="ButtonSurface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.65" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-
         <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Margin" Value="0,6,8,0"/>
-            <Setter Property="Padding" Value="14,0"/>
-            <Setter Property="Background" Value="#1D4ED8"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#1D4ED8"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0,6,8,0" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Background" Value="#1D4ED8" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#1D4ED8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
-
-    <Style x:Key="ActionGridButton" TargetType="Button">
-        <Setter Property="Height" Value="38"/>
-        <Setter Property="Margin" Value="4,4,4,4"/>
-        <Setter Property="Padding" Value="8,0"/>
-        <Setter Property="HorizontalAlignment" Value="Stretch"/>
-        <Setter Property="VerticalAlignment" Value="Stretch"/>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Background" Value="#FFFFFF"/>
-        <Setter Property="Foreground" Value="#0F172A"/>
-        <Setter Property="BorderBrush" Value="#CBD5E1"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-
-    <Style x:Key="SoftButton" TargetType="Button">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Margin" Value="0,6,8,0"/>
-            <Setter Property="Padding" Value="14,0"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#0F172A"/>
-            <Setter Property="BorderBrush" Value="#CBD5E1"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+        <Style x:Key="ActionGridButton" TargetType="Button">
+            <Setter Property="MinHeight" Value="82" />
+            <Setter Property="Margin" Value="4,4,4,4" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#2563EB" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#60A5FA" />
+                                <Setter TargetName="ButtonSurface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.65" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-
+        <Style x:Key="SoftButton" TargetType="Button">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0,6,8,0" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
         <Style x:Key="DangerButton" TargetType="Button">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Margin" Value="0,6,8,0"/>
-            <Setter Property="Padding" Value="14,0"/>
-            <Setter Property="Background" Value="#FEF2F2"/>
-            <Setter Property="Foreground" Value="#991B1B"/>
-            <Setter Property="BorderBrush" Value="#FCA5A5"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0,6,8,0" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Background" Value="#FEF2F2" />
+            <Setter Property="Foreground" Value="#991B1B" />
+            <Setter Property="BorderBrush" Value="#FCA5A5" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
-
         <Style x:Key="FooterLinkButton" TargetType="Button">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="8,0,0,0"/>
-            <Setter Property="Padding" Value="12,0"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#1D4ED8"/>
-            <Setter Property="BorderBrush" Value="#BFDBFE"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="Foreground" Value="#1D4ED8" />
+            <Setter Property="BorderBrush" Value="#BFDBFE" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#2563EB" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#60A5FA" />
+                                <Setter TargetName="ButtonSurface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.65" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
-
-    <Grid>
+    <Grid Name="AppSurface" Background="#F3F6FA">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-
         <Border Grid.Column="0" Background="#0F172A">
-            <StackPanel Margin="18">
-                <TextBlock Text="ServiceDesk" Foreground="White" FontSize="24" FontWeight="Bold"/>
-                <TextBlock Text="Corporate V3" Foreground="#60A5FA" FontSize="18" FontWeight="Bold"/>
-                <TextBlock Text="Central guiada de atendimento" Foreground="#CBD5E1" FontSize="12" Margin="0,4,0,18"/>
-
-                <Button Name="BtnV3NavHome" Content="Início" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavGuided" Content="Atendimento Guiado" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavEvidence" Content="Evidências" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavSafeFix" Content="Correções Seguras" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavAdvanced" Content="Avançado" Style="{StaticResource NavButton}"/>
-                <Button Name="BtnV3NavToolkit" Content="Toolkit" Style="{StaticResource NavButton}"/>
-            </StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="18,24">
+                    <TextBlock Text="ServiceDesk" Foreground="White" FontSize="24" FontWeight="Bold" />
+                    <TextBlock Text="Corporate V3" Foreground="#60A5FA" FontSize="18" FontWeight="Bold" Margin="0,0,0,24" />
+                    <TextBlock Text="EXPLORAR TEMAS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" Margin="0,0,0,12" />
+                    <Button Name="NavAll" Tag="All" Content="Todos os temas" Style="{StaticResource NavButton}" />
+                    <Button Name="NavOverview" Tag="Overview" Content="Visão geral" Style="{StaticResource NavButton}" />
+                    <Button Name="NavNetwork" Tag="Network" Content="Rede e internet" Style="{StaticResource NavButton}" />
+                    <Button Name="NavVpn" Tag="Vpn" Content="VPN / Appgate" Style="{StaticResource NavButton}" />
+                    <Button Name="NavPrinters" Tag="Printers" Content="Impressoras" Style="{StaticResource NavButton}" />
+                    <Button Name="NavOffice" Tag="Office" Content="Office / TPM" Style="{StaticResource NavButton}" />
+                    <Button Name="NavWindows" Tag="Windows" Content="Windows" Style="{StaticResource NavButton}" />
+                    <TextBlock Text="TIPO DE AÇÃO" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" Margin="0,18,0,6" />
+                    <ComboBox Name="ActionKind" SelectedIndex="0" Height="34" Padding="8,4" FontSize="12" AutomationProperties.Name="Filtrar por tipo de ação" ToolTip="Combina o tipo de ação com o tema e a busca atuais.">
+                        <ComboBoxItem Tag="All" Content="Todas as ações" />
+                        <ComboBoxItem Tag="Consultation" Content="Diagnósticos e consultas" />
+                        <ComboBoxItem Tag="Maintenance" Content="Correções e manutenção" />
+                    </ComboBox>
+                    <TextBlock Text="Comece por uma consulta. As ações de manutenção ficam separadas em cada tema." Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,24,0,0" />
+                    <TextBlock Text="Ctrl+F  Buscar ações&#x0a;Ctrl+Shift+F  Localizar no resultado&#x0a;F6  Busca / resultado&#x0a;Esc  Limpar busca / voltar" Foreground="#CBD5E1" FontSize="12" TextWrapping="Wrap" Margin="0,18,0,0" />
+                </StackPanel>
+            </ScrollViewer>
         </Border>
-
-        <Grid Grid.Column="1" Margin="24">
+        <Grid Name="WorkspaceGrid" Grid.Column="1" Margin="20">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" MinHeight="100" />
+                <RowDefinition Height="12" />
+                <RowDefinition Height="230" MinHeight="200" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-
-            <Border Grid.Row="0" Background="White" CornerRadius="18" Padding="22" BorderBrush="#E2E8F0" BorderThickness="1">
+            <Border Grid.Row="0" Background="White" CornerRadius="12" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
                 <StackPanel>
-                    <TextBlock Text="Central de Atendimento Técnico" FontSize="26" FontWeight="Bold" Foreground="#0F172A"/>
-                    <TextBlock Text="Experiência limpa, guiada e com menos botões para triagem corporativa." FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
+                    <TextBlock Name="WorkspaceTitle" Text="Central de Atendimento Técnico" FontSize="24" FontWeight="Bold" Foreground="#0F172A" />
+                    <TextBlock Name="WorkspaceDescription" Text="Escolha um tema, consulte o diagnóstico e acompanhe o resultado." FontSize="13" Foreground="#64748B" Margin="0,4,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
-
-            <UniformGrid Grid.Row="1" Columns="4" Margin="0,14,0,14">
-                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
+            <ScrollViewer Name="ActionsScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,10">
+                <Border Background="White" CornerRadius="12" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,14">
                     <StackPanel>
-                        <TextBlock Text="HOSTNAME" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
-                        <TextBlock Name="CardV3Host" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
+                        <StackPanel Name="TopicOverview" Margin="0,0,0,20">
+                            <UniformGrid Name="StationCards" Columns="4" Margin="0,0,0,18">
+                                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
+                                    <StackPanel>
+                                        <TextBlock Text="COMPUTADOR" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Name="CardV3Host" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
+                                    <StackPanel>
+                                        <TextBlock Text="USUÁRIO" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Name="CardV3User" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
+                                    <StackPanel>
+                                        <TextBlock Text="ADMINISTRADOR" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Name="CardV3Admin" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="VERSÃO" Foreground="#64748B" FontSize="11" FontWeight="Bold" />
+                                        <TextBlock Name="CardV3Version" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+                            <TextBlock Text="Visão geral" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Comece pela saúde e pelo inventário." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3Health" Style="{StaticResource ActionGridButton}" Tag="Visão geral Saúde da máquina Avalia memória, disco e reinicialização pendente." ToolTip="Avalia memória, disco e reinicialização pendente.">
+                                        <StackPanel>
+                                            <TextBlock Text="Saúde da máquina" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Avalia memória, disco e reinicialização pendente." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Inventory" Style="{StaticResource ActionGridButton}" Tag="Visão geral Inventário Consulta hardware e sistema operacional." ToolTip="Consulta hardware e sistema operacional.">
+                                        <StackPanel>
+                                            <TextBlock Text="Inventário" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta hardware e sistema operacional." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Solutions" Style="{StaticResource ActionGridButton}" Tag="Visão geral Soluções guiadas resolver DNS impressora spooler Office login WAM comandos PowerShell" ToolTip="Diagnosticar, avaliar impacto, aplicar correção confirmada e validar o sintoma.">
+                                        <StackPanel><TextBlock Text="Soluções guiadas" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13"/><TextBlock Text="DNS, impressão e login do Office, com etapas e histórico." TextWrapping="Wrap" FontSize="11" Foreground="#64748B" Margin="0,5,0,0"/></StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicNetwork" Margin="0,0,0,20">
+                            <TextBlock Text="Rede e internet" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Investigue conectividade, DNS e rotas." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3QuickInternet" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Sem internet Conduz a triagem de falhas de internet." ToolTip="Conduz a triagem de falhas de internet.">
+                                        <StackPanel>
+                                            <TextBlock Text="Sem internet" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Conduz a triagem de falhas de internet." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Network" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Diagnóstico de rede Reúne os principais indicadores de conectividade." ToolTip="Reúne os principais indicadores de conectividade.">
+                                        <StackPanel>
+                                            <TextBlock Text="Diagnóstico de rede" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Reúne os principais indicadores de conectividade." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3NetworkAdvanced" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Rede: adaptadores e IP Exibe adaptadores, endereços e configuração IP." ToolTip="Exibe adaptadores, endereços e configuração IP.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: adaptadores e IP" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Exibe adaptadores, endereços e configuração IP." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3DnsDetails" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Rede: DNS detalhado Consulta servidores DNS e resolução de nomes." ToolTip="Consulta servidores DNS e resolução de nomes.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: DNS detalhado" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta servidores DNS e resolução de nomes." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Routes" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Rede: rotas Exibe caminhos e rotas configuradas." ToolTip="Exibe caminhos e rotas configuradas.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: rotas" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Exibe caminhos e rotas configuradas." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Gateway" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Rede: testar gateway Verifica a resposta do gateway padrão." ToolTip="Verifica a resposta do gateway padrão.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: testar gateway" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Verifica a resposta do gateway padrão." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3NetworkConnections" Style="{StaticResource ActionGridButton}" Tag="Rede e internet Abrir conexões de rede Abre os adaptadores nas configurações do Windows." ToolTip="Abre os adaptadores nas configurações do Windows.">
+                                        <StackPanel>
+                                            <TextBlock Text="Abrir conexões de rede" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Abre os adaptadores nas configurações do Windows." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3FlushDns" Style="{StaticResource ActionGridButton}" Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Rede e internet Limpar DNS Limpa o cache DNS e verifica o resultado." ToolTip="Limpa o cache DNS e verifica o resultado.">
+                                        <StackPanel>
+                                            <TextBlock Text="Limpar DNS" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Limpa o cache DNS e verifica o resultado." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3RenewIp" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a conexão temporariamente e exige confirmação." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Rede e internet Rede: renovar IP Renova o IP; interrompe a conexão temporariamente.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: renovar IP" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Renova o IP; interrompe a conexão temporariamente." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Winsock" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Rede e internet Rede: reset Winsock Redefine Winsock; exige administrador e reinício.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: reset Winsock" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Redefine Winsock; exige administrador e reinício." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3TcpIp" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Rede e internet Rede: reset TCP/IP Redefine TCP/IP; exige administrador e reinício.">
+                                        <StackPanel>
+                                            <TextBlock Text="Rede: reset TCP/IP" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Redefine TCP/IP; exige administrador e reinício." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicVpn" Margin="0,0,0,20">
+                            <TextBlock Text="VPN / Appgate" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Confira o cliente e os serviços antes de corrigir." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3QuickVpn" Style="{StaticResource ActionGridButton}" Tag="VPN / Appgate VPN / Appgate Conduz a triagem de acesso pela VPN." ToolTip="Conduz a triagem de acesso pela VPN.">
+                                        <StackPanel>
+                                            <TextBlock Text="VPN / Appgate" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Conduz a triagem de acesso pela VPN." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3AppgateStatus" Style="{StaticResource ActionGridButton}" Tag="VPN / Appgate Appgate: status Consulta configuração, serviços e processos." ToolTip="Consulta configuração, serviços e processos.">
+                                        <StackPanel>
+                                            <TextBlock Text="Appgate: status" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta configuração, serviços e processos." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3AppgateRestart" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a VPN temporariamente e exige confirmação." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="VPN / Appgate Appgate: reiniciar Reinicia o cliente; interrompe a VPN temporariamente.">
+                                        <StackPanel>
+                                            <TextBlock Text="Appgate: reiniciar" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Reinicia o cliente; interrompe a VPN temporariamente." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3AppgateFix" Style="{StaticResource ActionGridButton}" ToolTip="Cria backup e ajusta RunScriptTimeout com confirmação." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="VPN / Appgate Appgate: ajustar Cria backup e ajusta timeout.">
+                                        <StackPanel>
+                                            <TextBlock Text="Appgate: ajustar" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Cria backup e ajusta timeout." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicPrinters" Margin="0,0,0,20">
+                            <TextBlock Text="Impressoras" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Consulte impressoras, filas e serviço de impressão." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3Printers" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressoras Conduz a triagem de uma impressora que não imprime." ToolTip="Conduz a triagem de uma impressora que não imprime.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressoras" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Conduz a triagem de uma impressora que não imprime." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3PrinterList" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressoras: listar Lista as impressoras instaladas." ToolTip="Lista as impressoras instaladas.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressoras: listar" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Lista as impressoras instaladas." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3PrintJobs" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressoras: filas Consulta documentos pendentes nas filas." ToolTip="Consulta documentos pendentes nas filas.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressoras: filas" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta documentos pendentes nas filas." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3DefaultPrinter" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressora padrão Identifica a impressora padrão." ToolTip="Identifica a impressora padrão.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressora padrão" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Identifica a impressora padrão." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3OfflinePrinters" Style="{StaticResource ActionGridButton}" Tag="Impressoras Impressoras offline Consulta impressoras offline ou com alertas." ToolTip="Consulta impressoras offline ou com alertas.">
+                                        <StackPanel>
+                                            <TextBlock Text="Impressoras offline" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta impressoras offline ou com alertas." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3PrinterSettings" Style="{StaticResource ActionGridButton}" Tag="Impressoras Abrir impressoras Abre as configurações de impressoras do Windows." ToolTip="Abre as configurações de impressoras do Windows.">
+                                        <StackPanel>
+                                            <TextBlock Text="Abrir impressoras" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Abre as configurações de impressoras do Windows." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3PrintManagement" Style="{StaticResource ActionGridButton}" Tag="Impressoras Gerenciar impressão Abre o console de gerenciamento de impressão." ToolTip="Abre o console de gerenciamento de impressão.">
+                                        <StackPanel>
+                                            <TextBlock Text="Gerenciar impressão" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Abre o console de gerenciamento de impressão." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3Spooler" Style="{StaticResource ActionGridButton}" Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Impressoras Reiniciar spooler Reinicia o serviço de impressão e verifica o estado." ToolTip="Reinicia o serviço de impressão e verifica o estado.">
+                                        <StackPanel>
+                                            <TextBlock Text="Reiniciar spooler" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Reinicia o serviço de impressão e verifica o estado." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3ClearPrintQueue" Style="{StaticResource ActionGridButton}" ToolTip="Remove trabalhos pendentes e exige confirmação administrativa." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Impressoras Limpar fila de impressão Remove documentos pendentes; exige confirmação.">
+                                        <StackPanel>
+                                            <TextBlock Text="Limpar fila de impressão" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Remove documentos pendentes; exige confirmação." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicOffice" Margin="0,0,0,20">
+                            <TextBlock Text="Office / TPM" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Investigue autenticação, licenças e proteção." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3OfficeTpm" Style="{StaticResource ActionGridButton}" ToolTip="Diagnostica Office, TPM, WAM, licenciamento e estado Entra sem executar correcao." Tag="Office / TPM Office / TPM Consulta Office, TPM, WAM, licenças e Entra.">
+                                        <StackPanel>
+                                            <TextBlock Text="Office / TPM" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Consulta Office, TPM, WAM, licenças e Entra." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3OfficeWam" Style="{StaticResource ActionGridButton}" ToolTip="Repara o login WAM de Microsoft 365 e Office 2016, 2019 e 2021. Nao limpa TPM nem credenciais." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Office / TPM Reparar login Office Registra componentes WAM novamente no perfil atual.">
+                                        <StackPanel>
+                                            <TextBlock Text="Reparar login Office" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Registra componentes WAM novamente no perfil atual." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Name="TopicWindows" Margin="0,0,0,20">
+                            <TextBlock Text="Windows" FontSize="20" FontWeight="Bold" Foreground="#0F172A" />
+                            <TextBlock Text="Horário e manutenção dos componentes do Windows." TextWrapping="Wrap" Foreground="#64748B" Margin="0,4,0,12" />
+                            <StackPanel Tag="ActionsGroup" Uid="Consultation">
+                                <TextBlock Text="DIAGNÓSTICOS E CONSULTAS" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3Storage" Style="{StaticResource ActionGridButton}" Tag="Windows espaço disco armazenamento liberar limpeza temporários Outlook OST PST OneDrive SCCM Lixeira arquivos grandes passo a passo" ToolTip="Coleta somente leitura em segundo plano, com limites. Mostra achados e um plano por situação; não apaga arquivos.">
+                                        <StackPanel>
+                                            <TextBlock Text="Espaço em disco: diagnóstico e plano" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Identifica arquivos e orienta a liberação por situação." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                            <StackPanel Tag="ActionsGroup" Uid="Maintenance">
+                                <TextBlock Text="CORREÇÕES E MANUTENÇÃO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="4,10,0,6" />
+                                <TextBlock Text="Confira o impacto indicado antes de executar uma correção." TextWrapping="Wrap" Foreground="#92400E" Margin="4,0,0,6" />
+                                <UniformGrid Columns="2">
+                                    <Button Name="BtnV3TimeSync" Style="{StaticResource ActionGridButton}" Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Windows Sincronizar horário Sincroniza o horário e verifica antes e depois." ToolTip="Sincroniza o horário e verifica antes e depois.">
+                                        <StackPanel>
+                                            <TextBlock Text="Sincronizar horário" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Sincroniza o horário e verifica antes e depois." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Sfc" Style="{StaticResource ActionGridButton}" ToolTip="Verifica e tenta reparar arquivos protegidos do Windows. Exige permissão administrativa." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Windows SFC: verificar arquivos Verifica e pode reparar arquivos do Windows.">
+                                        <StackPanel>
+                                            <TextBlock Text="SFC: verificar arquivos" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Verifica e pode reparar arquivos do Windows." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="BtnV3Dism" Style="{StaticResource ActionGridButton}" ToolTip="Repara a imagem de componentes do Windows. Exige permissão administrativa e pode depender do Windows Update." Background="#FFFBEB" BorderBrush="#FDE68A" Tag="Windows DISM: reparar imagem Repara componentes; pode depender do Windows Update.">
+                                        <StackPanel>
+                                            <TextBlock Text="DISM: reparar imagem" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="Repara componentes; pode depender do Windows Update." TextWrapping="Wrap" FontWeight="Normal" FontSize="11" Foreground="#64748B" Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </UniformGrid>
+                            </StackPanel>
+                        </StackPanel>
+                        <TextBlock Name="NoActions" Visibility="Collapsed" Text="Nenhuma ação encontrada neste tema. Limpe a busca ou selecione Todos os temas." TextWrapping="Wrap" FontSize="14" Foreground="#64748B" Margin="0,12" />
+                        <Button Name="BtnV3ResetFilters" Visibility="Collapsed" Content="Exibir todas as ações" Style="{StaticResource FooterLinkButton}" HorizontalAlignment="Left" Height="34" Margin="0,0,0,12" ToolTip="Limpa a busca, seleciona todos os temas e todos os tipos de ação. Preserva o relatório." />
                     </StackPanel>
                 </Border>
-
-                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
-                    <StackPanel>
-                        <TextBlock Text="USUÁRIO" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
-                        <TextBlock Name="CardV3User" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,10,0">
-                    <StackPanel>
-                        <TextBlock Text="ADMIN" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
-                        <TextBlock Name="CardV3Admin" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="White" CornerRadius="14" Padding="14" BorderBrush="#E2E8F0" BorderThickness="1">
-                    <StackPanel>
-                        <TextBlock Text="VERSÃO" Foreground="#64748B" FontSize="11" FontWeight="Bold"/>
-                        <TextBlock Name="CardV3Version" Text="-" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                    </StackPanel>
-                </Border>
-            </UniformGrid>
-
-            <Border Grid.Row="2" Background="White" CornerRadius="18" Padding="18" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,14">
-                <StackPanel>
-                    <TextBlock Text="Ações principais da V3" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
-                    <TextBlock Text="Poucas ações visíveis. O restante fica protegido ou avançado." FontSize="12" Foreground="#64748B" Margin="0,2,0,10"/>
-
-                    <UniformGrid Columns="4" Margin="0,14,0,0">
-    <Button Name="BtnV3QuickInternet" Content="Sem internet" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3QuickVpn" Content="VPN / Appgate" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Inventory" Content="Inventário" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Network" Content="Diagnóstico de rede" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Printers" Content="Impressoras" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3OfficeTpm" Content="Office / TPM" Style="{StaticResource ActionGridButton}" ToolTip="Diagnostica Office, TPM, WAM, licenciamento e estado Entra sem executar correcao."/>
-    <Button Name="BtnV3OfficeWam" Content="Reparar login Office" Style="{StaticResource ActionGridButton}" ToolTip="Repara o login WAM de Microsoft 365 e Office 2016, 2019 e 2021. Nao limpa TPM nem credenciais."/>
-
-    <Button Name="BtnV3FlushDns" Content="Limpar DNS" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3TimeSync" Content="Sincronizar horário" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Spooler" Content="Reiniciar spooler" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Health" Content="Saúde da máquina" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Sfc" Content="SFC: verificar arquivos" Style="{StaticResource ActionGridButton}" ToolTip="Verifica e tenta reparar arquivos protegidos do Windows. Exige permissão administrativa."/>
-    <Button Name="BtnV3Dism" Content="DISM: reparar imagem" Style="{StaticResource ActionGridButton}" ToolTip="Repara a imagem de componentes do Windows. Exige permissão administrativa e pode depender do Windows Update."/>
-    <Button Name="BtnV3NetworkAdvanced" Content="Rede: adaptadores e IP" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3DnsDetails" Content="Rede: DNS detalhado" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Routes" Content="Rede: rotas" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3Gateway" Content="Rede: testar gateway" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3RenewIp" Content="Rede: renovar IP" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a conexão temporariamente e exige confirmação."/>
-    <Button Name="BtnV3Winsock" Content="Rede: reset Winsock" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização."/>
-    <Button Name="BtnV3TcpIp" Content="Rede: reset TCP/IP" Style="{StaticResource ActionGridButton}" ToolTip="Exige administrador, confirmação e reinicialização."/>
-    <Button Name="BtnV3NetworkConnections" Content="Abrir conexões de rede" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3PrinterList" Content="Impressoras: listar" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3PrintJobs" Content="Impressoras: filas" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3DefaultPrinter" Content="Impressora padrão" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3OfflinePrinters" Content="Impressoras offline" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3ClearPrintQueue" Content="Limpar fila de impressão" Style="{StaticResource ActionGridButton}" ToolTip="Remove trabalhos pendentes e exige confirmação administrativa."/>
-    <Button Name="BtnV3PrinterSettings" Content="Abrir impressoras" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3PrintManagement" Content="Gerenciar impressão" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3AppgateStatus" Content="Appgate: status" Style="{StaticResource ActionGridButton}"/>
-    <Button Name="BtnV3AppgateRestart" Content="Appgate: reiniciar" Style="{StaticResource ActionGridButton}" ToolTip="Interrompe a VPN temporariamente e exige confirmação."/>
-    <Button Name="BtnV3AppgateFix" Content="Appgate: ajustar" Style="{StaticResource ActionGridButton}" ToolTip="Cria backup, ajusta RunScriptTimeout e UAC com confirmação."/>
-</UniformGrid>
-                </StackPanel>
-            </Border>
-
-            <Border Grid.Row="3" Background="White" CornerRadius="18" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
+            </ScrollViewer>
+            <Border Name="ResultContainer" Grid.Row="4" Background="White" CornerRadius="12" Padding="16" BorderBrush="#E2E8F0" BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-
-                    <TextBlock Text="Resultado e andamento" FontSize="16" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10"/>
-
-                    <TextBox Name="TxtV3Output"
-                             Grid.Row="1"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto"
-                             HorizontalScrollBarVisibility="Auto"
-                             FontFamily="Consolas"
-                             FontSize="12"
-                             Background="#F8FAFC"
-                             BorderBrush="#CBD5E1"
-                             BorderThickness="1"/>
+                    <StackPanel Name="ResultHeader" Margin="0,0,0,10">
+                        <DockPanel>
+                            <TextBlock Name="ResultStatus" DockPanel.Dock="Right" Text="Pronto para consultar" MaxWidth="300" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="11" Foreground="#475569" VerticalAlignment="Center" />
+                            <TextBlock Text="Resultado e andamento" FontSize="16" FontWeight="Bold" Foreground="#0F172A" />
+                        </DockPanel>
+                        <WrapPanel Margin="-8,8,0,0">
+                            <Button Name="BtnV3CancelStorage" Content="Cancelar coleta" Visibility="Collapsed" Style="{StaticResource FooterLinkButton}" ToolTip="Interrompe a leitura de disco sem executar limpeza." />
+                            <Button Name="BtnV3CopyOutput" Content="Copiar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Copiar o relatório exibido." />
+                            <Button Name="BtnV3SaveOutput" Content="Salvar relatório" Style="{StaticResource FooterLinkButton}" ToolTip="Salvar o texto exibido no local escolhido. O relatório pode conter caminhos e dados corporativos." />
+                            <Button Name="BtnV3FindResult" Content="Localizar no resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Buscar texto neste relatório. Ctrl+Shift+F." />
+                            <Button Name="BtnV3ExpandResult" Content="Ampliar resultado" Style="{StaticResource FooterLinkButton}" ToolTip="Usar o espaço das ações para ler o relatório. Clique novamente para voltar." />
+                            <Button Name="BtnV3SmallerText" Content="A−" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Diminuir texto do resultado" ToolTip="Diminuir texto do resultado." />
+                            <Button Name="BtnV3LargerText" Content="A+" Style="{StaticResource FooterLinkButton}" AutomationProperties.Name="Aumentar texto do resultado" ToolTip="Aumentar texto do resultado." />
+                            <ComboBox Name="ResultSections" Visibility="Collapsed" Width="240" Height="30" Margin="8,0,0,0" VerticalAlignment="Center" DisplayMemberPath="Label" AutomationProperties.Name="Ir para seção do resultado" AutomationProperties.HelpText="Selecione uma seção numerada para ampliar a leitura e ir ao trecho correspondente. Não altera o relatório." ToolTip="Ir diretamente a uma seção deste relatório." />
+                        </WrapPanel>
+                        <WrapPanel Name="StorageFollowup" Visibility="Collapsed" Margin="-8,8,0,0">
+                            <Button Name="BtnV3StorageBaseline" Content="Definir leitura inicial" Style="{StaticResource FooterLinkButton}" ToolTip="Guardar esta leitura na sessão para comparar com um novo diagnóstico após a ação do suporte." />
+                            <Button Name="BtnV3CompareStorage" Content="Comparar leituras" IsEnabled="False" Style="{StaticResource FooterLinkButton}" ToolTip="Comparar o espaço livre por unidade com a leitura inicial. Não executa limpeza." />
+                            <TextBlock Name="StorageBaselineStatus" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11" Foreground="#475569" TextWrapping="Wrap" />
+                        </WrapPanel>
+                        <Grid Name="ResultSearchPanel" Visibility="Collapsed" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Name="SearchResult" Height="30" VerticalContentAlignment="Center" Padding="8,0" BorderBrush="#CBD5E1" AutomationProperties.Name="Localizar texto no resultado" AutomationProperties.HelpText="Busca literal sem distinguir maiúsculas. Enter avança, Shift+Enter volta, Esc fecha. Não altera o relatório." ToolTip="Digite uma categoria, arquivo ou trecho do relatório." />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock Name="ResultMatchStatus" Text="Digite um texto" VerticalAlignment="Center" Margin="8,0" Foreground="#475569" AutomationProperties.LiveSetting="Polite" />
+                                <Button Name="BtnV3PreviousMatch" Content="Anterior" IsEnabled="False" Style="{StaticResource FooterLinkButton}" ToolTip="Ocorrência anterior. Shift+F3." />
+                                <Button Name="BtnV3NextMatch" Content="Próxima" IsEnabled="False" Style="{StaticResource FooterLinkButton}" ToolTip="Próxima ocorrência. F3." />
+                                <Button Name="BtnV3CloseResultSearch" Content="Fechar" Style="{StaticResource FooterLinkButton}" ToolTip="Fechar busca no resultado. Esc." />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                    <TextBox Name="TxtV3Output" AutomationProperties.Name="Resultado do atendimento" AutomationProperties.HelpText="Relatório somente leitura. Ctrl+Shift+F localiza texto neste relatório. F6 alterna entre resultado e busca de ações. Esc fecha a busca ou retorna às ações." Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" FontFamily="Consolas" FontSize="13" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" IsReadOnly="True" IsInactiveSelectionHighlightEnabled="True" Padding="12" />
                 </Grid>
             </Border>
-            <Border Grid.Row="4" Background="Transparent" Margin="0,10,0,0">
+            <Border Name="WorkspaceFooter" Grid.Row="5" Background="Transparent" Margin="0,10,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Column="0"
-                               Text="ServiceDesk Toolkit Corporate V3 - Made by Caio Dal Re"
-                               Foreground="#64748B"
-                               FontSize="11"
-                               VerticalAlignment="Center"/>
-
+                    <TextBlock Grid.Column="0" Text="ServiceDesk Toolkit Corporate V3 - Made by Caio Dal Re" Foreground="#64748B" FontSize="11" VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Name="BtnV3LinkedIn"
-                                Content="LinkedIn"
-                                Style="{StaticResource FooterLinkButton}"
-                                ToolTip="Abrir LinkedIn de Caio Dal Re"/>
-
-                        <Button Name="BtnV3GitHub"
-                                Content="GitHub"
-                                Style="{StaticResource FooterLinkButton}"
-                                ToolTip="Abrir GitHub de Caio Dal Re"/>
+                        <Button Name="BtnV3LinkedIn" Content="LinkedIn" Style="{StaticResource FooterLinkButton}" ToolTip="Abrir LinkedIn de Caio Dal Re" />
+                        <Button Name="BtnV3GitHub" Content="GitHub" Style="{StaticResource FooterLinkButton}" ToolTip="Abrir GitHub de Caio Dal Re" />
                     </StackPanel>
                 </Grid>
             </Border>
+            <GridSplitter Name="ResultSplitter" Grid.Row="3" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#CBD5E1" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ToolTip="Arraste para ajustar o espaço de ações e resultado." />
+            <Grid Grid.Row="1" Margin="0,12,0,14">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Name="SearchScope" Text="Buscar ações neste tema" FontSize="12" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,6" />
+                <TextBlock Name="ActionCount" Grid.Column="1" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" />
+                <Grid Grid.Row="1">
+                    <TextBox Name="SearchActions" Height="34" Padding="10,6" VerticalContentAlignment="Center" FontSize="13" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" AutomationProperties.Name="Buscar ações" AutomationProperties.HelpText="Busca no tema selecionado. Use Buscar em todos para ampliar a procura. Ctrl+F seleciona o campo; Esc limpa a busca." ToolTip="Digite o nome da ação ou uma palavra como DNS, fila ou licença. Ctrl+F para buscar; Esc para limpar." />
+                    <TextBlock Name="SearchHint" Text="Ex.: DNS, impressora ou licença" IsHitTestVisible="False" Foreground="#64748B" Margin="11,0" VerticalAlignment="Center" />
+                </Grid>
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                    <Button Name="BtnV3SearchAll" Content="Buscar em todos" Style="{StaticResource FooterLinkButton}" Height="34" ToolTip="Mantém o texto da busca e procura em todos os temas." />
+                    <Button Name="BtnV3ClearSearch" Content="Limpar busca" Style="{StaticResource FooterLinkButton}" Height="34" ToolTip="Exibe novamente todas as ações do tema atual. Esc para limpar." />
+                </StackPanel>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
@@ -2376,6 +3256,8 @@ $xaml = @"
 $reader = New-Object System.Xml.XmlNodeReader $xml
 $window = [Windows.Markup.XamlReader]::Load($reader)
 
+$window.Width = [Math]::Min($window.Width, [System.Windows.SystemParameters]::WorkArea.Width)
+$window.Height = [Math]::Min($window.Height, [System.Windows.SystemParameters]::WorkArea.Height)
 $script:TxtV3Output = $window.FindName("TxtV3Output")
 
 $CardV3Host = $window.FindName("CardV3Host")
@@ -2388,12 +3270,439 @@ $CardV3User.Text = "$env:USERDOMAIN\$env:USERNAME"
 $CardV3Admin.Text = if (Test-V3Admin) { "Sim" } else { "Não" }
 $CardV3Version.Text = Get-V3VersionInfo
 
-$window.FindName("BtnV3NavHome").Add_Click({ Set-V3Output (Get-V3HomeText) })
-$window.FindName("BtnV3NavGuided").Add_Click({ Set-V3Output (Get-V3GuidedHomeText) })
-$window.FindName("BtnV3NavEvidence").Add_Click({ Set-V3Output "Evidências:`r`n- Inventário`r`n- Diagnóstico de rede`r`n- Relatório`r`n- Pacote de suporte`r`n- Copiar resultado" })
-$window.FindName("BtnV3NavSafeFix").Add_Click({ Set-V3Output "Correções Seguras:`r`n- Limpar DNS`r`n- Renovar IP`r`n- Sincronizar horário`r`n- Reiniciar spooler`r`n- Reparar login Office (WAM)`r`n- Limpar temporários" })
-$window.FindName("BtnV3NavAdvanced").Add_Click({ Set-V3Output "Área avançada:`r`nAções críticas protegidas por confirmação, elevação administrativa e log.`r`n`r`nDisponíveis agora:`r`n- SFC /scannow: verifica e repara arquivos protegidos do Windows.`r`n- DISM RestoreHealth: repara a imagem de componentes do Windows.`r`n- Office / TPM: diagnóstico de TPM, WAM, licenciamento e Entra ID.`r`n`r`nO toolkit não limpa TPM nem remove o dispositivo do Entra automaticamente.`r`n`r`nOrdem recomendada quando o SFC não consegue reparar:`r`n1. Execute o DISM.`r`n2. Reinicie se solicitado.`r`n3. Execute o SFC novamente." })
-$window.FindName("BtnV3NavToolkit").Add_Click({ Set-V3Output "Toolkit:`r`n- Status`r`n- Atualização`r`n- Rollback`r`n- Logs`r`n- Validação`r`n`r`nEssas funções serão conectadas ao motor atual em etapas futuras." })
+$script:V3ResultExpanded = $false
+$script:V3CompactLayout = $false
+function Update-V3ResultSections {
+    $picker = $window.FindName("ResultSections")
+    $script:V3UpdatingResultSections = $true
+    try {
+        $picker.Items.Clear()
+        $sections = @([regex]::Matches($script:TxtV3Output.Text, '(?m)^\[(\d+)\] ([^\r\n|]+)\r?$'))
+        $picker.Visibility = if ($sections.Count -gt 0) { "Visible" } else { "Collapsed" }
+        if ($sections.Count -eq 0) { return }
+        [void]$picker.Items.Add([pscustomobject]@{ Label = "Ir para uma seção..."; Position = -1; Length = 0 })
+        foreach ($section in $sections) {
+            [void]$picker.Items.Add([pscustomobject]@{
+                Label = $section.Value.TrimEnd("`r")
+                Position = $section.Index
+                Length = $section.Value.TrimEnd("`r").Length
+            })
+        }
+        $picker.SelectedIndex = 0
+    }
+    finally { $script:V3UpdatingResultSections = $false }
+}
+
+function Move-V3ResultSection {
+    if ($script:V3UpdatingResultSections) { return }
+    $selected = $window.FindName("ResultSections").SelectedItem
+    if ($null -eq $selected -or $selected.Position -lt 0) { return }
+    Set-V3ResultSearchVisible -Visible $false
+    Set-V3ResultExpanded -Expanded $true
+    $script:TxtV3Output.Select($selected.Position, $selected.Length)
+    $line = $script:TxtV3Output.GetLineIndexFromCharacterIndex($selected.Position)
+    if ($line -ge 0) { $script:TxtV3Output.ScrollToLine($line) }
+}
+
+function Update-V3ResultSearch {
+    $query = $window.FindName("SearchResult").Text
+    $script:V3ResultMatches = @()
+    $script:V3ResultMatchIndex = -1
+    if (-not [string]::IsNullOrEmpty($query)) {
+        $matches = [Collections.Generic.List[int]]::new()
+        $offset = 0
+        $text = $script:TxtV3Output.Text
+        while ($offset -le $text.Length - $query.Length) {
+            $position = $text.IndexOf($query, $offset, [StringComparison]::OrdinalIgnoreCase)
+            if ($position -lt 0) { break }
+            $matches.Add($position)
+            $offset = $position + $query.Length
+        }
+        $script:V3ResultMatches = @($matches.ToArray())
+    }
+    $found = $script:V3ResultMatches.Count -gt 0
+    $window.FindName("BtnV3PreviousMatch").IsEnabled = $found
+    $window.FindName("BtnV3NextMatch").IsEnabled = $found
+    $window.FindName("ResultMatchStatus").Text = if ([string]::IsNullOrEmpty($query)) { "Digite um texto" } elseif (-not $found) { "Nenhuma ocorrência" } else { "$($script:V3ResultMatches.Count) ocorrência(s)" }
+    if ($found) { Move-V3ResultMatch -Direction 1 }
+}
+
+function Move-V3ResultMatch {
+    param([int]$Direction = 1)
+    if ($script:V3ResultMatches.Count -eq 0) { return }
+    $count = $script:V3ResultMatches.Count
+    $script:V3ResultMatchIndex = ($script:V3ResultMatchIndex + $Direction + $count) % $count
+    $position = $script:V3ResultMatches[$script:V3ResultMatchIndex]
+    $script:TxtV3Output.Select($position, $window.FindName("SearchResult").Text.Length)
+    $line = $script:TxtV3Output.GetLineIndexFromCharacterIndex($position)
+    if ($line -ge 0) { $script:TxtV3Output.ScrollToLine($line) }
+    $window.FindName("ResultMatchStatus").Text = "$($script:V3ResultMatchIndex + 1) de $count"
+}
+
+function Set-V3ResultSearchVisible {
+    param([bool]$Visible)
+    $window.FindName("ResultSearchPanel").Visibility = if ($Visible) { "Visible" } else { "Collapsed" }
+    if ($Visible) {
+        Set-V3ResultExpanded -Expanded $true
+        Update-V3ResultSearch
+        [void]$window.FindName("SearchResult").Focus()
+        $window.FindName("SearchResult").SelectAll()
+    }
+    else { [void]$script:TxtV3Output.Focus() }
+}
+
+$script:V3ResultMatches = @()
+$script:V3ResultMatchIndex = -1
+$script:V3UpdatingResultSections = $false
+$window.FindName("ResultSections").Add_SelectionChanged({ Move-V3ResultSection })
+$window.FindName("BtnV3FindResult").Add_Click({ Set-V3ResultSearchVisible -Visible $true })
+$window.FindName("BtnV3SaveOutput").Add_Click({ Save-V3Output })
+$window.FindName("BtnV3StorageBaseline").Add_Click({ Set-V3StorageBaseline })
+$window.FindName("BtnV3CompareStorage").Add_Click({ Compare-V3StorageReadings })
+$window.FindName("BtnV3CloseResultSearch").Add_Click({ Set-V3ResultSearchVisible -Visible $false })
+$window.FindName("BtnV3PreviousMatch").Add_Click({ Move-V3ResultMatch -Direction -1 })
+$window.FindName("BtnV3NextMatch").Add_Click({ Move-V3ResultMatch -Direction 1 })
+$window.FindName("SearchResult").Add_TextChanged({ Update-V3ResultSearch })
+$script:TxtV3Output.Add_TextChanged({
+    Update-V3StorageFollowup
+    Update-V3ResultSections
+    if ($window.FindName("ResultSearchPanel").Visibility -eq "Visible") { Update-V3ResultSearch }
+})
+$window.FindName("SearchResult").Add_PreviewKeyDown({
+    param($sender, $eventArgs)
+    if ($eventArgs.Key -eq [System.Windows.Input.Key]::Return) {
+        $direction = if (([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Shift) -ne 0) { -1 } else { 1 }
+        Move-V3ResultMatch -Direction $direction
+        $eventArgs.Handled = $true
+    }
+})
+
+function Set-V3ResultExpanded {
+    param([bool]$Expanded)
+
+    $grid = $window.FindName("WorkspaceGrid")
+    if ($Expanded -and -not $script:V3ResultExpanded) {
+        $script:V3ActionsHeight = $grid.RowDefinitions[2].Height
+        $script:V3ResultHeight = $grid.RowDefinitions[4].Height
+    }
+    $script:V3ResultExpanded = $Expanded
+    $grid.RowDefinitions[2].MinHeight = if ($Expanded) { 0 } elseif ($script:V3CompactLayout) { 80 } else { 100 }
+    $grid.RowDefinitions[2].Height = if ($Expanded) {
+        [System.Windows.GridLength]::new(0)
+    }
+    else {
+        $script:V3ActionsHeight
+    }
+    $grid.RowDefinitions[4].Height = if ($Expanded) {
+        [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+    }
+    else {
+        $script:V3ResultHeight
+    }
+    $window.FindName("ActionsScroll").Visibility = if ($Expanded) { "Collapsed" } else { "Visible" }
+    $window.FindName("ResultSplitter").Visibility = if ($Expanded) { "Collapsed" } else { "Visible" }
+    $window.FindName("BtnV3ExpandResult").Content = if ($Expanded) { "Voltar às ações" } else { "Ampliar resultado" }
+    if ($Expanded) {
+        [void]$script:TxtV3Output.Focus()
+    }
+}
+
+function Update-V3CompactLayout {
+    $surface = $window.FindName("AppSurface")
+    $compact = $surface.ActualHeight -lt 660
+    $grid = $window.FindName("WorkspaceGrid")
+    $margin = if ($compact) { 12 } else { 20 }
+    $grid.Margin = [System.Windows.Thickness]::new($margin)
+    $grid.MaxHeight = [Math]::Max(0, $surface.ActualHeight - 2 * $margin)
+    $window.FindName("WorkspaceDescription").Visibility = if ($compact) { "Collapsed" } else { "Visible" }
+    $window.FindName("WorkspaceFooter").Visibility = if ($compact) { "Collapsed" } else { "Visible" }
+    $window.FindName("ResultContainer").Padding = [System.Windows.Thickness]::new($(if ($compact) { 12 } else { 16 }))
+    $window.FindName("ResultHeader").Margin = [System.Windows.Thickness]::new(0, 0, 0, $(if ($compact) { 6 } else { 10 }))
+    $grid.RowDefinitions[2].MinHeight = if ($script:V3ResultExpanded) { 0 } elseif ($compact) { 80 } else { 100 }
+    $grid.RowDefinitions[4].MinHeight = if ($compact) { 170 } else { 200 }
+    if ($compact -ne $script:V3CompactLayout) {
+        if ($compact) {
+            $script:V3BeforeCompactActionsHeight = if ($script:V3ResultExpanded) { $script:V3ActionsHeight } else { $grid.RowDefinitions[2].Height }
+            $actionsHeight = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+        }
+        else {
+            $actionsHeight = $script:V3BeforeCompactActionsHeight
+        }
+        if ($script:V3ResultExpanded) {
+            $script:V3ActionsHeight = $actionsHeight
+        }
+        else {
+            $grid.RowDefinitions[2].Height = $actionsHeight
+        }
+        $readingHeight = [System.Windows.GridLength]::new($(if ($compact) { 180 } else { 230 }))
+        if ($script:V3ResultExpanded) {
+            $script:V3ResultHeight = $readingHeight
+        }
+        else {
+            $grid.RowDefinitions[4].Height = $readingHeight
+        }
+    }
+    $script:V3CompactLayout = $compact
+}
+
+function Update-V3ResponsiveLayout {
+    $columns = if ($window.FindName("ActionsScroll").ActualWidth -lt 670) { 1 } else { 2 }
+    foreach ($key in @("Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
+        foreach ($group in $window.FindName("Topic$key").Children) {
+            if ($group -is [System.Windows.Controls.StackPanel] -and $group.Tag -eq "ActionsGroup") {
+                foreach ($child in $group.Children) {
+                    if ($child -is [System.Windows.Controls.Primitives.UniformGrid]) {
+                        $child.Columns = $columns
+                    }
+                }
+            }
+        }
+    }
+    $window.FindName("StationCards").Columns = if ($columns -eq 1) { 2 } else { 4 }
+}
+$window.FindName("AppSurface").Add_SizeChanged({
+    Update-V3CompactLayout
+})
+$window.FindName("ActionsScroll").Add_SizeChanged({ Update-V3ResponsiveLayout })
+$window.FindName("BtnV3ExpandResult").Add_Click({ Set-V3ResultExpanded -Expanded (-not $script:V3ResultExpanded) })
+$window.FindName("BtnV3SmallerText").Add_Click({
+    $script:TxtV3Output.FontSize = [Math]::Max(11, $script:TxtV3Output.FontSize - 1)
+})
+$window.FindName("BtnV3LargerText").Add_Click({
+    $script:TxtV3Output.FontSize = [Math]::Min(22, $script:TxtV3Output.FontSize + 1)
+})
+
+function ConvertTo-V3SearchText {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return ""
+    }
+    $normalized = $Text.Normalize([System.Text.NormalizationForm]::FormD)
+    return ([regex]::Replace($normalized, '\p{Mn}', '')).Trim().ToLowerInvariant()
+}
+
+function Update-V3ActionFilter {
+    $query = ConvertTo-V3SearchText -Text $window.FindName("SearchActions").Text
+    $window.FindName("SearchHint").Visibility = if ([string]::IsNullOrEmpty($query)) {
+        [System.Windows.Visibility]::Visible
+    }
+    else {
+        [System.Windows.Visibility]::Collapsed
+    }
+    $window.FindName("BtnV3ClearSearch").IsEnabled = -not [string]::IsNullOrEmpty($window.FindName("SearchActions").Text)
+    $window.FindName("BtnV3SearchAll").Visibility = if ($script:V3SelectedTopic -eq "All") {
+        [System.Windows.Visibility]::Collapsed
+    }
+    else {
+        [System.Windows.Visibility]::Visible
+    }
+    $tokens = @($query -split '\s+' | Where-Object { $_ })
+    $kind = [string]$window.FindName("ActionKind").SelectedItem.Tag
+    $total = 0
+    foreach ($key in @("Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
+        $section = $window.FindName("Topic$key")
+        $inTopic = $script:V3SelectedTopic -eq "All" -or $script:V3SelectedTopic -eq $key
+        foreach ($heading in @($section.Children | Where-Object { $_ -is [System.Windows.Controls.TextBlock] })) {
+            $heading.Visibility = if ($script:V3SelectedTopic -eq "All") { "Visible" } else { "Collapsed" }
+        }
+        $sectionMatches = 0
+        foreach ($group in @($section.Children | Where-Object {
+            $_ -is [System.Windows.Controls.StackPanel] -and $_.Tag -eq "ActionsGroup"
+        })) {
+            $groupMatches = 0
+            foreach ($grid in @($group.Children | Where-Object {
+                $_ -is [System.Windows.Controls.Primitives.UniformGrid]
+            })) {
+                foreach ($button in $grid.Children) {
+                    $searchText = ConvertTo-V3SearchText -Text ([string]$button.Tag)
+                    $matches = $inTopic -and ($kind -eq "All" -or $kind -eq $group.Uid)
+                    foreach ($token in $tokens) {
+                        if (-not $searchText.Contains($token)) {
+                            $matches = $false
+                        }
+                    }
+                    $button.Visibility = if ($matches) {
+                        [System.Windows.Visibility]::Visible
+                    }
+                    else {
+                        [System.Windows.Visibility]::Collapsed
+                    }
+                    if ($matches) {
+                        $groupMatches++
+                    }
+                }
+            }
+            $group.Visibility = if ($groupMatches -gt 0) {
+                [System.Windows.Visibility]::Visible
+            }
+            else {
+                [System.Windows.Visibility]::Collapsed
+            }
+            $sectionMatches += $groupMatches
+        }
+        $section.Visibility = if ($inTopic -and $sectionMatches -gt 0) {
+            [System.Windows.Visibility]::Visible
+        }
+        else {
+            [System.Windows.Visibility]::Collapsed
+        }
+        $total += $sectionMatches
+    }
+    $window.FindName("NoActions").Text = if ($script:V3SelectedTopic -eq "All") {
+        "Nenhuma ação encontrada. Revise o tipo de ação, tente outro nome ou limpe a busca."
+    }
+    else {
+        "Nenhuma ação encontrada neste tema. Revise o tipo de ação, use Buscar em todos ou limpe a busca."
+    }
+    $window.FindName("NoActions").Visibility = if ($total -eq 0) {
+        [System.Windows.Visibility]::Visible
+    }
+    else {
+        [System.Windows.Visibility]::Collapsed
+    }
+    $window.FindName("BtnV3ResetFilters").Visibility = $window.FindName("NoActions").Visibility
+    $window.FindName("ActionCount").Text = if ($total -eq 1) {
+        "1 ação disponível"
+    }
+    elseif ($total -eq 0) {
+        "Nenhuma ação disponível"
+    }
+    else {
+        "$total ações disponíveis"
+    }
+    $window.FindName("ActionsScroll").ScrollToTop()
+}
+
+function Set-V3Topic {
+    param(
+        [ValidateSet("All", "Overview", "Network", "Vpn", "Printers", "Office", "Windows")]
+        [string]$Topic = "All"
+    )
+
+    $script:V3SelectedTopic = $Topic
+    $topicLabel = [string]$window.FindName("Nav$Topic").Content
+    $window.FindName("SearchScope").Text = "Buscar ações · $topicLabel"
+    $window.FindName("WorkspaceTitle").Text = $topicLabel
+    $descriptions = @{
+        All = "Explore as ferramentas ou procure uma ação pelo nome."
+        Overview = "Comece pelo estado da estação e pelo inventário."
+        Network = "Consulte conectividade, DNS e rotas antes de escolher uma correção."
+        Vpn = "Verifique a conexão e o cliente Appgate."
+        Printers = "Consulte impressoras e filas para identificar a causa da falha."
+        Office = "Investigue Office, TPM e autenticação com os diagnósticos disponíveis."
+        Windows = "Consulte o sistema e revise as opções de manutenção."
+    }
+    $window.FindName("WorkspaceDescription").Text = $descriptions[$Topic]
+    if ($script:V3ResultExpanded) {
+        Set-V3ResultExpanded -Expanded $false
+    }
+    foreach ($key in @("All", "Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
+        $button = $window.FindName("Nav$key")
+        [System.Windows.Automation.AutomationProperties]::SetItemStatus($button, $(if ($key -eq $Topic) { "Tema selecionado" } else { "" }))
+        $button.Background = if ($key -eq $Topic) {
+            [System.Windows.Media.Brushes]::RoyalBlue
+        }
+        else {
+            [System.Windows.Media.Brushes]::Transparent
+        }
+    }
+    Update-V3ActionFilter
+}
+
+foreach ($key in @("All", "Overview", "Network", "Vpn", "Printers", "Office", "Windows")) {
+    $window.FindName("Nav$key").Add_Click({
+        param($sender, $eventArgs)
+        Set-V3Topic -Topic ([string]$sender.Tag)
+    })
+}
+function Reset-V3ActionFilters {
+    $window.FindName("SearchActions").Clear()
+    $window.FindName("ActionKind").SelectedIndex = 0
+    Set-V3Topic -Topic "All"
+    [void]$window.FindName("SearchActions").Focus()
+}
+$window.FindName("BtnV3ResetFilters").Add_Click({ Reset-V3ActionFilters })
+
+function Update-V3SearchResults {
+    if ($script:V3ResultExpanded) {
+        Set-V3ResultExpanded -Expanded $false
+    }
+    Update-V3ActionFilter
+}
+$window.FindName("SearchActions").Add_TextChanged({ Update-V3SearchResults })
+$window.FindName("ActionKind").Add_SelectionChanged({ Update-V3SearchResults })
+$window.FindName("BtnV3ClearSearch").Add_Click({
+    $window.FindName("SearchActions").Clear()
+    [void]$window.FindName("SearchActions").Focus()
+})
+$window.FindName("BtnV3SearchAll").Add_Click({
+    Set-V3Topic -Topic "All"
+    [void]$window.FindName("SearchActions").Focus()
+})
+$window.Add_PreviewKeyDown({
+    param($sender, $eventArgs)
+    if ($eventArgs.Key -eq [System.Windows.Input.Key]::F -and
+        [System.Windows.Input.Keyboard]::Modifiers -eq ([System.Windows.Input.ModifierKeys]::Control -bor [System.Windows.Input.ModifierKeys]::Shift)) {
+        Set-V3ResultSearchVisible -Visible $true
+        $eventArgs.Handled = $true
+    }
+    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::F3) {
+        if ($window.FindName("ResultSearchPanel").Visibility -ne "Visible") { Set-V3ResultSearchVisible -Visible $true }
+        else {
+            $direction = if (([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Shift) -ne 0) { -1 } else { 1 }
+            Move-V3ResultMatch -Direction $direction
+        }
+        $eventArgs.Handled = $true
+    }
+    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::F -and
+        [System.Windows.Input.Keyboard]::Modifiers -eq [System.Windows.Input.ModifierKeys]::Control) {
+        [void]$window.FindName("SearchActions").Focus()
+        $window.FindName("SearchActions").SelectAll()
+        $eventArgs.Handled = $true
+    }
+    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::F6) {
+        if ($script:TxtV3Output.IsKeyboardFocusWithin) {
+            [void]$window.FindName("SearchActions").Focus()
+        }
+        else {
+            [void]$script:TxtV3Output.Focus()
+        }
+        $eventArgs.Handled = $true
+    }
+    elseif ($eventArgs.Key -eq [System.Windows.Input.Key]::Escape) {
+        if ($window.FindName("ResultSearchPanel").Visibility -eq "Visible" -and
+            ($window.FindName("ResultSearchPanel").IsKeyboardFocusWithin -or $script:TxtV3Output.IsKeyboardFocusWithin)) {
+            Set-V3ResultSearchVisible -Visible $false
+            $eventArgs.Handled = $true
+        }
+        elseif ($window.FindName("SearchActions").IsKeyboardFocusWithin -and
+            -not [string]::IsNullOrEmpty($window.FindName("SearchActions").Text)) {
+            $window.FindName("SearchActions").Clear()
+            $eventArgs.Handled = $true
+        }
+        elseif ($script:V3ResultExpanded) {
+            Set-V3ResultExpanded -Expanded $false
+            [void]$window.FindName("BtnV3ExpandResult").Focus()
+            $eventArgs.Handled = $true
+        }
+    }
+})
+Set-V3Topic -Topic "Overview"
+
+$script:V3StorageTimer = [System.Windows.Threading.DispatcherTimer]::new()
+$script:V3StorageTimer.Interval = [TimeSpan]::FromMilliseconds(300)
+$script:V3StorageTimer.Add_Tick({ Complete-V3StorageDiagnostic })
+$window.FindName("BtnV3Storage").Add_Click({ Start-V3StorageDiagnostic })
+$window.FindName("BtnV3CancelStorage").Add_Click({ Stop-V3StorageDiagnostic })
+$window.Add_Closed({
+    $script:V3StorageTimer.Stop()
+    if ($null -ne $script:V3StorageScan) {
+        $script:V3StorageScan.Pipeline.Stop()
+        $script:V3StorageScan.Pipeline.Dispose()
+        $script:V3StorageScan = $null
+    }
+})
 
 $window.FindName("BtnV3QuickInternet").Add_Click({ Set-V3Output (Invoke-V3WorkflowNoInternet) })
 $window.FindName("BtnV3QuickVpn").Add_Click({ Set-V3Output (Invoke-V3WorkflowVpn) })
@@ -2441,11 +3750,12 @@ $window.FindName("BtnV3AppgateRestart").Add_Click({
     }
 })
 $window.FindName("BtnV3AppgateFix").Add_Click({
-    if ([System.Windows.MessageBox]::Show("Sera criado um backup e aplicado RunScriptTimeout=300000 e UAC=5. Deseja continuar?", "Ajustar Appgate", "YesNo", "Warning") -eq "Yes") {
+    if ([System.Windows.MessageBox]::Show("Sera criado um backup da configuracao do Appgate e aplicado RunScriptTimeout=300000. Deseja continuar?", "Ajustar Appgate", "YesNo", "Warning") -eq "Yes") {
         Set-V3Output (Repair-V3AppgateConfiguration -Confirmed)
     }
 })
 $window.FindName("BtnV3Health").Add_Click({ Set-V3Output (Invoke-V3MachineHealthPanel) })
+$window.FindName("BtnV3Solutions").Add_Click({ Open-V3SolutionCatalog })
 $window.FindName("BtnV3OfficeTpm").Add_Click({
     Set-V3Output (Invoke-V3OfficeTpmPanel)
 })

@@ -2,20 +2,24 @@
   "schemaVersion": 1,
   "product": "ServiceDesk Toolkit Corporate V3",
   "version": "3.1.0-preview.2",
-  "sourceRef": "v3.1.0-office-tpm-preview",
+  "sourceRef": "v3.1.0-ui-homologation",
   "algorithm": "SHA256",
   "files": [
     {
       "path": "docs/V3-README.md",
-      "sha256": "a7683c225945adf7e671acd3ccde2bb49c39eb1df03e6a3557c09023287f716b"
+      "sha256": "acd8757939db8c1f1e4b05e334dd12c001a509df446108674f92c46337ce9d3a"
+    },
+    {
+      "path": "docs/V3-ESPACO-EM-DISCO.md",
+      "sha256": "620023c68850f7a197a97b2d1f7269220a4bcf8dff26b7b0aa65740f484efefd"
     },
     {
       "path": "install-v3.ps1",
-      "sha256": "09d8c5f38dd858742393c87cb3d12a5c838862b01c4a1bb5833024f7a18f7b1a"
+      "sha256": "30a226475cb6cf6e1d39517c3baba2be7660614c865a21795b4caa83631d3a63"
     },
     {
       "path": "ServiceDeskToolkit-CorporateV3.ps1",
-      "sha256": "65810cfd5f948e0a058e66f4decfc089ef1ae354e8cf1c9fea66faf602cff6cf"
+      "sha256": "3d9c83530ee47a2bed65df50e06eee0d5284b6ef5f38bac204499dcdd5ea6ff5"
     },
     {
       "path": "src/ServiceDeskToolkit.Diagnostics/ServiceDeskToolkit.Diagnostics.psm1",
@@ -31,15 +35,19 @@
     },
     {
       "path": "src/ServiceDeskToolkit.Network/ServiceDeskToolkit.Network.psm1",
-      "sha256": "9eed28a9fa088f97bb938e71888388dca4329cc3395bd8f69818c551383956c0"
+      "sha256": "a27de273a3925b0ead517c1bfd4cb12236f5ac999ca381650294d448d63518b8"
     },
     {
       "path": "src/ServiceDeskToolkit.Printers/ServiceDeskToolkit.Printers.psm1",
-      "sha256": "c6986fbda27e49044aa34afe1b100ac356e3a5a0e766a443614779a00f9f7ebd"
+      "sha256": "04d773a63c68bb4b26d6b4e4dfce38cd53e6c286e05e3b6e482957e2dbd21317"
     },
     {
       "path": "src/ServiceDeskToolkit.Office/ServiceDeskToolkit.Office.psm1",
-      "sha256": "81ece25a3223e736cf7a0b3c19a67dd574676f274e0a8e3ae52c0f038bd54b2c"
+      "sha256": "a7355433373be202880208d79eaa099b8cd3eac1bf9132df42d57d9f561b2abb"
+    },
+    {
+      "path": "src/ServiceDeskToolkit.Storage/ServiceDeskToolkit.Storage.psm1",
+      "sha256": "b56b61089f52d8fd8e88024f273f75474a23426ccd445f3430fbac0d0472d1b7"
     },
     {
       "path": "tools/Invoke-V3Preview2Homologation.ps1",
@@ -47,15 +55,15 @@
     },
     {
       "path": "docs/V3.1.0-PREVIEW2-HOMOLOGACAO.md",
-      "sha256": "616a272cd789cd96265fb2f3eca4655540e9989c583a3f935e19f760ccdf2280"
+      "sha256": "ff0d6245a55f178c7f98ff47cdb219654457c4593715327829248ab477033c15"
     },
     {
       "path": "tools/Test-ToolkitV3.ps1",
-      "sha256": "b64547c55ad229bbcf590e431aa9ac16081f467b155e71b527226539a5c96963"
+      "sha256": "e30c8d69bd165017475e599569122df98555374208d582461aed7a0b707cac1c"
     },
     {
       "path": "version-v3.json",
-      "sha256": "ecb8228088d39f9e1c4ef6e3aaa14e029726c3351046aaef07dbc4c31f976c57"
+      "sha256": "8e468cb0a8a9364fb2090025d39235881cb3634a02932b0c66054fc5d7a51d08"
     }
   ]
 }
