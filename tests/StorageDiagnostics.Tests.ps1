@@ -31,12 +31,12 @@ Describe 'Storage diagnosis and guidance' {
         $userTemp = Join-Path $folder 'Users\Test\AppData\Local\Temp'
         New-Item $userTemp -ItemType Directory -Force | Out-Null
         [IO.File]::WriteAllText((Join-Path $userTemp 'small.tmp'), 'abc')
-        $before = Get-FileHash $path
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($path))
         $snapshot = Get-ToolkitStorageSnapshot -ScanRoot $folder -MaxFiles 100 -MaxSeconds 30
         $snapshot.Categories['TempEvtx'].Count | Should -Be 1
         ($snapshot.UserTemps | Where-Object Name -eq 'Test').Bytes | Should -Be 3
         $snapshot.Categories['WindowsTemp'].Bytes | Should -Be 9
-        (Get-FileHash $path).Hash | Should -Be $before.Hash
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes($path)) | Should -Be $before
         $report = Format-ToolkitStorageReport $snapshot
         $report | Should -BeLike '*Categorias se sobrepoem*'
         $report | Should -BeLike '*SOLUCAO E PASSO A PASSO*'

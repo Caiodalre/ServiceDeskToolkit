@@ -2262,6 +2262,27 @@ function Get-V3SolutionCatalog {
     )
 }
 
+function Test-V3SolutionPrerequisites {
+    param([ValidateSet('dns-cache', 'print-spooler', 'office-wam')][string]$Id)
+    switch ($Id) {
+        'dns-cache' {
+            if (-not (Get-Command ipconfig.exe -CommandType Application -ErrorAction SilentlyContinue)) { throw 'ipconfig indisponivel. Encaminhe para suporte do Windows.' }
+        }
+        'print-spooler' {
+            if (-not (Test-V3Admin)) { throw 'Reinicio do Spooler exige administrador.' }
+            $service = Get-Service -Name Spooler -ErrorAction Stop
+            if ($service.StartType -eq 'Disabled') { throw 'Spooler desabilitado. Confira a politica com o administrador; esta solucao nao altera o tipo de inicializacao.' }
+        }
+        'office-wam' {
+            $apps = @(Get-Process -Name WINWORD, EXCEL, OUTLOOK, POWERPNT, MSACCESS, ONENOTE, MSPUB, VISIO, WINPROJ, Teams, ms-teams -ErrorAction SilentlyContinue)
+            if ($apps.Count -gt 0) { throw ('Feche os aplicativos antes de repetir: ' + (($apps.ProcessName | Sort-Object -Unique) -join ', ')) }
+            foreach ($manifest in @('SystemApps\Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy\Appxmanifest.xml', 'SystemApps\Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy\Appxmanifest.xml')) {
+                if (-not (Test-Path -LiteralPath (Join-Path $env:windir $manifest) -PathType Leaf)) { throw 'Manifesto oficial WAM ausente. Encaminhe para suporte do Windows; nao use pacotes de origem desconhecida.' }
+            }
+        }
+    }
+}
+
 function Invoke-V3SolutionOperation {
     param(
         [Parameter(Mandatory = $true)][ValidateSet('dns-cache', 'print-spooler', 'office-wam')][string]$Id,
@@ -2270,6 +2291,8 @@ function Invoke-V3SolutionOperation {
     )
     if ($Stage -eq 'Repair') {
         if (-not $Confirmed) { throw 'Correcao exige confirmacao explicita.' }
+        try { Test-V3SolutionPrerequisites -Id $Id }
+        catch { return [pscustomobject]@{ Status = 'Blocked'; Report = "CORRECAO NAO INICIADA`r`n$($_.Exception.Message)`r`nResolva a condicao indicada e execute um novo diagnostico." } }
         switch ($Id) {
             'dns-cache' { return Invoke-V3SafeFlushDns }
             'print-spooler' {
@@ -2290,7 +2313,7 @@ function Invoke-V3SolutionOperation {
 
 function Get-V3SolutionWorkerText {
     # Somente definicoes do proprio programa; o catalogo nao fornece codigo executavel.
-    $definitions = foreach ($name in @('Test-V3Admin', 'New-V3OperationalFailureReport', 'Invoke-V3SafeFlushDns', 'Invoke-V3SafeSpoolerRestart', 'Invoke-V3OfficeWamRepair', 'Invoke-V3PrintersPanel', 'Invoke-V3OfficeTpmPanel', 'Invoke-V3SolutionOperation')) {
+    $definitions = foreach ($name in @('Test-V3Admin', 'New-V3OperationalFailureReport', 'Invoke-V3SafeFlushDns', 'Invoke-V3SafeSpoolerRestart', 'Invoke-V3OfficeWamRepair', 'Invoke-V3PrintersPanel', 'Invoke-V3OfficeTpmPanel', 'Test-V3SolutionPrerequisites', 'Invoke-V3SolutionOperation')) {
         $command = Get-Command -Name $name -CommandType Function -ErrorAction Stop
         'function ' + $name + ' {' + [Environment]::NewLine + $command.Definition + [Environment]::NewLine + '}'
     }
@@ -2332,6 +2355,8 @@ function Update-V3SolutionControls {
     $Session.Dialog.FindName('SolutionDiagnose').IsEnabled = -not $busy
     $Session.Dialog.FindName('SolutionRepair').IsEnabled = -not $busy -and $Session.Diagnosed -and -not $Session.RepairAttempted
     $Session.Dialog.FindName('SolutionValidate').IsEnabled = -not $busy -and $Session.RepairAttempted
+    $Session.Dialog.FindName('SolutionOutcome').IsEnabled = -not $busy -and $Session.Validated
+    $Session.Dialog.FindName('SolutionRecordOutcome').IsEnabled = -not $busy -and $Session.Validated -and $Session.Dialog.FindName('SolutionOutcome').SelectedIndex -gt 0
     $Session.Dialog.FindName('SolutionCancel').Visibility = if ($busy -and $Session.Job.Stage -ne 'Repair') { 'Visible' } else { 'Collapsed' }
     $Session.Dialog.FindName('SolutionCancel').IsEnabled = $busy -and -not $Session.Job.Cancelled
 }
@@ -2348,6 +2373,21 @@ function Add-V3SolutionHistory {
     Set-V3Output $text
 }
 
+function Save-V3SolutionOutcome {
+    param($Session)
+    if ($null -ne $Session.Job -or -not $Session.Validated) { return }
+    $index = $Session.Dialog.FindName('SolutionOutcome').SelectedIndex
+    if ($index -notin @(1, 2, 3)) { return }
+    $code = @('Pending', 'ResolvedByOperator', 'PersistsByOperator', 'NotTestedByOperator')[$index]
+    $description = @('', 'Operador informa: sintoma original testado e resolvido.', 'Operador informa: sintoma original testado e persiste. Investigue as outras causas descritas no plano.', 'Operador informa: sintoma original ainda nao testado. Atendimento pendente de validacao com o usuario.')[$index]
+    try {
+        Write-V3SolutionAudit -Id $Session.Id -Stage 'Outcome' -Status $code -Confirmed $false
+        Add-V3SolutionHistory $Session 'Resultado informado pelo operador' $description
+        $Session.Dialog.FindName('SolutionStatus').Text = $description
+    }
+    catch { $Session.Dialog.FindName('SolutionStatus').Text = 'Resultado nao registrado: arquivo de auditoria indisponivel. Tente novamente.' }
+}
+
 function Start-V3SolutionStage {
     param($Session, [ValidateSet('Diagnose', 'Repair', 'Validate')][string]$Stage)
     if ($null -ne $Session.Job) { return }
@@ -2362,6 +2402,8 @@ function Start-V3SolutionStage {
     }
     if ($Stage -eq 'Validate' -and -not $Session.RepairAttempted) { return }
     if ($Stage -eq 'Diagnose') { $Session.Diagnosed = $false; $Session.RepairAttempted = $false }
+    $Session.Validated = $false
+    $Session.Dialog.FindName('SolutionOutcome').SelectedIndex = 0
     $pipeline = [powershell]::Create()
     $startedRecorded = $false
     try {
@@ -2408,11 +2450,19 @@ function Complete-V3SolutionStage {
         }
         $result = $job.Pipeline.EndInvoke($job.Handle)
         if ($job.Pipeline.HadErrors) { throw 'A etapa apresentou erro de execucao.' }
+        if ($result.Count -eq 1 -and $result[0].PSObject.Properties['Status'] -and $result[0].Status -eq 'Blocked') {
+            $Session.Diagnosed = $false
+            Add-V3SolutionHistory $Session $job.Stage $result[0].Report
+            $status = 'Blocked'
+            $Session.Dialog.FindName('SolutionStatus').Text = 'Correcao bloqueada antes de executar. Confira a orientacao no historico.'
+            return
+        }
         $report = $result -join [Environment]::NewLine
         if ([string]::IsNullOrWhiteSpace($report)) { throw 'A etapa nao retornou um relatorio.' }
         if ($job.Stage -eq 'Diagnose') { $Session.Diagnosed = $true }
         if ($job.Stage -eq 'Repair') { $Session.RepairAttempted = $true }
         if ($job.Stage -eq 'Validate') {
+            $Session.Validated = $true
             $solution = Get-V3SolutionCatalog | Where-Object Id -eq $Session.Id
             $report += "`r`n`r`nVALIDACAO DO CHAMADO:`r`n" + $solution.Validate
         }
@@ -2443,6 +2493,8 @@ function Set-V3SolutionSelection {
     $Session.Id = $solution.Id
     $Session.Diagnosed = $false
     $Session.RepairAttempted = $false
+    $Session.Validated = $false
+    $Session.Dialog.FindName('SolutionOutcome').SelectedIndex = 0
     $Session.Dialog.FindName('SolutionPlan').Text = "QUANDO USAR`r`n$($solution.Situation)`r`n`r`nANTES DE EXECUTAR`r`n$($solution.Preconditions)`r`n`r`nIMPACTO E COMANDO`r`n$($solution.Impact)`r`n$($solution.Command)`r`n`r`nCOMO VALIDAR`r`n$($solution.Validate)"
     $Session.Dialog.FindName('SolutionStatus').Text = 'Comece pelo diagnostico. As correcoes exigem confirmacao.'
     Update-V3SolutionControls $Session
@@ -2456,7 +2508,7 @@ function New-V3SolutionSession {
     <StackPanel><TextBlock Text="Soluções guiadas" FontSize="22" FontWeight="Bold" Foreground="#0F172A"/><TextBlock Text="Selecione o problema e siga uma etapa por vez." Margin="0,4,0,10"/><ComboBox Name="SolutionChoice" DisplayMemberPath="Title" Height="32" AutomationProperties.Name="Problema do atendimento"/><WrapPanel Margin="0,10,0,8"><Button Name="SolutionDiagnose" Content="1. Diagnosticar" Padding="12,6" Margin="0,0,8,0"/><Button Name="SolutionRepair" Content="2. Aplicar correção" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/><Button Name="SolutionValidate" Content="3. Validar novamente" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/><Button Name="SolutionCancel" Content="Cancelar consulta" Padding="12,6" Visibility="Collapsed"/></WrapPanel></StackPanel>
     <TextBox Name="SolutionPlan" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="180" Padding="10" Margin="0,0,0,10" AutomationProperties.Name="Condições e impacto da solução"/>
     <TextBox Name="SolutionOutput" Grid.Row="2" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Padding="10" AutomationProperties.Name="Histórico das etapas do atendimento"/>
-    <StackPanel Grid.Row="3" Margin="0,10,0,0"><TextBlock Name="SolutionStatus" TextWrapping="Wrap" Foreground="#334155" AutomationProperties.LiveSetting="Polite"/><TextBlock Text="Ao fechar, use Salvar relatório na janela principal para guardar o histórico. Durante uma etapa, aguarde a conclusão antes de fechar." FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
+    <StackPanel Grid.Row="3" Margin="0,10,0,0"><WrapPanel Margin="0,0,0,8"><ComboBox Name="SolutionOutcome" Width="310" Height="30" SelectedIndex="0" IsEnabled="False" AutomationProperties.Name="Resultado do teste do sintoma"><ComboBoxItem Content="Após validar, informe o resultado"/><ComboBoxItem Content="Testei o sintoma: resolvido"/><ComboBoxItem Content="Testei o sintoma: persiste"/><ComboBoxItem Content="Ainda não testei o sintoma"/></ComboBox><Button Name="SolutionRecordOutcome" Content="4. Registrar resultado" Padding="12,6" Margin="8,0,0,0" IsEnabled="False"/></WrapPanel><TextBlock Name="SolutionStatus" TextWrapping="Wrap" Foreground="#334155" AutomationProperties.LiveSetting="Polite"/><TextBlock Text="Ao fechar, use Salvar relatório na janela principal para guardar o histórico. Durante uma etapa, aguarde a conclusão antes de fechar." FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
   </Grid>
 </Window>
 '@
@@ -2465,7 +2517,7 @@ function New-V3SolutionSession {
     if ($window.IsVisible) { $dialog.Owner = $window }
     $dialog.Width = [math]::Min($dialog.Width, [Windows.SystemParameters]::WorkArea.Width)
     $dialog.Height = [math]::Min($dialog.Height, [Windows.SystemParameters]::WorkArea.Height)
-    $session = [pscustomobject]@{ Dialog = $dialog; Id = ''; Diagnosed = $false; RepairAttempted = $false; Job = $null; Timer = [Windows.Threading.DispatcherTimer]::new(); History = [Text.StringBuilder]::new(); EntryCount = 0 }
+    $session = [pscustomobject]@{ Dialog = $dialog; Id = ''; Diagnosed = $false; RepairAttempted = $false; Validated = $false; Job = $null; Timer = [Windows.Threading.DispatcherTimer]::new(); History = [Text.StringBuilder]::new(); EntryCount = 0 }
     foreach ($solution in Get-V3SolutionCatalog) { [void]$dialog.FindName('SolutionChoice').Items.Add($solution) }
     return $session
 }
@@ -2486,6 +2538,8 @@ function Open-V3SolutionCatalog {
     $session.Dialog.FindName('SolutionRepair').Add_Click({ Start-V3SolutionStage $script:V3SolutionSession 'Repair' })
     $session.Dialog.FindName('SolutionValidate').Add_Click({ Start-V3SolutionStage $script:V3SolutionSession 'Validate' })
     $session.Dialog.FindName('SolutionCancel').Add_Click({ Stop-V3SolutionConsultation $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionOutcome').Add_SelectionChanged({ Update-V3SolutionControls $script:V3SolutionSession })
+    $session.Dialog.FindName('SolutionRecordOutcome').Add_Click({ Save-V3SolutionOutcome $script:V3SolutionSession })
     $session.Dialog.Add_Closing({
         param($sender, $eventArgs)
         if ($null -ne $script:V3SolutionSession.Job) { $eventArgs.Cancel = $true; $script:V3SolutionSession.Dialog.FindName('SolutionStatus').Text = 'Aguarde a etapa em andamento antes de fechar.' }

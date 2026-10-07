@@ -202,7 +202,11 @@ pré-condições, impacto, comando e validação do sintoma original.
    Para WAM, use o perfil afetado e feche os aplicativos Office.
 3. Execute **Validar novamente** e teste o sintoma: site/sistema, página de teste
    ou login do Office. Conclusão da etapa não significa chamado resolvido.
-4. Ao fechar o catálogo, o histórico fica no resultado principal para copiar ou
+4. Selecione o resultado do teste e use **Registrar resultado**: resolvido,
+   persiste ou ainda não testado. O registro identifica a informação do operador;
+   o programa não deduz resolução pela execução do comando. Nova leitura ou troca
+   de problema exige nova validação.
+5. Ao fechar o catálogo, o histórico fica no resultado principal para copiar ou
    salvar. As etapas geram registros em `logs/solutions/solutions-audit.jsonl`.
 
 **Cancelar consulta** interrompe apenas diagnóstico/validação. Correções devem
@@ -214,3 +218,10 @@ corporativos; revise as evidências antes de compartilhar.
 O catálogo chama somente funções previstas no programa e não executa comandos
 digitados ou texto da base JSON legada. Esta candidata também limita **Ajustar
 Appgate** ao backup e ao timeout; a ação não modifica a política de UAC.
+
+Antes da correção, há uma nova conferência em segundo plano: disponibilidade do
+ipconfig, permissão e serviço Spooler habilitado, ou aplicativos Office fechados
+e manifestos oficiais WAM presentes. Se falhar, o histórico informa **correção
+não iniciada**, orienta a próxima ação e exige novo diagnóstico. Essa conferência
+não comprova que a solução atende à causa do chamado; confira os achados e o
+perfil afetado antes de confirmar.

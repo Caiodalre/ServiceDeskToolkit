@@ -15,6 +15,7 @@ Describe 'Guided solution catalogue and operation routing' {
         Mock Invoke-V3PrintersPanel { 'Diagnostico impressao simulado' }
         Mock Invoke-V3OfficeTpmPanel { 'Diagnostico Office simulado' }
         Mock Test-V3Admin { $false }
+        Mock Test-V3SolutionPrerequisites { }
     }
 
     It 'contains three reviewed solutions with conditions impact command and validation' {
@@ -90,6 +91,50 @@ Describe 'Guided solution catalogue and operation routing' {
         $errors = $null
         $ast = [Management.Automation.Language.Parser]::ParseInput($definition, [ref]$tokens, [ref]$errors)
         @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] -and $node.GetCommandName() -in @('Set-ItemProperty', 'New-ItemProperty', 'Remove-ItemProperty') }, $true)).Count | Should -Be 0
+    }
+}
+
+Describe 'Guided solution prerequisites before any mutation' {
+    BeforeEach {
+        Mock Test-V3Admin { $true }
+        Mock Get-Service { [pscustomobject]@{ StartType = 'Automatic' } }
+        Mock Get-Process { @() }
+        Mock Test-Path { $true }
+        Mock Invoke-V3SafeSpoolerRestart { 'Spooler simulado' }
+        Mock Invoke-V3OfficeWamRepair { 'WAM simulado' }
+    }
+    It 'blocks a disabled spooler before a correction and explains the policy prerequisite' {
+        Mock Get-Service { [pscustomobject]@{ StartType = 'Disabled' } }
+        $result = Invoke-V3SolutionOperation 'print-spooler' Repair -Confirmed
+        $result.Status | Should -Be 'Blocked'
+        $result.Report | Should -BeLike '*politica*'
+        Should -Invoke Invoke-V3SafeSpoolerRestart -Times 0
+    }
+    It 'blocks DNS correction when ipconfig is unavailable' {
+        Mock Get-Command { $null } -ParameterFilter { $Name -eq 'ipconfig.exe' }
+        Mock Invoke-V3SafeFlushDns { 'DNS simulado' }
+        $result = Invoke-V3SolutionOperation 'dns-cache' Repair -Confirmed
+        $result.Status | Should -Be 'Blocked'
+        $result.Report | Should -BeLike '*ipconfig indisponivel*'
+        Should -Invoke Invoke-V3SafeFlushDns -Times 0
+    }
+    It 'blocks WAM while an Office application is open and does not close it' {
+        Mock Get-Process { [pscustomobject]@{ ProcessName = 'OUTLOOK' } }
+        $result = Invoke-V3SolutionOperation 'office-wam' Repair -Confirmed
+        $result.Status | Should -Be 'Blocked'
+        $result.Report | Should -BeLike '*OUTLOOK*'
+        Should -Invoke Invoke-V3OfficeWamRepair -Times 0
+    }
+    It 'blocks WAM when the official manifests are unavailable' {
+        Mock Test-Path { $false }
+        $result = Invoke-V3SolutionOperation 'office-wam' Repair -Confirmed
+        $result.Status | Should -Be 'Blocked'
+        $result.Report | Should -BeLike '*Manifesto oficial WAM ausente*'
+        Should -Invoke Invoke-V3OfficeWamRepair -Times 0
+    }
+    It 'allows WAM only when applications are closed and official manifests exist' {
+        Invoke-V3SolutionOperation 'office-wam' Repair -Confirmed | Should -Be 'WAM simulado'
+        Should -Invoke Invoke-V3OfficeWamRepair -Times 1
     }
 }
 
@@ -178,6 +223,54 @@ Describe 'Guided solution session and background execution' {
         $session.Dialog.FindName('SolutionRepair').IsEnabled | Should -BeFalse
         $session.Dialog.FindName('SolutionDiagnose').IsEnabled | Should -BeTrue
         $session.History.ToString() | Should -BeLike '*Falha na etapa*'
+    }
+
+    It 'records a blocked preflight without marking a repair attempted' {
+        $session.Diagnosed = $true
+        Mock Confirm-V3SolutionRepair { $true }
+        Mock Get-V3SolutionWorkerText { 'param($rootPath, $id, $stage, $confirmed); [pscustomobject]@{ Status="Blocked"; Report="Feche o Office" }' }
+        Start-V3SolutionStage $session Repair
+        Wait-TestSolution
+        $session.Diagnosed | Should -BeFalse
+        $session.RepairAttempted | Should -BeFalse
+        $session.Validated | Should -BeFalse
+        $session.Dialog.FindName('SolutionRepair').IsEnabled | Should -BeFalse
+        $session.History.ToString() | Should -BeLike '*Feche o Office*'
+        $entries = @(Get-Content (Join-Path $TestDrive 'logs/solutions/solutions-audit.jsonl') | ConvertFrom-Json)
+        @($entries | Where-Object Status -eq 'Blocked').Count | Should -Be 1
+    }
+
+    It 'requires validation before recording the operator outcome and clears it on a new diagnosis' {
+        $session.Dialog.FindName('SolutionOutcome').SelectedIndex = 1
+        Save-V3SolutionOutcome $session
+        $session.EntryCount | Should -Be 0
+        $session.Validated = $true
+        Update-V3SolutionControls $session
+        $session.Dialog.FindName('SolutionRecordOutcome').IsEnabled | Should -BeTrue
+        Save-V3SolutionOutcome $session
+        $session.History.ToString() | Should -BeLike '*Operador informa: sintoma original testado e resolvido*'
+        $entries = @(Get-Content (Join-Path $TestDrive 'logs/solutions/solutions-audit.jsonl') | ConvertFrom-Json)
+        @($entries | Where-Object { $_.Stage -eq 'Outcome' -and $_.Status -eq 'ResolvedByOperator' }).Count | Should -Be 1
+        Start-V3SolutionStage $session Diagnose
+        Wait-TestSolution
+        $session.Validated | Should -BeFalse
+        $session.Dialog.FindName('SolutionOutcome').SelectedIndex | Should -Be 0
+        $session.Dialog.FindName('SolutionRecordOutcome').IsEnabled | Should -BeFalse
+    }
+
+    It 'records persistent and untested symptoms separately and preserves history when audit fails' {
+        $session.Validated = $true
+        $session.Dialog.FindName('SolutionOutcome').SelectedIndex = 2
+        Save-V3SolutionOutcome $session
+        $session.Dialog.FindName('SolutionOutcome').SelectedIndex = 3
+        Save-V3SolutionOutcome $session
+        $entries = @(Get-Content (Join-Path $TestDrive 'logs/solutions/solutions-audit.jsonl') | ConvertFrom-Json)
+        $entries.Status | Should -Contain 'PersistsByOperator'
+        $entries.Status | Should -Contain 'NotTestedByOperator'
+        Mock Write-V3SolutionAudit { throw 'sem acesso' }
+        Save-V3SolutionOutcome $session
+        $session.EntryCount | Should -Be 2
+        $session.Dialog.FindName('SolutionStatus').Text | Should -BeLike '*nao registrado*'
     }
 
     It 'does not execute an action if its initial audit cannot be written' {
